@@ -142,6 +142,10 @@ namespace ComponentAce.Compression.Libs.zlib
 				if (err != zlibConst.Z_OK && err != zlibConst.Z_STREAM_END) 
 					throw new ZStreamException((compress?"de":"in") + "flating: " + z.msg);
 				out_Renamed.Write(buf, 0, bufsize - z.avail_out);
+			    if (err == zlibConst.Z_STREAM_END)
+			    {
+			        break;
+			    }
 			}
 			while (z.avail_in > 0 || z.avail_out == 0);
 		}
@@ -168,8 +172,12 @@ namespace ComponentAce.Compression.Libs.zlib
 				{
 					out_Renamed.Write(buf, 0, bufsize - z.avail_out);
 				}
+			    if (err == zlibConst.Z_STREAM_END)
+			    {
+			        break;
+			    }
 			}
-			while (z.avail_in > 0 || z.avail_out == 0);
+            while (z.avail_in > 0 || z.avail_out == 0);
 			try
 			{
 				Flush();
