@@ -214,7 +214,7 @@ namespace ComponentAce.Compression.Libs.zlib
 			finally
 			{
 				end();
-				out_Renamed.Close();
+				out_Renamed.Dispose();
 				out_Renamed = null;
 			}
 		}
@@ -260,7 +260,7 @@ namespace ComponentAce.Compression.Libs.zlib
 		{
 			get
 			{
-				return false;
+				return true;
 			}
 			
 		}
