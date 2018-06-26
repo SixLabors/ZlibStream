@@ -125,6 +125,21 @@ namespace ComponentAce.Compression.Libs.zlib
 			return (buf1[0] & 0xFF);
 		}
 		
+		public bool moreinput
+		{
+			get
+			{
+				return nomoreinput;
+			}
+			set
+			{
+				if (nomoreinput != value)
+				{
+					nomoreinput = value;
+				}
+			}
+		}
+		
 		internal bool nomoreinput = false;
 				
 		public int read(byte[] b, int off, int len)
