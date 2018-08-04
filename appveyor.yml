@@ -26,7 +26,7 @@ matrix:
    - configuration: Release
      somedummything: false
 on_success:
-  - ps: >-
+- ps: >-
     if ($env:skip_rebase -eq "")
 
     {
