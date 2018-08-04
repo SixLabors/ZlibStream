@@ -16,19 +16,44 @@ test: off
 environment:
   access_token:
     secure: oHqKZpK6huL4v9LT6ifeFb/MA3vI1NRlN66jP+qbI7DiGhV0ZF3L7xmTeJR+OEFG
+  matrix:
+  - somedummything: false
+  - skip_rebase: true
+matrix:
+  exclude:
+   - configuration: Debug
+     skip_rebase: true
+   - configuration: Release
+     somedummything: false
 on_success:
-  - git config --global credential.helper store
-  - ps: Add-Content "$HOME\.git-credentials" "https://$($env:access_token):x-oauth-basic@github.com`n"
-  - git config --global user.email "seandhunt_7@yahoo.com"
-  - git config --global user.name "AraHaan"
-  - git format-patch master -o ./patches/
-  - git checkout master
-  # delete patches branch from remote and locally
-  - git push origin --delete patches
-  - git branch -D patches
-  # recreate branch to simulate a rebase.
-  - git branch patches
-  - git checkout patches
-  - git am ./patches/*.patch
-  # push the now simulated rebased branch to github.
-  - git push --set-upstream origin patches
+  - ps: >-
+    if ($env:skip_rebase -eq "")
+
+    {
+
+    git config --global credential.helper store
+
+    Add-Content "$HOME\.git-credentials" "https://$($env:access_token):x-oauth-basic@github.com`n"
+
+    git config --global user.email "seandhunt_7@yahoo.com"
+
+    git config --global user.name "AraHaan"
+
+    git checkout -q master
+
+    git format-patch -q master -o ./patches/
+
+    # delete patches branch from remote and locally
+    git push origin --delete patches
+
+    # recreate branch to simulate a rebase.
+    git branch patches
+
+    git checkout patches
+
+    git am ./patches/*.patch
+
+    # push the now simulated rebased branch to github.
+    git push --set-upstream origin patches
+
+    }
