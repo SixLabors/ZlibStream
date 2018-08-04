@@ -39,21 +39,25 @@ on_success:
 
     git config --global user.name "AraHaan"
 
-    git checkout -q master
+    git checkout -q patches
 
     git format-patch -q master -o ./patches/
+
+    git checkout -q master
 
     # delete patches branch from remote and locally
     git push origin --delete patches
 
+    git branch -q -D patches
+
     # recreate branch to simulate a rebase.
-    git branch patches
+    git branch -q patches
 
-    git checkout patches
+    git checkout -q patches
 
-    git am ./patches/*.patch
+    git am -q ./patches/*.patch
 
     # push the now simulated rebased branch to github.
-    git push --set-upstream origin patches
+    git push -q --set-upstream origin patches
 
     }
