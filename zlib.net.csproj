@@ -1,43 +1,25 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
   <PropertyGroup>
-    <ProjectType>Local</ProjectType>
-    <ProductVersion>7.10.3077</ProductVersion>
-    <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{0C89B7A2-A218-49E4-B545-5B044A45F977}</ProjectGuid>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ApplicationIcon />
-    <AssemblyKeyContainerName />
     <AssemblyName>zlib.net</AssemblyName>
-    <AssemblyOriginatorKeyFile />
-    <DefaultClientScript>JScript</DefaultClientScript>
-    <DefaultHTMLPageLayout>Grid</DefaultHTMLPageLayout>
-    <DefaultTargetSchema>IE50</DefaultTargetSchema>
     <DelaySign>false</DelaySign>
     <OutputType>Library</OutputType>
     <RootNamespace>zlib</RootNamespace>
     <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
-    <StartupObject />
-    <FileUpgradeFlags>
-    </FileUpgradeFlags>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
-    <UpgradeBackupLocation>
-    </UpgradeBackupLocation>
-    <OldToolsVersion>0.0</OldToolsVersion>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <OutputPath>bin\Debug\</OutputPath>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <BaseAddress>285212672</BaseAddress>
     <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
-    <ConfigurationOverrideFile />
     <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <DocumentationFile />
     <DebugSymbols>true</DebugSymbols>
     <FileAlignment>4096</FileAlignment>
     <NoStdLib>false</NoStdLib>
-    <NoWarn />
     <Optimize>false</Optimize>
     <RegisterForComInterop>false</RegisterForComInterop>
     <RemoveIntegerChecks>false</RemoveIntegerChecks>
@@ -51,13 +33,10 @@
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <BaseAddress>285212672</BaseAddress>
     <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
-    <ConfigurationOverrideFile />
     <DefineConstants>TRACE</DefineConstants>
-    <DocumentationFile />
     <DebugSymbols>false</DebugSymbols>
     <FileAlignment>4096</FileAlignment>
     <NoStdLib>false</NoStdLib>
-    <NoWarn />
     <Optimize>true</Optimize>
     <RegisterForComInterop>false</RegisterForComInterop>
     <RemoveIntegerChecks>false</RemoveIntegerChecks>
@@ -67,62 +46,26 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="System">
-      <Name>System</Name>
-    </Reference>
-    <Reference Include="System.Data">
-      <Name>System.Data</Name>
-    </Reference>
-    <Reference Include="System.XML">
-      <Name>System.XML</Name>
-    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.XML" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Adler32.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="AssemblyInfo.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Deflate.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="InfBlocks.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="InfCodes.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Inflate.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="InfTree.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="StaticTree.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="SupportClass.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Tree.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="ZInputStream.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Zlib.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="ZOutputStream.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="ZStream.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="ZStreamException.cs">
-      <SubType>Code</SubType>
-    </Compile>
+    <Compile Include="Adler32.cs" />
+    <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="Deflate.cs" />
+    <Compile Include="InfBlocks.cs" />
+    <Compile Include="InfCodes.cs" />
+    <Compile Include="Inflate.cs" />
+    <Compile Include="InfTree.cs" />
+    <Compile Include="StaticTree.cs" />
+    <Compile Include="SupportClass.cs" />
+    <Compile Include="Tree.cs" />
+    <Compile Include="ZInputStream.cs" />
+    <Compile Include="Zlib.cs" />
+    <Compile Include="ZOutputStream.cs" />
+    <Compile Include="ZStream.cs" />
+    <Compile Include="ZStreamException.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
