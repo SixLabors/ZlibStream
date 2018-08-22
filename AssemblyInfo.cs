@@ -56,3 +56,4 @@ using System.Runtime.CompilerServices;
 [assembly: AssemblyDelaySign(false)]
 [assembly: AssemblyKeyFile("")]
 [assembly: AssemblyKeyName("")]
+[assembly: InternalsVisibleTo("Els_kom_Core", AllInternalsVisible = true)]

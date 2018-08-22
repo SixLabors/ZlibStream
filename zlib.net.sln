@@ -6,14 +6,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "zlib.net", "zlib.net.csproj
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Any CPU = Debug|Any CPU
-		Release|Any CPU = Release|Any CPU
+		Release|x86 = Release|x86
+		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{0C89B7A2-A218-49E4-B545-5B044A45F977}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0C89B7A2-A218-49E4-B545-5B044A45F977}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0C89B7A2-A218-49E4-B545-5B044A45F977}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0C89B7A2-A218-49E4-B545-5B044A45F977}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0C89B7A2-A218-49E4-B545-5B044A45F977}.Release|x86.ActiveCfg = Release|x86
+		{0C89B7A2-A218-49E4-B545-5B044A45F977}.Release|x86.Build.0 = Release|x86
+		{0C89B7A2-A218-49E4-B545-5B044A45F977}.Release|x64.ActiveCfg = Release|x64
+		{0C89B7A2-A218-49E4-B545-5B044A45F977}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

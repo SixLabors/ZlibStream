@@ -85,7 +85,7 @@ namespace ComponentAce.Compression.Libs.zlib
 			
 		}
 		
-		protected internal ZStream z = new ZStream();
+		public ZStream z = new ZStream();
 		protected internal int bufsize = 4096;		
 		protected internal int flush_Renamed_Field;		
 		protected internal byte[] buf, buf1 = new byte[1];
