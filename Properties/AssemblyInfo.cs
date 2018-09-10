@@ -10,12 +10,12 @@ using System.Runtime.CompilerServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 //
-[assembly: AssemblyTitle("ZLIB.NET")]
-[assembly: AssemblyDescription("ZLIB.NET")]
+[assembly: AssemblyTitle("ZLIB")]
+[assembly: AssemblyDescription("ZLIB")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("ComponentAce")]
-[assembly: AssemblyProduct("ZLIB.NET")]
-[assembly: AssemblyCopyright("ComponentAce")]
+[assembly: AssemblyCompany("Els_kom org.")]
+[assembly: AssemblyProduct("ZLIB")]
+[assembly: AssemblyCopyright("Copyright (c) 2018")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -28,7 +28,9 @@ using System.Runtime.CompilerServices;
 //
 // You can specify all the values or you can default the Revision and Build Numbers
 // by using the '*' as shown below:
-[assembly: AssemblyVersion("1.0.3.0")]
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyInformationalVersion("1.0.0.0")]
 
 // In order to sign your assembly you must specify a key to use. Refer to the
 // Microsoft .NET Framework documentation for more information on assembly signing.
