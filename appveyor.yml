@@ -1,18 +1,26 @@
-version: 1.03a{build}
+version: 1.0.3a{build}
 branches:
   only:
   - master
 max_jobs: 15
 image:
- - Visual Studio 2017
- - Visual Studio 2017 Preview
+- Visual Studio 2017
+- Visual Studio 2017 Preview
 configuration:
-  - Debug
-  - Release
-platform:
- - Any CPU
+- Debug
+- Release
+platform: Any CPU
 build:
   project: zlib.sln
+  publish_nuget: true
+  publish_nuget_symbols: true
+  include_nuget_references: true
   parallel: true
   verbosity: minimal
 test: off
+deploy:
+- provider: NuGet
+  api_key:
+    secure: 2rNVY+Wc0mVz3wNeOXm1PhSfGlDM1puW+Ark5gPZeod7UJekjFRZA0/H518t2Bup
+  on:
+    APPVEYOR_REPO_TAG: true
