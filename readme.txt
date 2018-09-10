@@ -20,7 +20,7 @@ Program Name:
 License Type: freeware
   
 Program Version:
-  1.04
+  1.03
 Program Release Date:
   03/28/2007
 Program Purpose:
