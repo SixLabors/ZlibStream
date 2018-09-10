@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>$id$</id>
+    <version>$APPVEYOR_REPO_TAG_NAME$</version>
+    <title>zlib</title>
+    <authors>Els_kom org.</authors>
+    <owners>Els_kom org.</owners>
+    <licenseUrl>https://github.com/Elskom/ZLIB.NET/blob/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/Elskom/ZLIB.NET/</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>A cleaned up and bug fixed version of zlib.net. This is also planned to be updated frequently if needed too.</description>
+    <releaseNotes>A lot of breaking changes included but not limited to bug fixes and code style fixes.</releaseNotes>
+    <copyright>Copyright 2018</copyright>
+    <tags>zlib, C# latest language</tags>
+  </metadata>
+</package>

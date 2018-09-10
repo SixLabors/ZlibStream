@@ -1,71 +1,15 @@
-/*
-Copyright (c) 2006, ComponentAce
-http://www.componentace.com
-All rights reserved.
+// Copyright (c) 2018, Els_kom org.
+// https://github.com/Elskom/
+// All rights reserved.
+// license: see LICENSE for more details.
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.
-
-Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in
-the documentation and/or other materials provided with the distribution.
-
-Neither the name of ComponentAce nor the names of its contributors
-may be used to endorse or promote products derived from this
-software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-/*
-Copyright (c) 2000,2001,2002,2003 ymnk, JCraft,Inc. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in
-the documentation and/or other materials provided with the distribution.
-
-3. The names of the authors may not be used to endorse or promote products
-derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED WARRANTIES,
-INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL JCRAFT,
-INC. OR ANY CONTRIBUTORS TO THIS SOFTWARE BE LIABLE FOR ANY DIRECT, INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
-OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-/*
-* This program is based on zlib-1.1.3, so all credit should go authors
-* Jean-loup Gailly(jloup@gzip.org) and Mark Adler(madler@alumni.caltech.edu)
-* and contributors of zlib.
-*/
-namespace ComponentAce.Compression.Libs.Zlib
+namespace Els_Kom.Compression.Libs.Zlib
 {
     using System;
 
+    /// <summary>
+    /// The zlib stream class.
+    /// </summary>
     public sealed class ZStream
     {
         private const int MAXWBITS = 15; // 32K LZ77 window
@@ -88,22 +32,49 @@ namespace ComponentAce.Compression.Libs.Zlib
         private const int ZVERSIONERROR = -6;
         private static readonly int DEFWBITS = MAXWBITS;
 
-        public byte[] NextIn { get; set; } // next input byte
+        /// <summary>
+        /// Gets or sets the next input byte.
+        /// </summary>
+        public byte[] NextIn { get; set; }
 
+        /// <summary>
+        /// Gets or sets the next input byte index.
+        /// </summary>
         public int NextInIndex { get; set; }
 
-        public int AvailIn { get; set; } // number of bytes available at next_in
+        /// <summary>
+        /// Gets or sets the number of bytes available at next_in.
+        /// </summary>
+        public int AvailIn { get; set; }
 
-        public long TotalIn { get; set; } // total nb of input bytes read so far
+        /// <summary>
+        /// Gets or sets the total number of input bytes read so far.
+        /// </summary>
+        public long TotalIn { get; set; }
 
-        public byte[] NextOut { get; set; } // next output byte should be put there
+        /// <summary>
+        /// Gets or sets the next output byte.
+        /// </summary>
+        public byte[] NextOut { get; set; }
 
+        /// <summary>
+        /// Gets or sets the next output byte index.
+        /// </summary>
         public int NextOutIndex { get; set; }
 
-        public int AvailOut { get; set; } // remaining free space at next_out
+        /// <summary>
+        /// Gets or sets the remaining free space at next_out.
+        /// </summary>
+        public int AvailOut { get; set; }
 
-        public long TotalOut { get; set; } // total nb of bytes output so far
+        /// <summary>
+        /// Gets or sets the total number of bytes output so far.
+        /// </summary>
+        public long TotalOut { get; set; }
 
+        /// <summary>
+        /// Gets or sets the stream's error message.
+        /// </summary>
         public string Msg { get; set; }
 
         /// <summary>
@@ -125,16 +96,34 @@ namespace ComponentAce.Compression.Libs.Zlib
         /// </summary>
         internal Adler32 Adler32 { get; private set; } = new Adler32();
 
+        /// <summary>
+        /// Initializes decompression.
+        /// </summary>
+        /// <returns>The state.</returns>
         public int InflateInit() => this.InflateInit(DEFWBITS);
 
+        /// <summary>
+        /// Initializes decompression.
+        /// </summary>
+        /// <param name="w">The window size.</param>
+        /// <returns>The zlib status state.</returns>
         public int InflateInit(int w)
         {
             this.Istate = new Inflate();
             return this.Istate.InflateInit(this, w);
         }
 
+        /// <summary>
+        /// Decompresses data.
+        /// </summary>
+        /// <param name="f">The flush mode to use.</param>
+        /// <returns>The zlib status state.</returns>
         public int Inflate(int f) => this.Istate == null ? ZSTREAMERROR : this.Istate.Decompress(this, f);
 
+        /// <summary>
+        /// Ends decompression.
+        /// </summary>
+        /// <returns>The zlib status state.</returns>
         public int InflateEnd()
         {
             if (this.Istate == null)
@@ -147,20 +136,50 @@ namespace ComponentAce.Compression.Libs.Zlib
             return ret;
         }
 
+        /// <summary>
+        /// Syncs inflate.
+        /// </summary>
+        /// <returns>The zlib status state.</returns>
         public int InflateSync() => this.Istate == null ? ZSTREAMERROR : this.Istate.InflateSync(this);
 
+        /// <summary>
+        /// Sets the inflate dictionary.
+        /// </summary>
+        /// <param name="dictionary">The dictionary to use.</param>
+        /// <param name="dictLength">The dictionary length.</param>
+        /// <returns>The zlib status state.</returns>
         public int InflateSetDictionary(byte[] dictionary, int dictLength) => this.Istate == null ? ZSTREAMERROR : this.Istate.InflateSetDictionary(this, dictionary, dictLength);
 
+        /// <summary>
+        /// Initializes compression.
+        /// </summary>
+        /// <param name="level">The compression level to use.</param>
+        /// <returns>The zlib status state.</returns>
         public int DeflateInit(int level) => this.DeflateInit(level, MAXWBITS);
 
+        /// <summary>
+        /// Initializes compression.
+        /// </summary>
+        /// <param name="level">The compression level to use.</param>
+        /// <param name="bits">The window bits to use.</param>
+        /// <returns>The zlib status state.</returns>
         public int DeflateInit(int level, int bits)
         {
             this.Dstate = new Deflate();
             return this.Dstate.DeflateInit(this, level, bits);
         }
 
+        /// <summary>
+        /// Compress data.
+        /// </summary>
+        /// <param name="flush">The flush mode to use on the data.</param>
+        /// <returns>The zlib status state.</returns>
         public int Deflate(int flush) => this.Dstate == null ? ZSTREAMERROR : this.Dstate.Compress(this, flush);
 
+        /// <summary>
+        /// Ends compression.
+        /// </summary>
+        /// <returns>The zlib status state.</returns>
         public int DeflateEnd()
         {
             if (this.Dstate == null)
@@ -173,10 +192,25 @@ namespace ComponentAce.Compression.Libs.Zlib
             return ret;
         }
 
+        /// <summary>
+        /// Sets the compression paramiters.
+        /// </summary>
+        /// <param name="level">The compression level to use.</param>
+        /// <param name="strategy">The strategy to use for compression.</param>
+        /// <returns>The zlib status state.</returns>
         public int DeflateParams(int level, int strategy) => this.Dstate == null ? ZSTREAMERROR : this.Dstate.DeflateParams(this, level, strategy);
 
+        /// <summary>
+        /// Sets the deflate dictionary.
+        /// </summary>
+        /// <param name="dictionary">The dictionary to use.</param>
+        /// <param name="dictLength">The dictionary length.</param>
+        /// <returns>The zlib status state.</returns>
         public int DeflateSetDictionary(byte[] dictionary, int dictLength) => this.Dstate == null ? ZSTREAMERROR : this.Dstate.DeflateSetDictionary(this, dictionary, dictLength);
 
+        /// <summary>
+        /// Frees everything.
+        /// </summary>
         public void Free()
         {
             this.NextIn = null;

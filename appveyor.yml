@@ -12,7 +12,7 @@ configuration:
 platform:
  - Any CPU
 build:
-  project: zlib.net.sln
+  project: zlib.sln
   parallel: true
   verbosity: minimal
 test: off

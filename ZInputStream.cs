@@ -1,72 +1,16 @@
-/*
-Copyright (c) 2006, ComponentAce
-http://www.componentace.com
-All rights reserved.
+// Copyright (c) 2018, Els_kom org.
+// https://github.com/Elskom/
+// All rights reserved.
+// license: see LICENSE for more details.
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.
-
-Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in
-the documentation and/or other materials provided with the distribution.
-
-Neither the name of ComponentAce nor the names of its contributors
-may be used to endorse or promote products derived from this
-software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-/*
-Copyright (c) 2001 Lapo Luchini.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in
-the documentation and/or other materials provided with the distribution.
-
-3. The names of the authors may not be used to endorse or promote products
-derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED WARRANTIES,
-INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHORS
-OR ANY CONTRIBUTORS TO THIS SOFTWARE BE LIABLE FOR ANY DIRECT, INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
-OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-/*
-* This program is based on zlib-1.1.3, so all credit should go authors
-* Jean-loup Gailly(jloup@gzip.org) and Mark Adler(madler@alumni.caltech.edu)
-* and contributors of zlib.
-*/
-
-namespace ComponentAce.Compression.Libs.Zlib
+namespace Els_Kom.Compression.Libs.Zlib
 {
     using System.IO;
 
+    /// <summary>
+    /// Class that provices a zlib input stream that supports
+    /// compression and decompression.
+    /// </summary>
     public class ZInputStream : BinaryReader
     {
         private readonly Stream inRenamed = null;
@@ -87,6 +31,11 @@ namespace ComponentAce.Compression.Libs.Zlib
             this.Z.AvailIn = 0;
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ZInputStream"/> class.
+        /// </summary>
+        /// <param name="in_Renamed">The input stream.</param>
+        /// <param name="level">The compression level for the data to compress.</param>
         public ZInputStream(Stream in_Renamed, int level)
             : base(in_Renamed)
         {
@@ -99,8 +48,14 @@ namespace ComponentAce.Compression.Libs.Zlib
             this.Z.AvailIn = 0;
         }
 
+        /// <summary>
+        /// Gets the base zlib stream.
+        /// </summary>
         public ZStream Z { get; private set; } = new ZStream();
 
+        /// <summary>
+        /// Gets or sets the flush mode for this stream.
+        /// </summary>
         public virtual int FlushMode { get; set; }
 
         /// <summary> Gets the total number of bytes input so far.</summary>
@@ -109,22 +64,40 @@ namespace ComponentAce.Compression.Libs.Zlib
         /// <summary> Gets the total number of bytes output so far.</summary>
         public virtual long TotalOut => this.Z.TotalOut;
 
+        /// <summary>
+        /// Gets or sets a value indicating whether there is more input.
+        /// </summary>
         public bool Moreinput { get; set; }
 
+        /// <summary>
+        /// Gets the stream's buffer size.
+        /// </summary>
         protected int Bufsize { get; private set; } = 512;
 
+        /// <summary>
+        /// Gets the stream's buffer.
+        /// </summary>
         protected byte[] Buf { get; private set; }
 
+        /// <summary>
+        /// Gets the stream's single byte buffer value.
+        /// For reading 1 byte at a time.
+        /// </summary>
         protected byte[] Buf1 { get; private set; } = new byte[1];
 
+        /// <summary>
+        /// Gets a value indicating whether this stream is setup for compression.
+        /// </summary>
         protected bool Compress { get; private set; }
 
         /*public int available() throws IOException {
         return inf.finished() ? 0 : 1;
         }*/
 
+        /// <inheritdoc/>
         public override int Read() => this.Read(this.Buf1, 0, 1) == -1 ? -1 : this.Buf1[0] & 0xFF;
 
+        /// <inheritdoc/>
         public override int Read(byte[] b, int off, int len)
         {
             if (len == 0)
@@ -173,6 +146,15 @@ namespace ComponentAce.Compression.Libs.Zlib
             return len - this.Z.AvailOut;
         }
 
+        /// <summary>
+        /// Skips a certin amount of data.
+        /// </summary>
+        /// <param name="n">The amount to skip.</param>
+        /// <returns>
+        /// less than or equal to count depending on the data available
+        /// in the source Stream or -1 if the end of the stream is
+        /// reached.
+        /// </returns>
         public long Skip(long n)
         {
             var len = 512;
@@ -185,6 +167,7 @@ namespace ComponentAce.Compression.Libs.Zlib
             return SupportClass.ReadInput(this.BaseStream, tmp, 0, tmp.Length);
         }
 
+        /// <inheritdoc/>
         public override void Close() => this.inRenamed.Close();
 
         private void InitBlock()

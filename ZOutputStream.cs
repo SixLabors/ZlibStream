@@ -1,77 +1,25 @@
-/*
-Copyright (c) 2006, ComponentAce
-http://www.componentace.com
-All rights reserved.
+// Copyright (c) 2018, Els_kom org.
+// https://github.com/Elskom/
+// All rights reserved.
+// license: see LICENSE for more details.
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.
-
-Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in
-the documentation and/or other materials provided with the distribution.
-
-Neither the name of ComponentAce nor the names of its contributors
-may be used to endorse or promote products derived from this
-software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-/*
-Copyright (c) 2001 Lapo Luchini.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in
-the documentation and/or other materials provided with the distribution.
-
-3. The names of the authors may not be used to endorse or promote products
-derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED WARRANTIES,
-INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHORS
-OR ANY CONTRIBUTORS TO THIS SOFTWARE BE LIABLE FOR ANY DIRECT, INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
-OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-/*
-* This program is based on zlib-1.1.3, so all credit should go authors
-* Jean-loup Gailly(jloup@gzip.org) and Mark Adler(madler@alumni.caltech.edu)
-* and contributors of zlib.
-*/
-
-namespace ComponentAce.Compression.Libs.Zlib
+namespace Els_Kom.Compression.Libs.Zlib
 {
     using System;
     using System.IO;
 
+    /// <summary>
+    /// Class that provices a zlib output stream that supports
+    /// compression and decompression.
+    /// </summary>
     public class ZOutputStream : Stream
     {
         private Stream outRenamed;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ZOutputStream"/> class.
+        /// </summary>
+        /// <param name="out_Renamed">The output stream.</param>
         public ZOutputStream(Stream out_Renamed)
             : base()
         {
@@ -81,6 +29,11 @@ namespace ComponentAce.Compression.Libs.Zlib
             this.Compress = false;
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ZOutputStream"/> class.
+        /// </summary>
+        /// <param name="out_Renamed">The output stream.</param>
+        /// <param name="level">The compression level for the data to compress.</param>
         public ZOutputStream(Stream out_Renamed, int level)
             : base()
         {
@@ -90,20 +43,28 @@ namespace ComponentAce.Compression.Libs.Zlib
             this.Compress = true;
         }
 
+        /// <summary>
+        /// Gets the base zlib stream.
+        /// </summary>
         public ZStream Z { get; private set; } = new ZStream();
 
+        /// <inheritdoc/>
         // UPGRADE_TODO: The following property was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
         public override bool CanRead => false;
 
+        /// <inheritdoc/>
         // UPGRADE_TODO: The following property was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
         public override bool CanSeek => false;
 
+        /// <inheritdoc/>
         // UPGRADE_TODO: The following property was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
         public override bool CanWrite => true;
 
+        /// <inheritdoc/>
         // UPGRADE_TODO: The following property was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
         public override long Length => 0;
 
+        /// <inheritdoc/>
         // UPGRADE_TODO: The following property was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
         public override long Position
         {
@@ -114,6 +75,9 @@ namespace ComponentAce.Compression.Libs.Zlib
             }
         }
 
+        /// <summary>
+        /// Gets or sets the flush mode for this stream.
+        /// </summary>
         public virtual int FlushMode { get; set; }
 
         /// <summary>Gets the total number of bytes input so far.</summary>
@@ -122,23 +86,43 @@ namespace ComponentAce.Compression.Libs.Zlib
         /// <summary>Gets the total number of bytes output so far.</summary>
         public virtual long TotalOut => this.Z.TotalOut;
 
+        /// <summary>
+        /// Gets the stream's buffer size.
+        /// </summary>
         protected internal int Bufsize { get; private set; } = 4096;
 
+        /// <summary>
+        /// Gets the stream's buffer.
+        /// </summary>
         protected internal byte[] Buf { get; private set; }
 
+        /// <summary>
+        /// Gets the stream's single byte buffer value.
+        /// For reading 1 byte at a time.
+        /// </summary>
         protected internal byte[] Buf1 { get; private set; } = new byte[1];
 
+        /// <summary>
+        /// Gets a value indicating whether this stream is setup for compression.
+        /// </summary>
         protected internal bool Compress { get; private set; }
 
+        /// <summary>
+        /// Writes a byte to the current position in the stream and advances the position
+        /// within the stream by one byte.
+        /// </summary>
+        /// <param name="b">The byte to write to the stream.</param>
         public void WriteByte(int b)
         {
             this.Buf1[0] = (byte)b;
             this.Write(this.Buf1, 0, 1);
         }
 
+        /// <inheritdoc/>
         // UPGRADE_TODO: The differences in the Expected value  of parameters for method 'WriteByte'  may cause compilation errors.  'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1092_3"'
         public override void WriteByte(byte b) => this.WriteByte(b);
 
+        /// <inheritdoc/>
         public override void Write(byte[] b1, int off, int len)
         {
             if (len == 0)
@@ -178,6 +162,9 @@ namespace ComponentAce.Compression.Libs.Zlib
             while (this.Z.AvailIn > 0 || this.Z.AvailOut == 0);
         }
 
+        /// <summary>
+        /// Finishes the stream.
+        /// </summary>
         public virtual void Finish()
         {
             int err;
@@ -213,6 +200,9 @@ namespace ComponentAce.Compression.Libs.Zlib
             }
         }
 
+        /// <summary>
+        /// Ends the compression or decompression on the stream.
+        /// </summary>
         public virtual void End()
         {
             if (this.Compress)
@@ -228,6 +218,7 @@ namespace ComponentAce.Compression.Libs.Zlib
             this.Z = null;
         }
 
+        /// <inheritdoc/>
         public override void Close()
         {
             try
@@ -248,16 +239,20 @@ namespace ComponentAce.Compression.Libs.Zlib
             }
         }
 
+        /// <inheritdoc/>
         public override void Flush() => this.outRenamed.Flush();
 
+        /// <inheritdoc/>
         // UPGRADE_TODO: The following method was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
         public override int Read(byte[] buffer, int offset, int count) => 0;
 
+        /// <inheritdoc/>
         // UPGRADE_TODO: The following method was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
         public override void SetLength(long value)
         {
         }
 
+        /// <inheritdoc/>
         // UPGRADE_TODO: The following method was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
         public override long Seek(long offset, SeekOrigin origin) => 0;
 

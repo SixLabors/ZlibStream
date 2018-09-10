@@ -8,7 +8,10 @@
   "$schema": "https://raw.githubusercontent.com/DotNetAnalyzers/StyleCopAnalyzers/master/StyleCop.Analyzers/StyleCop.Analyzers/Settings/stylecop.schema.json",
   "settings": {
     "documentationRules": {
-      "documentInternalElements": false
+      "companyName": "Els_kom org.",
+      "copyrightText": "Copyright (c) 2018, {companyName}\nhttps://github.com/Elskom/\nAll rights reserved.\nlicense: see LICENSE for more details.",
+      "documentInternalElements": false,
+      "xmlHeader": false
     }
   }
 }

@@ -1,3 +1,8 @@
+// Copyright (c) 2018, Els_kom org.
+// https://github.com/Elskom/
+// All rights reserved.
+// license: see LICENSE for more details.
+
 using System.Reflection;
 using System.Runtime.CompilerServices;
 

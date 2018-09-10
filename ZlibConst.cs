@@ -1,101 +1,128 @@
-/*
-Copyright (c) 2006, ComponentAce
-http://www.componentace.com
-All rights reserved.
+// Copyright (c) 2018, Els_kom org.
+// https://github.com/Elskom/
+// All rights reserved.
+// license: see LICENSE for more details.
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.
-
-Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in
-the documentation and/or other materials provided with the distribution.
-
-Neither the name of ComponentAce nor the names of its contributors
-may be used to endorse or promote products derived from this
-software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-/*
-Copyright (c) 2000,2001,2002,2003 ymnk, JCraft,Inc. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in
-the documentation and/or other materials provided with the distribution.
-
-3. The names of the authors may not be used to endorse or promote products
-derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED WARRANTIES,
-INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL JCRAFT,
-INC. OR ANY CONTRIBUTORS TO THIS SOFTWARE BE LIABLE FOR ANY DIRECT, INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
-OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-/*
-* This program is based on zlib-1.1.3, so all credit should go authors
-* Jean-loup Gailly(jloup@gzip.org) and Mark Adler(madler@alumni.caltech.edu)
-* and contributors of zlib.
-*/
-
-namespace ComponentAce.Compression.Libs.Zlib
+namespace Els_Kom.Compression.Libs.Zlib
 {
+    /// <summary>
+    /// Class that holds the contant values to zlib.
+    /// </summary>
     public sealed class ZlibConst
     {
         // compression levels
+
+        /// <summary>
+        /// No compression.
+        /// </summary>
         public const int ZNOCOMPRESSION = 0;
+
+        /// <summary>
+        /// best speed compression level.
+        /// </summary>
         public const int ZBESTSPEED = 1;
+
+        /// <summary>
+        /// the best compression level.
+        /// </summary>
         public const int ZBESTCOMPRESSION = 9;
+
+        /// <summary>
+        /// The default compression level.
+        /// </summary>
         public const int ZDEFAULTCOMPRESSION = -1;
 
         // compression strategy
+
+        /// <summary>
+        /// Filtered compression strategy.
+        /// </summary>
         public const int ZFILTERED = 1;
+
+        /// <summary>
+        /// huffman compression strategy.
+        /// </summary>
         public const int ZHUFFMANONLY = 2;
+
+        /// <summary>
+        /// The default compression strategy.
+        /// </summary>
         public const int ZDEFAULTSTRATEGY = 0;
 
+        /// <summary>
+        /// No flush.
+        /// </summary>
         public const int ZNOFLUSH = 0;
+
+        /// <summary>
+        /// Partial flush.
+        /// </summary>
         public const int ZPARTIALFLUSH = 1;
+
+        /// <summary>
+        /// Sync flush.
+        /// </summary>
         public const int ZSYNCFLUSH = 2;
+
+        /// <summary>
+        /// Full flush.
+        /// </summary>
         public const int ZFULLFLUSH = 3;
+
+        /// <summary>
+        /// Finish compression or decompression.
+        /// </summary>
         public const int ZFINISH = 4;
 
+        /// <summary>
+        /// All is ok.
+        /// </summary>
         public const int ZOK = 0;
+
+        /// <summary>
+        /// Stream ended early.
+        /// </summary>
         public const int ZSTREAMEND = 1;
+
+        /// <summary>
+        /// Need compression dictionary.
+        /// </summary>
         public const int ZNEEDDICT = 2;
+
+        /// <summary>
+        /// Some other error.
+        /// </summary>
         public const int ZERRNO = -1;
+
+        /// <summary>
+        /// Stream error.
+        /// </summary>
         public const int ZSTREAMERROR = -2;
+
+        /// <summary>
+        /// Data error.
+        /// </summary>
         public const int ZDATAERROR = -3;
+
+        /// <summary>
+        /// Memory error.
+        /// </summary>
         public const int ZMEMERROR = -4;
+
+        /// <summary>
+        /// Buffer error.
+        /// </summary>
         public const int ZBUFERROR = -5;
+
+        /// <summary>
+        /// Zlib version error.
+        /// </summary>
         public const int ZVERSIONERROR = -6;
 
-        private const string VersionRenamedField = "1.0.2";
-
-        public static string Version() => VersionRenamedField;
+        /// <summary>
+        /// Gets the version to zlib.net.
+        /// </summary>
+        /// <returns>The version string to this version of zlib.net.</returns>
+        public static string Version() => typeof(ZlibConst).Assembly.GetName().Version.ToString(3);
     }
 }

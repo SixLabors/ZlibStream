@@ -1,8 +1,16 @@
-namespace ComponentAce.Compression.Libs.Zlib
+// Copyright (c) 2018, Els_kom org.
+// https://github.com/Elskom/
+// All rights reserved.
+// license: see LICENSE for more details.
+
+namespace Els_Kom.Compression.Libs.Zlib
 {
     using System.IO;
     using System.Text;
 
+    /// <summary>
+    /// Class to support zlib stuff.
+    /// </summary>
     public class SupportClass
     {
         /// <summary>
