@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>$id$</id>
-    <version>$APPVEYOR_REPO_TAG_NAME$</version>
+    <version>$version$</version>
     <title>zlib</title>
     <authors>Els_kom org.</authors>
     <owners>Els_kom org.</owners>
