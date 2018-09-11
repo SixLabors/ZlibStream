@@ -3,7 +3,7 @@
 // All rights reserved.
 // license: see LICENSE for more details.
 
-namespace Els_Kom.Compression.Libs.Zlib
+namespace Els_kom.Compression.Libs.Zlib
 {
     /// <summary>
     /// Class that holds the contant values to zlib.

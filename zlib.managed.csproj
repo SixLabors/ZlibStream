@@ -4,10 +4,10 @@
     <ProjectGuid>{0C89B7A2-A218-49E4-B545-5B044A45F977}</ProjectGuid>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <AssemblyName>zlib</AssemblyName>
+    <AssemblyName>zlib.managed</AssemblyName>
     <DelaySign>false</DelaySign>
     <OutputType>Library</OutputType>
-    <RootNamespace>Els_Kom.Compression.Libs.Zlib</RootNamespace>
+    <RootNamespace>Els_kom.Compression.Libs.Zlib</RootNamespace>
     <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
   </PropertyGroup>
@@ -20,9 +20,9 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <LangVersion>latest</LangVersion>
     <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>zlib.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>zlib.managed.ruleset</CodeAnalysisRuleSet>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <DocumentationFile>bin\Release\zlib.xml</DocumentationFile>
+    <DocumentationFile>bin\Release\zlib.managed.xml</DocumentationFile>
     <DebugType>full</DebugType>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
@@ -35,9 +35,9 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <LangVersion>latest</LangVersion>
     <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>zlib.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>zlib.managed.ruleset</CodeAnalysisRuleSet>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <DocumentationFile>bin\Debug\zlib.xml</DocumentationFile>
+    <DocumentationFile>bin\Debug\zlib.managed.xml</DocumentationFile>
     <DebugType>full</DebugType>
   </PropertyGroup>
   <ItemGroup>
@@ -76,7 +76,7 @@
   </ItemGroup>
   <ItemGroup>
     <AdditionalFiles Include="stylecop.json" />
-    <None Include="zlib.ruleset" />
+    <None Include="zlib.managed.ruleset" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
