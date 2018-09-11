@@ -10,8 +10,8 @@
     <projectUrl>https://github.com/Elskom/ZLIB.NET/</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>A cleaned up and bug fixed version of zlib.net. This is also planned to be updated frequently if needed too.</description>
-    <releaseNotes>A lot of breaking changes included but not limited to bug fixes and code style fixes.</releaseNotes>
+    <releaseNotes>Retarget to .NET Framework 4.0 for those using .NET Framework 4.0 or newer.</releaseNotes>
     <copyright>Copyright 2018</copyright>
-    <tags>zlib, C# latest language</tags>
+    <tags>zlib</tags>
   </metadata>
 </package>
