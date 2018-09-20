@@ -1,86 +1,59 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <ProjectGuid>{0C89B7A2-A218-49E4-B545-5B044A45F977}</ProjectGuid>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <TargetFrameworks>netcoreapp2.0;netcoreapp2.1;netstandard2.0;net35;net40;net45;net451;net452;net46;net461;net462;net47;net471;net472</TargetFrameworks>
     <AssemblyName>zlib.managed</AssemblyName>
-    <DelaySign>false</DelaySign>
-    <OutputType>Library</OutputType>
-    <RootNamespace>Els_kom.Compression.Libs.Zlib</RootNamespace>
-    <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <BaseAddress>285212672</BaseAddress>
-    <Optimize>true</Optimize>
-    <FileAlignment>4096</FileAlignment>
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <LangVersion>latest</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>zlib.managed.ruleset</CodeAnalysisRuleSet>
+    <Company>Els_kom org.</Company>
+    <Authors>Els_kom org.</Authors>
+    <PackageTags>zlib</PackageTags>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/Elskom/zlib.managed/</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Elskom/zlib.managed/</PackageProjectUrl>
+    <PackageLicenseUrl>https://github.com/Elskom/zlib.managed/blob/master/LICENSE</PackageLicenseUrl>
+    <Copyright>Copyright (c) 2018</Copyright>
+    <Description>A cleaned up and bug fixed version of zlib.net. This is also planned to be updated frequently if needed too.</Description>
+    <PackageReleaseNotes>Target .NET Standard and multiple .NET Framework versions.</PackageReleaseNotes>
+    <Version>1.0.2</Version>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <OutputPath>bin\Debug\</OutputPath>
+    <DocumentationFile>bin\Debug\zlib.managed.xml</DocumentationFile>
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <OutputPath>bin\Release\</OutputPath>
     <DocumentationFile>bin\Release\zlib.managed.xml</DocumentationFile>
     <DebugType>full</DebugType>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <BaseAddress>285212672</BaseAddress>
-    <Optimize>false</Optimize>
-    <FileAlignment>4096</FileAlignment>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <LangVersion>latest</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>zlib.managed.ruleset</CodeAnalysisRuleSet>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <DocumentationFile>bin\Debug\zlib.managed.xml</DocumentationFile>
-    <DebugType>full</DebugType>
-  </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.XML" />
+    <None Remove=".gitignore" />
+    <None Remove="appveyor.yml" />
+    <None Remove="LICENSE" />
+    <None Remove="readme.md" />
+    <None Remove="stylecop.json" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Adler32.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Deflate.cs" />
-    <Compile Include="InfBlocks.cs" />
-    <Compile Include="InfCodes.cs" />
-    <Compile Include="Inflate.cs" />
-    <Compile Include="InfTree.cs" />
-    <Compile Include="StaticTree.cs" />
-    <Compile Include="SupportClass.cs" />
-    <Compile Include="Tree.cs" />
-    <Compile Include="ZInputStream.cs" />
-    <Compile Include="ZlibConst.cs" />
-    <Compile Include="ZOutputStream.cs" />
-    <Compile Include="ZStream.cs" />
-    <Compile Include="ZStreamException.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="NuGet.CommandLine">
-      <Version>4.7.1</Version>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="StyleCop.Analyzers">
-      <Version>1.1.0-beta009</Version>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-  </ItemGroup>
+
   <ItemGroup>
     <AdditionalFiles Include="stylecop.json" />
-    <None Include="zlib.managed.ruleset" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PreBuildEvent />
-    <PostBuildEvent />
-  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta009">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
 </Project>
