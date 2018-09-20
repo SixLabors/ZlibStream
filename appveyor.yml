@@ -6,6 +6,8 @@ max_jobs: 15
 image: Visual Studio 2017
 configuration: Release
 platform: Any CPU
+before_build:
+- ps: nuget restore
 build:
   project: zlib.managed.sln
   publish_nuget: true
