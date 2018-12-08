@@ -3,9 +3,7 @@
 // All rights reserved.
 // license: see LICENSE for more details.
 
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Els_kom_Core", AllInternalsVisible = true)]
-
-namespace Els_kom.Compression.Libs.Zlib
+namespace Elskom.Generic.Libs
 {
     internal sealed class Adler32
     {
