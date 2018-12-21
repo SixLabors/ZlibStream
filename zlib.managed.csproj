@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp2.0;netcoreapp2.1;netstandard2.0;net40;net45;net451;net452;net46;net461;net462;net47;net471;net472</TargetFrameworks>
+    <TargetFrameworks>netcoreapp3.0;netcoreapp2.2;netcoreapp2.1;netcoreapp2.0;netstandard2.0;net40;net45;net451;net452;net46;net461;net462;net47;net471;net472</TargetFrameworks>
     <AssemblyName>zlib.managed</AssemblyName>
     <LangVersion>latest</LangVersion>
     <Company>Els_kom org.</Company>
@@ -13,8 +13,8 @@
     <PackageLicenseUrl>https://github.com/Elskom/zlib.managed/blob/master/LICENSE</PackageLicenseUrl>
     <Copyright>Copyright (c) 2018</Copyright>
     <Description>A cleaned up and bug fixed version of zlib.net. This is also planned to be updated frequently if needed too.</Description>
-    <PackageReleaseNotes>Added memory zlib helper class and rename library namespace.</PackageReleaseNotes>
-    <Version>1.1.0</Version>
+    <PackageReleaseNotes>Added .NET Core 3.0 and 2.2 to target frameworks.</PackageReleaseNotes>
+    <Version>1.1.1</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
