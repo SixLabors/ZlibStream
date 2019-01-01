@@ -11,7 +11,7 @@
     <RepositoryUrl>https://github.com/Elskom/zlib.managed/</RepositoryUrl>
     <PackageProjectUrl>https://github.com/Elskom/zlib.managed/</PackageProjectUrl>
     <PackageLicenseUrl>https://github.com/Elskom/zlib.managed/blob/master/LICENSE</PackageLicenseUrl>
-    <Copyright>Copyright (c) 2018</Copyright>
+    <Copyright>Copyright (c) 2018-2019</Copyright>
     <Description>A cleaned up and bug fixed version of zlib.net. This is also planned to be updated frequently if needed too.</Description>
     <PackageReleaseNotes>Added .NET Core 3.0 and 2.2 to target frameworks.</PackageReleaseNotes>
     <Version>1.1.1</Version>
