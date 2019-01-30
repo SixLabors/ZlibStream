@@ -6,7 +6,9 @@
 namespace Elskom.Generic.Libs
 {
     using System;
+    using System.Collections.Generic;
     using System.IO;
+    using System.Linq;
 
     /// <summary>
     /// Class that provices a zlib output stream that supports
@@ -19,12 +21,12 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Initializes a new instance of the <see cref="ZOutputStream"/> class.
         /// </summary>
-        /// <param name="out_Renamed">The output stream.</param>
-        public ZOutputStream(Stream out_Renamed)
+        /// <param name="outRenamed">The output stream.</param>
+        public ZOutputStream(Stream outRenamed)
             : base()
         {
             this.InitBlock();
-            this.outRenamed = out_Renamed;
+            this.outRenamed = outRenamed;
             this.Z.InflateInit();
             this.Compress = false;
         }
@@ -32,13 +34,13 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Initializes a new instance of the <see cref="ZOutputStream"/> class.
         /// </summary>
-        /// <param name="out_Renamed">The output stream.</param>
+        /// <param name="outRenamed">The output stream.</param>
         /// <param name="level">The compression level for the data to compress.</param>
-        public ZOutputStream(Stream out_Renamed, int level)
+        public ZOutputStream(Stream outRenamed, int level)
             : base()
         {
             this.InitBlock();
-            this.outRenamed = out_Renamed;
+            this.outRenamed = outRenamed;
             this.Z.DeflateInit(level);
             this.Compress = true;
         }
@@ -94,13 +96,13 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Gets the stream's buffer.
         /// </summary>
-        protected internal byte[] Buf { get; private set; }
+        protected internal IEnumerable<byte> Buf { get; private set; }
 
         /// <summary>
         /// Gets the stream's single byte buffer value.
         /// For reading 1 byte at a time.
         /// </summary>
-        protected internal byte[] Buf1 { get; private set; } = new byte[1];
+        protected internal IEnumerable<byte> Buf1 { get; private set; } = new byte[1];
 
         /// <summary>
         /// Gets a value indicating whether this stream is setup for compression.
@@ -114,8 +116,8 @@ namespace Elskom.Generic.Libs
         /// <param name="b">The byte to write to the stream.</param>
         public void WriteByte(int b)
         {
-            this.Buf1[0] = (byte)b;
-            this.Write(this.Buf1, 0, 1);
+            this.Buf1.ToArray()[0] = (byte)b;
+            this.Write(this.Buf1.ToArray(), 0, 1);
         }
 
         /// <inheritdoc/>
@@ -148,7 +150,7 @@ namespace Elskom.Generic.Libs
                     throw new ZStreamException((this.Compress ? "de" : "in") + "flating: " + this.Z.Msg);
                 }
 
-                this.outRenamed.Write(this.Buf, 0, this.Bufsize - this.Z.AvailOut);
+                this.outRenamed.Write(this.Buf.ToArray(), 0, this.Bufsize - this.Z.AvailOut);
                 if (!this.Compress && this.Z.AvailIn == 0 && this.Z.AvailOut == 0)
                 {
                     break;
@@ -182,7 +184,7 @@ namespace Elskom.Generic.Libs
 
                 if (this.Bufsize - this.Z.AvailOut > 0)
                 {
-                    this.outRenamed.Write(this.Buf, 0, this.Bufsize - this.Z.AvailOut);
+                    this.outRenamed.Write(this.Buf.ToArray(), 0, this.Bufsize - this.Z.AvailOut);
                 }
 
                 if (err == ZlibConst.ZSTREAMEND)
@@ -203,7 +205,7 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Ends the compression or decompression on the stream.
         /// </summary>
-        public virtual void End()
+        public virtual void EndStream()
         {
             if (this.Compress)
             {
@@ -233,8 +235,8 @@ namespace Elskom.Generic.Libs
             }
             finally
             {
-                this.End();
-                this.outRenamed.Dispose();
+                this.EndStream();
+                this.outRenamed.Close();
                 this.outRenamed = null;
             }
         }

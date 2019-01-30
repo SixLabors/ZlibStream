@@ -43,20 +43,23 @@ namespace Elskom.Generic.Libs
 
         private const int ZNOFLUSH = 0;
         private const int ZPARTIALFLUSH = 1;
-        private const int ZSYNCFLUSH = 2;
+
+        // private const int ZSYNCFLUSH = 2;
         private const int ZFULLFLUSH = 3;
         private const int ZFINISH = 4;
 
         private const int ZOK = 0;
         private const int ZSTREAMEND = 1;
         private const int ZNEEDDICT = 2;
-        private const int ZERRNO = -1;
+
+        // private const int ZERRNO = -1;
         private const int ZSTREAMERROR = -2;
         private const int ZDATAERROR = -3;
-        private const int ZMEMERROR = -4;
-        private const int ZBUFERROR = -5;
-        private const int ZVERSIONERROR = -6;
 
+        // private const int ZMEMERROR = -4;
+        private const int ZBUFERROR = -5;
+
+        // private const int ZVERSIONERROR = -6;
         private const int INITSTATE = 42;
         private const int BUSYSTATE = 113;
         private const int FINISHSTATE = 666;
@@ -91,7 +94,11 @@ namespace Elskom.Generic.Libs
         private const int BLCODES = 19;
         private const int LENGTHCODES = 29;
         private const int LITERALS = 256;
+
         private const int ENDBLOCK = 256;
+        private const int MINLOOKAHEAD = MAXMATCH + MINMATCH + 1;
+        private const int LCODES = LITERALS + 1 + LENGTHCODES;
+        private const int HEAPSIZE = (2 * LCODES) + 1;
 
         private static readonly Config[] ConfigTable;
 
@@ -101,10 +108,6 @@ namespace Elskom.Generic.Libs
             "data error", "insufficient memory", "buffer error", "incompatible version",
             string.Empty,
         };
-
-        private static readonly int MINLOOKAHEAD = MAXMATCH + MINMATCH + 1;
-        private static readonly int LCODES = LITERALS + 1 + LENGTHCODES;
-        private static readonly int HEAPSIZE = (2 * LCODES) + 1;
 
         static Deflate()
         {
@@ -1569,7 +1572,7 @@ namespace Elskom.Generic.Libs
             }
 
             this.Status = (this.Noheader != 0) ? BUSYSTATE : INITSTATE;
-            strm.Adler = strm.Adler32.Calculate(0, null, 0, 0);
+            strm.Adler = Adler32.Calculate(0, null, 0, 0);
 
             this.LastFlush = ZNOFLUSH;
 
@@ -1639,7 +1642,7 @@ namespace Elskom.Generic.Libs
                 return ZSTREAMERROR;
             }
 
-            strm.Adler = strm.Adler32.Calculate(strm.Adler, dictionary, 0, dictLength);
+            strm.Adler = Adler32.Calculate(strm.Adler, dictionary, 0, dictLength);
 
             if (length < MINMATCH)
             {
@@ -1726,7 +1729,7 @@ namespace Elskom.Generic.Libs
                     this.PutShortMSB((int)(strm.Adler & 0xffff));
                 }
 
-                strm.Adler = strm.Adler32.Calculate(0, null, 0, 0);
+                strm.Adler = Adler32.Calculate(0, null, 0, 0);
             }
 
             // Flush as much pending output as possible

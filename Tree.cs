@@ -120,12 +120,13 @@ namespace Elskom.Generic.Libs
         };
 
         private const int MAXBITS = 15;
-        private const int BLCODES = 19;
-        private const int DCODES = 30;
+
+        // private const int BLCODES = 19;
+        // private const int DCODES = 30;
         private const int LITERALS = 256;
         private const int LENGTHCODES = 29;
-        private static readonly int LCODES = LITERALS + 1 + LENGTHCODES;
-        private static readonly int HEAPSIZE = (2 * LCODES) + 1;
+        private const int LCODES = LITERALS + 1 + LENGTHCODES;
+        private const int HEAPSIZE = (2 * LCODES) + 1;
 
         internal short[] DynTree { get; set; } // the dynamic tree
 

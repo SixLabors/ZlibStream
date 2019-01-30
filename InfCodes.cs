@@ -6,19 +6,21 @@
 namespace Elskom.Generic.Libs
 {
     using System;
+    using System.Linq;
 
     internal sealed class InfCodes
     {
         private const int ZOK = 0;
         private const int ZSTREAMEND = 1;
-        private const int ZNEEDDICT = 2;
-        private const int ZERRNO = -1;
+
+        // private const int ZNEEDDICT = 2;
+        // private const int ZERRNO = -1;
         private const int ZSTREAMERROR = -2;
         private const int ZDATAERROR = -3;
-        private const int ZMEMERROR = -4;
-        private const int ZBUFERROR = -5;
-        private const int ZVERSIONERROR = -6;
 
+        // private const int ZMEMERROR = -4;
+        // private const int ZBUFERROR = -5;
+        // private const int ZVERSIONERROR = -6;
         // waiting for "i:"=input,
         //             "o:"=output,
         //             "x:"=nothing
@@ -40,7 +42,7 @@ namespace Elskom.Generic.Libs
             0x00000fff, 0x00001fff, 0x00003fff, 0x00007fff, 0x0000ffff,
         };
 
-        internal InfCodes(int bl, int bd, int[] tl, int tl_index, int[] td, int td_index, ZStream z)
+        internal InfCodes(int bl, int bd, int[] tl, int tl_index, int[] td, int td_index)
         {
             this.Mode = START;
             this.Lbits = (byte)bl;
@@ -51,7 +53,7 @@ namespace Elskom.Generic.Libs
             this.DtreeIndex = td_index;
         }
 
-        internal InfCodes(int bl, int bd, int[] tl, int[] td, ZStream z)
+        internal InfCodes(int bl, int bd, int[] tl, int[] td)
         {
             this.Mode = START;
             this.Lbits = (byte)bl;
@@ -92,420 +94,7 @@ namespace Elskom.Generic.Libs
 
         internal int DtreeIndex { get; private set; } // distance tree
 
-        internal int Proc(InfBlocks s, ZStream z, int r)
-        {
-            int j; // temporary storage
-
-             // int[] t; // temporary pointer
-            int tindex; // temporary pointer
-            int e; // extra bits or operation
-            var b = 0; // bit buffer
-            var k = 0; // bits in bit buffer
-            var p = 0; // input data pointer
-            int n; // bytes available there
-            int q; // output window write pointer
-            int m; // bytes to end of window or read pointer
-            int f; // pointer to copy strings from
-
-            // copy input/output information to locals (UPDATE macro restores)
-            p = z.NextInIndex;
-            n = z.AvailIn;
-            b = s.Bitb;
-            k = s.Bitk;
-            q = s.Write;
-            m = q < s.Read ? s.Read - q - 1 : s.End - q;
-
-            // process input and output based on current state
-            while (true)
-            {
-                switch (this.Mode)
-                {
-                    // waiting for "i:"=input, "o:"=output, "x:"=nothing
-                    case START: // x: set up for LEN
-                        if (m >= 258 && n >= 10)
-                        {
-                            s.Bitb = b;
-                            s.Bitk = k;
-                            z.AvailIn = n;
-                            z.TotalIn += p - z.NextInIndex;
-                            z.NextInIndex = p;
-                            s.Write = q;
-                            r = this.Inflate_fast(this.Lbits, this.Dbits, this.Ltree, this.LtreeIndex, this.Dtree, this.DtreeIndex, s, z);
-
-                            p = z.NextInIndex;
-                            n = z.AvailIn;
-                            b = s.Bitb;
-                            k = s.Bitk;
-                            q = s.Write;
-                            m = q < s.Read ? s.Read - q - 1 : s.End - q;
-
-                            if (r != ZOK)
-                            {
-                                this.Mode = r == ZSTREAMEND ? WASH : BADCODE;
-                                break;
-                            }
-                        }
-
-                        this.Need = this.Lbits;
-                        this.Tree = this.Ltree;
-                        this.TreeIndex = this.LtreeIndex;
-
-                        this.Mode = LEN;
-                        goto case LEN;
-
-                    case LEN: // i: get length/literal/eob next
-                        j = this.Need;
-
-                        while (k < j)
-                        {
-                            if (n != 0)
-                            {
-                                r = ZOK;
-                            }
-                            else
-                            {
-                                s.Bitb = b;
-                                s.Bitk = k;
-                                z.AvailIn = n;
-                                z.TotalIn += p - z.NextInIndex;
-                                z.NextInIndex = p;
-                                s.Write = q;
-                                return s.Inflate_flush(z, r);
-                            }
-
-                            n--;
-                            b |= (z.NextIn[p++] & 0xff) << k;
-                            k += 8;
-                        }
-
-                        tindex = (this.TreeIndex + (b & InflateMask[j])) * 3;
-
-                        b = SupportClass.URShift(b, this.Tree[tindex + 1]);
-                        k -= this.Tree[tindex + 1];
-
-                        e = this.Tree[tindex];
-
-                        if (e == 0)
-                        {
-                            // literal
-                            this.Lit = this.Tree[tindex + 2];
-                            this.Mode = LIT;
-                            break;
-                        }
-
-                        if ((e & 16) != 0)
-                        {
-                            // length
-                            this.GetRenamed = e & 15;
-                            this.Len = this.Tree[tindex + 2];
-                            this.Mode = LENEXT;
-                            break;
-                        }
-
-                        if ((e & 64) == 0)
-                        {
-                            // next table
-                            this.Need = e;
-                            this.TreeIndex = (tindex / 3) + this.Tree[tindex + 2];
-                            break;
-                        }
-
-                        if ((e & 32) != 0)
-                        {
-                            // end of block
-                            this.Mode = WASH;
-                            break;
-                        }
-
-                        this.Mode = BADCODE; // invalid code
-                        z.Msg = "invalid literal/length code";
-                        r = ZDATAERROR;
-
-                        s.Bitb = b; s.Bitk = k;
-                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
-                        s.Write = q;
-                        return s.Inflate_flush(z, r);
-
-                    case LENEXT: // i: getting length extra (have base)
-                        j = this.GetRenamed;
-
-                        while (k < j)
-                        {
-                            if (n != 0)
-                            {
-                                r = ZOK;
-                            }
-                            else
-                            {
-                                s.Bitb = b;
-                                s.Bitk = k;
-                                z.AvailIn = n;
-                                z.TotalIn += p - z.NextInIndex;
-                                z.NextInIndex = p;
-                                s.Write = q;
-                                return s.Inflate_flush(z, r);
-                            }
-
-                            n--;
-                            b |= (z.NextIn[p++] & 0xff) << k;
-                            k += 8;
-                        }
-
-                        this.Len += b & InflateMask[j];
-
-                        b >>= j;
-                        k -= j;
-
-                        this.Need = this.Dbits;
-                        this.Tree = this.Dtree;
-                        this.TreeIndex = this.DtreeIndex;
-                        this.Mode = DIST;
-                        goto case DIST;
-
-                    case DIST: // i: get distance next
-                        j = this.Need;
-
-                        while (k < j)
-                        {
-                            if (n != 0)
-                            {
-                                r = ZOK;
-                            }
-                            else
-                            {
-                                s.Bitb = b;
-                                s.Bitk = k;
-                                z.AvailIn = n;
-                                z.TotalIn += p - z.NextInIndex;
-                                z.NextInIndex = p;
-                                s.Write = q;
-                                return s.Inflate_flush(z, r);
-                            }
-
-                            n--;
-                            b |= (z.NextIn[p++] & 0xff) << k;
-                            k += 8;
-                        }
-
-                        tindex = (this.TreeIndex + (b & InflateMask[j])) * 3;
-
-                        b >>= this.Tree[tindex + 1];
-                        k -= this.Tree[tindex + 1];
-
-                        e = this.Tree[tindex];
-                        if ((e & 16) != 0)
-                        {
-                            // distance
-                            this.GetRenamed = e & 15;
-                            this.Dist = this.Tree[tindex + 2];
-                            this.Mode = DISTEXT;
-                            break;
-                        }
-
-                        if ((e & 64) == 0)
-                        {
-                            // next table
-                            this.Need = e;
-                            this.TreeIndex = (tindex / 3) + this.Tree[tindex + 2];
-                            break;
-                        }
-
-                        this.Mode = BADCODE; // invalid code
-                        z.Msg = "invalid distance code";
-                        r = ZDATAERROR;
-
-                        s.Bitb = b; s.Bitk = k;
-                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
-                        s.Write = q;
-                        return s.Inflate_flush(z, r);
-
-                    case DISTEXT: // i: getting distance extra
-                        j = this.GetRenamed;
-
-                        while (k < j)
-                        {
-                            if (n != 0)
-                            {
-                                r = ZOK;
-                            }
-                            else
-                            {
-                                s.Bitb = b;
-                                s.Bitk = k;
-                                z.AvailIn = n;
-                                z.TotalIn += p - z.NextInIndex;
-                                z.NextInIndex = p;
-                                s.Write = q;
-                                return s.Inflate_flush(z, r);
-                            }
-
-                            n--;
-                            b |= (z.NextIn[p++] & 0xff) << k;
-                            k += 8;
-                        }
-
-                        this.Dist += b & InflateMask[j];
-
-                        b >>= j;
-                        k -= j;
-
-                        this.Mode = COPY;
-                        goto case COPY;
-
-                    case COPY: // o: copying bytes in window, waiting for space
-                        f = q - this.Dist;
-                        while (f < 0)
-                        {
-                            // modulo window size-"while" instead
-                            f += s.End; // of "if" handles invalid distances
-                        }
-
-                        while (this.Len != 0)
-                        {
-                            if (m == 0)
-                            {
-                                if (q == s.End && s.Read != 0)
-                                {
-                                    q = 0;
-                                    m = q < s.Read ? s.Read - q - 1 : s.End - q;
-                                }
-
-                                if (m == 0)
-                                {
-                                    s.Write = q;
-                                    r = s.Inflate_flush(z, r);
-                                    q = s.Write;
-                                    m = q < s.Read ? s.Read - q - 1 : s.End - q;
-
-                                    if (q == s.End && s.Read != 0)
-                                    {
-                                        q = 0;
-                                        m = q < s.Read ? s.Read - q - 1 : s.End - q;
-                                    }
-
-                                    if (m == 0)
-                                    {
-                                        s.Bitb = b;
-                                        s.Bitk = k;
-                                        z.AvailIn = n;
-                                        z.TotalIn += p - z.NextInIndex;
-                                        z.NextInIndex = p;
-                                        s.Write = q;
-                                        return s.Inflate_flush(z, r);
-                                    }
-                                }
-                            }
-
-                            s.Window[q++] = s.Window[f++];
-                            m--;
-
-                            if (f == s.End)
-                            {
-                                f = 0;
-                            }
-
-                            this.Len--;
-                        }
-
-                        this.Mode = START;
-                        break;
-
-                    case LIT: // o: got literal, waiting for output space
-                        if (m == 0)
-                        {
-                            if (q == s.End && s.Read != 0)
-                            {
-                                q = 0;
-                                m = q < s.Read ? s.Read - q - 1 : s.End - q;
-                            }
-
-                            if (m == 0)
-                            {
-                                s.Write = q;
-                                r = s.Inflate_flush(z, r);
-                                q = s.Write;
-                                m = q < s.Read ? s.Read - q - 1 : s.End - q;
-
-                                if (q == s.End && s.Read != 0)
-                                {
-                                    q = 0;
-                                    m = q < s.Read ? s.Read - q - 1 : s.End - q;
-                                }
-
-                                if (m == 0)
-                                {
-                                    s.Bitb = b;
-                                    s.Bitk = k;
-                                    z.AvailIn = n;
-                                    z.TotalIn += p - z.NextInIndex;
-                                    z.NextInIndex = p;
-                                    s.Write = q;
-                                    return s.Inflate_flush(z, r);
-                                }
-                            }
-                        }
-
-                        r = ZOK;
-
-                        s.Window[q++] = (byte)this.Lit; m--;
-
-                        this.Mode = START;
-                        break;
-
-                    case WASH: // o: got eob, possibly more output
-                        if (k > 7)
-                        {
-                            // return unused byte, if any
-                            k -= 8;
-                            n++;
-                            p--; // can always return one
-                        }
-
-                        s.Write = q; r = s.Inflate_flush(z, r);
-                        q = s.Write; m = q < s.Read ? s.Read - q - 1 : s.End - q;
-
-                        if (s.Read != s.Write)
-                        {
-                            s.Bitb = b;
-                            s.Bitk = k;
-                            z.AvailIn = n;
-                            z.TotalIn += p - z.NextInIndex;
-                            z.NextInIndex = p;
-                            s.Write = q;
-                            return s.Inflate_flush(z, r);
-                        }
-
-                        this.Mode = END;
-                        goto case END;
-
-                    case END:
-                        r = ZSTREAMEND;
-                        s.Bitb = b; s.Bitk = k;
-                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
-                        s.Write = q;
-                        return s.Inflate_flush(z, r);
-
-                    case BADCODE: // x: got error
-
-                        r = ZDATAERROR;
-
-                        s.Bitb = b; s.Bitk = k;
-                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
-                        s.Write = q;
-                        return s.Inflate_flush(z, r);
-
-                    default:
-                        r = ZSTREAMERROR;
-
-                        s.Bitb = b; s.Bitk = k;
-                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
-                        s.Write = q;
-                        return s.Inflate_flush(z, r);
-                }
-            }
-        }
-
-        internal void Free(ZStream z)
+        internal static void Free()
         {
             // ZFREE(z, c);
         }
@@ -514,7 +103,7 @@ namespace Elskom.Generic.Libs
         // (the maximum string length) and number of input bytes available
         // at least ten.  The ten bytes are six bytes for the longest length/
         // distance pair plus four bytes for overloading the bit buffer.
-        internal int Inflate_fast(int bl, int bd, int[] tl, int tl_index, int[] td, int td_index, InfBlocks s, ZStream z)
+        internal static int Inflate_fast(int bl, int bd, int[] tl, int tl_index, int[] td, int td_index, InfBlocks s, ZStream z)
         {
             int t; // temporary pointer
             int[] tp; // temporary pointer
@@ -553,7 +142,7 @@ namespace Elskom.Generic.Libs
                 {
                     // max bits for literal/length code
                     n--;
-                    b |= (z.NextIn[p++] & 0xff) << k;
+                    b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
                     k += 8;
                 }
 
@@ -588,7 +177,7 @@ namespace Elskom.Generic.Libs
                         {
                             // max bits for distance code
                             n--;
-                            b |= (z.NextIn[p++] & 0xff) << k;
+                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -610,7 +199,7 @@ namespace Elskom.Generic.Libs
                                 {
                                     // get extra bits (up to 13)
                                     n--;
-                                    b |= (z.NextIn[p++] & 0xff) << k;
+                                    b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
                                     k += 8;
                                 }
 
@@ -794,6 +383,419 @@ namespace Elskom.Generic.Libs
             s.Write = q;
 
             return ZOK;
+        }
+
+        internal int Proc(InfBlocks s, ZStream z, int r)
+        {
+            int j; // temporary storage
+
+             // int[] t; // temporary pointer
+            int tindex; // temporary pointer
+            int e; // extra bits or operation
+            var b = 0; // bit buffer
+            var k = 0; // bits in bit buffer
+            var p = 0; // input data pointer
+            int n; // bytes available there
+            int q; // output window write pointer
+            int m; // bytes to end of window or read pointer
+            int f; // pointer to copy strings from
+
+            // copy input/output information to locals (UPDATE macro restores)
+            p = z.NextInIndex;
+            n = z.AvailIn;
+            b = s.Bitb;
+            k = s.Bitk;
+            q = s.Write;
+            m = q < s.Read ? s.Read - q - 1 : s.End - q;
+
+            // process input and output based on current state
+            while (true)
+            {
+                switch (this.Mode)
+                {
+                    // waiting for "i:"=input, "o:"=output, "x:"=nothing
+                    case START: // x: set up for LEN
+                        if (m >= 258 && n >= 10)
+                        {
+                            s.Bitb = b;
+                            s.Bitk = k;
+                            z.AvailIn = n;
+                            z.TotalIn += p - z.NextInIndex;
+                            z.NextInIndex = p;
+                            s.Write = q;
+                            r = Inflate_fast(this.Lbits, this.Dbits, this.Ltree, this.LtreeIndex, this.Dtree, this.DtreeIndex, s, z);
+
+                            p = z.NextInIndex;
+                            n = z.AvailIn;
+                            b = s.Bitb;
+                            k = s.Bitk;
+                            q = s.Write;
+                            m = q < s.Read ? s.Read - q - 1 : s.End - q;
+
+                            if (r != ZOK)
+                            {
+                                this.Mode = r == ZSTREAMEND ? WASH : BADCODE;
+                                break;
+                            }
+                        }
+
+                        this.Need = this.Lbits;
+                        this.Tree = this.Ltree;
+                        this.TreeIndex = this.LtreeIndex;
+
+                        this.Mode = LEN;
+                        goto case LEN;
+
+                    case LEN: // i: get length/literal/eob next
+                        j = this.Need;
+
+                        while (k < j)
+                        {
+                            if (n != 0)
+                            {
+                                r = ZOK;
+                            }
+                            else
+                            {
+                                s.Bitb = b;
+                                s.Bitk = k;
+                                z.AvailIn = n;
+                                z.TotalIn += p - z.NextInIndex;
+                                z.NextInIndex = p;
+                                s.Write = q;
+                                return s.Inflate_flush(z, r);
+                            }
+
+                            n--;
+                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                            k += 8;
+                        }
+
+                        tindex = (this.TreeIndex + (b & InflateMask[j])) * 3;
+
+                        b = SupportClass.URShift(b, this.Tree[tindex + 1]);
+                        k -= this.Tree[tindex + 1];
+
+                        e = this.Tree[tindex];
+
+                        if (e == 0)
+                        {
+                            // literal
+                            this.Lit = this.Tree[tindex + 2];
+                            this.Mode = LIT;
+                            break;
+                        }
+
+                        if ((e & 16) != 0)
+                        {
+                            // length
+                            this.GetRenamed = e & 15;
+                            this.Len = this.Tree[tindex + 2];
+                            this.Mode = LENEXT;
+                            break;
+                        }
+
+                        if ((e & 64) == 0)
+                        {
+                            // next table
+                            this.Need = e;
+                            this.TreeIndex = (tindex / 3) + this.Tree[tindex + 2];
+                            break;
+                        }
+
+                        if ((e & 32) != 0)
+                        {
+                            // end of block
+                            this.Mode = WASH;
+                            break;
+                        }
+
+                        this.Mode = BADCODE; // invalid code
+                        z.Msg = "invalid literal/length code";
+                        r = ZDATAERROR;
+
+                        s.Bitb = b; s.Bitk = k;
+                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                        s.Write = q;
+                        return s.Inflate_flush(z, r);
+
+                    case LENEXT: // i: getting length extra (have base)
+                        j = this.GetRenamed;
+
+                        while (k < j)
+                        {
+                            if (n != 0)
+                            {
+                                r = ZOK;
+                            }
+                            else
+                            {
+                                s.Bitb = b;
+                                s.Bitk = k;
+                                z.AvailIn = n;
+                                z.TotalIn += p - z.NextInIndex;
+                                z.NextInIndex = p;
+                                s.Write = q;
+                                return s.Inflate_flush(z, r);
+                            }
+
+                            n--;
+                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                            k += 8;
+                        }
+
+                        this.Len += b & InflateMask[j];
+
+                        b >>= j;
+                        k -= j;
+
+                        this.Need = this.Dbits;
+                        this.Tree = this.Dtree;
+                        this.TreeIndex = this.DtreeIndex;
+                        this.Mode = DIST;
+                        goto case DIST;
+
+                    case DIST: // i: get distance next
+                        j = this.Need;
+
+                        while (k < j)
+                        {
+                            if (n != 0)
+                            {
+                                r = ZOK;
+                            }
+                            else
+                            {
+                                s.Bitb = b;
+                                s.Bitk = k;
+                                z.AvailIn = n;
+                                z.TotalIn += p - z.NextInIndex;
+                                z.NextInIndex = p;
+                                s.Write = q;
+                                return s.Inflate_flush(z, r);
+                            }
+
+                            n--;
+                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                            k += 8;
+                        }
+
+                        tindex = (this.TreeIndex + (b & InflateMask[j])) * 3;
+
+                        b >>= this.Tree[tindex + 1];
+                        k -= this.Tree[tindex + 1];
+
+                        e = this.Tree[tindex];
+                        if ((e & 16) != 0)
+                        {
+                            // distance
+                            this.GetRenamed = e & 15;
+                            this.Dist = this.Tree[tindex + 2];
+                            this.Mode = DISTEXT;
+                            break;
+                        }
+
+                        if ((e & 64) == 0)
+                        {
+                            // next table
+                            this.Need = e;
+                            this.TreeIndex = (tindex / 3) + this.Tree[tindex + 2];
+                            break;
+                        }
+
+                        this.Mode = BADCODE; // invalid code
+                        z.Msg = "invalid distance code";
+                        r = ZDATAERROR;
+
+                        s.Bitb = b; s.Bitk = k;
+                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                        s.Write = q;
+                        return s.Inflate_flush(z, r);
+
+                    case DISTEXT: // i: getting distance extra
+                        j = this.GetRenamed;
+
+                        while (k < j)
+                        {
+                            if (n != 0)
+                            {
+                                r = ZOK;
+                            }
+                            else
+                            {
+                                s.Bitb = b;
+                                s.Bitk = k;
+                                z.AvailIn = n;
+                                z.TotalIn += p - z.NextInIndex;
+                                z.NextInIndex = p;
+                                s.Write = q;
+                                return s.Inflate_flush(z, r);
+                            }
+
+                            n--;
+                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                            k += 8;
+                        }
+
+                        this.Dist += b & InflateMask[j];
+
+                        b >>= j;
+                        k -= j;
+
+                        this.Mode = COPY;
+                        goto case COPY;
+
+                    case COPY: // o: copying bytes in window, waiting for space
+                        f = q - this.Dist;
+                        while (f < 0)
+                        {
+                            // modulo window size-"while" instead
+                            f += s.End; // of "if" handles invalid distances
+                        }
+
+                        while (this.Len != 0)
+                        {
+                            if (m == 0)
+                            {
+                                if (q == s.End && s.Read != 0)
+                                {
+                                    q = 0;
+                                    m = q < s.Read ? s.Read - q - 1 : s.End - q;
+                                }
+
+                                if (m == 0)
+                                {
+                                    s.Write = q;
+                                    r = s.Inflate_flush(z, r);
+                                    q = s.Write;
+                                    m = q < s.Read ? s.Read - q - 1 : s.End - q;
+
+                                    if (q == s.End && s.Read != 0)
+                                    {
+                                        q = 0;
+                                        m = q < s.Read ? s.Read - q - 1 : s.End - q;
+                                    }
+
+                                    if (m == 0)
+                                    {
+                                        s.Bitb = b;
+                                        s.Bitk = k;
+                                        z.AvailIn = n;
+                                        z.TotalIn += p - z.NextInIndex;
+                                        z.NextInIndex = p;
+                                        s.Write = q;
+                                        return s.Inflate_flush(z, r);
+                                    }
+                                }
+                            }
+
+                            s.Window[q++] = s.Window[f++];
+                            m--;
+
+                            if (f == s.End)
+                            {
+                                f = 0;
+                            }
+
+                            this.Len--;
+                        }
+
+                        this.Mode = START;
+                        break;
+
+                    case LIT: // o: got literal, waiting for output space
+                        if (m == 0)
+                        {
+                            if (q == s.End && s.Read != 0)
+                            {
+                                q = 0;
+                                m = q < s.Read ? s.Read - q - 1 : s.End - q;
+                            }
+
+                            if (m == 0)
+                            {
+                                s.Write = q;
+                                r = s.Inflate_flush(z, r);
+                                q = s.Write;
+                                m = q < s.Read ? s.Read - q - 1 : s.End - q;
+
+                                if (q == s.End && s.Read != 0)
+                                {
+                                    q = 0;
+                                    m = q < s.Read ? s.Read - q - 1 : s.End - q;
+                                }
+
+                                if (m == 0)
+                                {
+                                    s.Bitb = b;
+                                    s.Bitk = k;
+                                    z.AvailIn = n;
+                                    z.TotalIn += p - z.NextInIndex;
+                                    z.NextInIndex = p;
+                                    s.Write = q;
+                                    return s.Inflate_flush(z, r);
+                                }
+                            }
+                        }
+
+                        r = ZOK;
+
+                        s.Window[q++] = (byte)this.Lit; m--;
+
+                        this.Mode = START;
+                        break;
+
+                    case WASH: // o: got eob, possibly more output
+                        if (k > 7)
+                        {
+                            // return unused byte, if any
+                            k -= 8;
+                            n++;
+                            p--; // can always return one
+                        }
+
+                        s.Write = q; r = s.Inflate_flush(z, r);
+                        q = s.Write; m = q < s.Read ? s.Read - q - 1 : s.End - q;
+
+                        if (s.Read != s.Write)
+                        {
+                            s.Bitb = b;
+                            s.Bitk = k;
+                            z.AvailIn = n;
+                            z.TotalIn += p - z.NextInIndex;
+                            z.NextInIndex = p;
+                            s.Write = q;
+                            return s.Inflate_flush(z, r);
+                        }
+
+                        this.Mode = END;
+                        goto case END;
+
+                    case END:
+                        r = ZSTREAMEND;
+                        s.Bitb = b; s.Bitk = k;
+                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                        s.Write = q;
+                        return s.Inflate_flush(z, r);
+
+                    case BADCODE: // x: got error
+
+                        r = ZDATAERROR;
+
+                        s.Bitb = b; s.Bitk = k;
+                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                        s.Write = q;
+                        return s.Inflate_flush(z, r);
+
+                    default:
+                        r = ZSTREAMERROR;
+
+                        s.Bitb = b; s.Bitk = k;
+                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                        s.Write = q;
+                        return s.Inflate_flush(z, r);
+                }
+            }
         }
     }
 }

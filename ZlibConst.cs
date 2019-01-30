@@ -8,7 +8,7 @@ namespace Elskom.Generic.Libs
     /// <summary>
     /// Class that holds the contant values to zlib.
     /// </summary>
-    public sealed class ZlibConst
+    public static class ZlibConst
     {
         // compression levels
 

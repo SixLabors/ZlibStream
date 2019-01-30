@@ -6,6 +6,8 @@
 namespace Elskom.Generic.Libs
 {
     using System;
+    using System.Collections.Generic;
+    using System.Linq;
 
     /// <summary>
     /// The zlib stream class.
@@ -13,29 +15,29 @@ namespace Elskom.Generic.Libs
     public sealed class ZStream
     {
         private const int MAXWBITS = 15; // 32K LZ77 window
-        private const int ZNOFLUSH = 0;
-        private const int ZPARTIALFLUSH = 1;
-        private const int ZSYNCFLUSH = 2;
-        private const int ZFULLFLUSH = 3;
-        private const int ZFINISH = 4;
 
-        private const int MAXMEMLEVEL = 9;
-
-        private const int ZOK = 0;
-        private const int ZSTREAMEND = 1;
-        private const int ZNEEDDICT = 2;
-        private const int ZERRNO = -1;
+        // private const int ZNOFLUSH = 0;
+        // private const int ZPARTIALFLUSH = 1;
+        // private const int ZSYNCFLUSH = 2;
+        // private const int ZFULLFLUSH = 3;
+        // private const int ZFINISH = 4;
+        // private const int MAXMEMLEVEL = 9;
+        // private const int ZOK = 0;
+        // private const int ZSTREAMEND = 1;
+        // private const int ZNEEDDICT = 2;
+        // private const int ZERRNO = -1;
         private const int ZSTREAMERROR = -2;
-        private const int ZDATAERROR = -3;
-        private const int ZMEMERROR = -4;
-        private const int ZBUFERROR = -5;
-        private const int ZVERSIONERROR = -6;
-        private static readonly int DEFWBITS = MAXWBITS;
+
+        // private const int ZDATAERROR = -3;
+        // private const int ZMEMERROR = -4;
+        // private const int ZBUFERROR = -5;
+        // private const int ZVERSIONERROR = -6;
+        private const int DEFWBITS = MAXWBITS;
 
         /// <summary>
         /// Gets or sets the next input byte.
         /// </summary>
-        public byte[] NextIn { get; set; }
+        public IEnumerable<byte> NextIn { get; set; }
 
         /// <summary>
         /// Gets or sets the next input byte index.
@@ -55,7 +57,7 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Gets or sets the next output byte.
         /// </summary>
-        public byte[] NextOut { get; set; }
+        public IEnumerable<byte> NextOut { get; set; }
 
         /// <summary>
         /// Gets or sets the next output byte index.
@@ -92,11 +94,6 @@ namespace Elskom.Generic.Libs
         internal int DataType { get; set; } // best guess about the data type: ascii or binary
 
         /// <summary>
-        /// Gets the adler32 class instance to this instance of this class.
-        /// </summary>
-        internal Adler32 Adler32 { get; private set; } = new Adler32();
-
-        /// <summary>
         /// Initializes decompression.
         /// </summary>
         /// <returns>The state.</returns>
@@ -118,7 +115,7 @@ namespace Elskom.Generic.Libs
         /// </summary>
         /// <param name="f">The flush mode to use.</param>
         /// <returns>The zlib status state.</returns>
-        public int Inflate(int f) => this.Istate == null ? ZSTREAMERROR : this.Istate.Decompress(this, f);
+        public int Inflate(int f) => this.Istate == null ? ZSTREAMERROR : Libs.Inflate.Decompress(this, f);
 
         /// <summary>
         /// Ends decompression.
@@ -140,7 +137,7 @@ namespace Elskom.Generic.Libs
         /// Syncs inflate.
         /// </summary>
         /// <returns>The zlib status state.</returns>
-        public int InflateSync() => this.Istate == null ? ZSTREAMERROR : this.Istate.InflateSync(this);
+        public int InflateSync() => this.Istate == null ? ZSTREAMERROR : Libs.Inflate.InflateSync(this);
 
         /// <summary>
         /// Sets the inflate dictionary.
@@ -148,7 +145,7 @@ namespace Elskom.Generic.Libs
         /// <param name="dictionary">The dictionary to use.</param>
         /// <param name="dictLength">The dictionary length.</param>
         /// <returns>The zlib status state.</returns>
-        public int InflateSetDictionary(byte[] dictionary, int dictLength) => this.Istate == null ? ZSTREAMERROR : this.Istate.InflateSetDictionary(this, dictionary, dictLength);
+        public int InflateSetDictionary(byte[] dictionary, int dictLength) => this.Istate == null ? ZSTREAMERROR : Libs.Inflate.InflateSetDictionary(this, dictionary, dictLength);
 
         /// <summary>
         /// Initializes compression.
@@ -216,7 +213,6 @@ namespace Elskom.Generic.Libs
             this.NextIn = null;
             this.NextOut = null;
             this.Msg = null;
-            this.Adler32 = null;
         }
 
         // Flush as much pending output as possible. All deflate() output goes
@@ -237,13 +233,13 @@ namespace Elskom.Generic.Libs
                 return;
             }
 
-            if (this.Dstate.PendingBuf.Length <= this.Dstate.PendingOut || this.NextOut.Length <= this.NextOutIndex || this.Dstate.PendingBuf.Length < (this.Dstate.PendingOut + len) || this.NextOut.Length < (this.NextOutIndex + len))
+            if (this.Dstate.PendingBuf.Length <= this.Dstate.PendingOut || this.NextOut.ToArray().Length <= this.NextOutIndex || this.Dstate.PendingBuf.Length < (this.Dstate.PendingOut + len) || this.NextOut.ToArray().Length < (this.NextOutIndex + len))
             {
                 // System.Console.Out.WriteLine(dstate.pending_buf.Length + ", " + dstate.pending_out + ", " + next_out.Length + ", " + next_out_index + ", " + len);
                 // System.Console.Out.WriteLine("avail_out=" + avail_out);
             }
 
-            Array.Copy(this.Dstate.PendingBuf, this.Dstate.PendingOut, this.NextOut, this.NextOutIndex, len);
+            Array.Copy(this.Dstate.PendingBuf, this.Dstate.PendingOut, this.NextOut.ToArray(), this.NextOutIndex, len);
 
             this.NextOutIndex += len;
             this.Dstate.PendingOut += len;
@@ -279,10 +275,10 @@ namespace Elskom.Generic.Libs
 
             if (this.Dstate.Noheader == 0)
             {
-                this.Adler = this.Adler32.Calculate(this.Adler, this.NextIn, this.NextInIndex, len);
+                this.Adler = Adler32.Calculate(this.Adler, this.NextIn.ToArray(), this.NextInIndex, len);
             }
 
-            Array.Copy(this.NextIn, this.NextInIndex, buf, start, len);
+            Array.Copy(this.NextIn.ToArray(), this.NextInIndex, buf, start, len);
             this.NextInIndex += len;
             this.TotalIn += len;
             return len;

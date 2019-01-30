@@ -11,7 +11,7 @@ namespace Elskom.Generic.Libs
     /// <summary>
     /// Class to support zlib stuff.
     /// </summary>
-    public class SupportClass
+    public static class SupportClass
     {
         /// <summary>
         /// This method returns the literal value received.

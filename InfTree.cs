@@ -7,7 +7,7 @@ namespace Elskom.Generic.Libs
 {
     using System;
 
-    internal sealed class InfTree
+    internal static class InfTree
     {
         internal const int FixedBl = 9;
         internal const int FixedBd = 5;
@@ -124,15 +124,16 @@ namespace Elskom.Generic.Libs
 
         private const int MANY = 1440;
         private const int ZOK = 0;
-        private const int ZSTREAMEND = 1;
-        private const int ZNEEDDICT = 2;
-        private const int ZERRNO = -1;
-        private const int ZSTREAMERROR = -2;
+
+        // private const int ZSTREAMEND = 1;
+        // private const int ZNEEDDICT = 2;
+        // private const int ZERRNO = -1;
+        // private const int ZSTREAMERROR = -2;
         private const int ZDATAERROR = -3;
         private const int ZMEMERROR = -4;
         private const int ZBUFERROR = -5;
-        private const int ZVERSIONERROR = -6;
 
+        // private const int ZVERSIONERROR = -6;
         internal static int Huft_build(int[] b, int bindex, int n, int s, int[] d, int[] e, int[] t, int[] m, int[] hp, int[] hn, int[] v)
         {
             // Given a list of code lengths and a maximum table size, make a set of
@@ -445,7 +446,7 @@ namespace Elskom.Generic.Libs
             return ZOK;
         }
 
-        internal static int Inflate_trees_fixed(int[] bl, int[] bd, int[][] tl, int[][] td, ZStream z)
+        internal static int Inflate_trees_fixed(int[] bl, int[] bd, int[][] tl, int[][] td)
         {
             bl[0] = FixedBl;
             bd[0] = FixedBd;

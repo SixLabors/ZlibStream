@@ -5,7 +5,9 @@
 
 namespace Elskom.Generic.Libs
 {
+    using System.Collections.Generic;
     using System.IO;
+    using System.Linq;
 
     /// <summary>
     /// Class that provices a zlib input stream that supports
@@ -18,12 +20,12 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Initializes a new instance of the <see cref="ZInputStream"/> class.
         /// </summary>
-        /// <param name="in_Renamed">The input stream.</param>
-        public ZInputStream(Stream in_Renamed)
-            : base(in_Renamed)
+        /// <param name="inRenamed">The input stream.</param>
+        public ZInputStream(Stream inRenamed)
+            : base(inRenamed)
         {
             this.InitBlock();
-            this.inRenamed = in_Renamed;
+            this.inRenamed = inRenamed;
             this.Z.InflateInit();
             this.Compress = false;
             this.Z.NextIn = this.Buf;
@@ -34,13 +36,13 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Initializes a new instance of the <see cref="ZInputStream"/> class.
         /// </summary>
-        /// <param name="in_Renamed">The input stream.</param>
+        /// <param name="inRenamed">The input stream.</param>
         /// <param name="level">The compression level for the data to compress.</param>
-        public ZInputStream(Stream in_Renamed, int level)
-            : base(in_Renamed)
+        public ZInputStream(Stream inRenamed, int level)
+            : base(inRenamed)
         {
             this.InitBlock();
-            this.inRenamed = in_Renamed;
+            this.inRenamed = inRenamed;
             this.Z.DeflateInit(level);
             this.Compress = true;
             this.Z.NextIn = this.Buf;
@@ -58,10 +60,14 @@ namespace Elskom.Generic.Libs
         /// </summary>
         public virtual int FlushMode { get; set; }
 
-        /// <summary> Gets the total number of bytes input so far.</summary>
+        /// <summary>
+        /// Gets the total number of bytes input so far.
+        /// </summary>
         public virtual long TotalIn => this.Z.TotalIn;
 
-        /// <summary> Gets the total number of bytes output so far.</summary>
+        /// <summary>
+        /// Gets the total number of bytes output so far.
+        /// </summary>
         public virtual long TotalOut => this.Z.TotalOut;
 
         /// <summary>
@@ -77,13 +83,13 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Gets the stream's buffer.
         /// </summary>
-        protected byte[] Buf { get; private set; }
+        protected IEnumerable<byte> Buf { get; private set; }
 
         /// <summary>
         /// Gets the stream's single byte buffer value.
         /// For reading 1 byte at a time.
         /// </summary>
-        protected byte[] Buf1 { get; private set; } = new byte[1];
+        protected IEnumerable<byte> Buf1 { get; private set; } = new byte[1];
 
         /// <summary>
         /// Gets a value indicating whether this stream is setup for compression.
@@ -95,7 +101,7 @@ namespace Elskom.Generic.Libs
         }*/
 
         /// <inheritdoc/>
-        public override int Read() => this.Read(this.Buf1, 0, 1) == -1 ? -1 : this.Buf1[0] & 0xFF;
+        public override int Read() => this.Read(this.Buf1.ToArray(), 0, 1) == -1 ? -1 : this.Buf1.ToArray()[0] & 0xFF;
 
         /// <inheritdoc/>
         public override int Read(byte[] b, int off, int len)
@@ -115,7 +121,7 @@ namespace Elskom.Generic.Libs
                 {
                     // if buffer is empty and more input is avaiable, refill it
                     this.Z.NextInIndex = 0;
-                    this.Z.AvailIn = SupportClass.ReadInput(this.inRenamed, this.Buf, 0, this.Bufsize); // (bufsize<z.avail_out ? bufsize : z.avail_out));
+                    this.Z.AvailIn = SupportClass.ReadInput(this.inRenamed, this.Buf.ToArray(), 0, this.Bufsize); // (bufsize<z.avail_out ? bufsize : z.avail_out));
                     if (this.Z.AvailIn == -1)
                     {
                         this.Z.AvailIn = 0;

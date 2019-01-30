@@ -5,6 +5,8 @@
 
 namespace Elskom.Generic.Libs
 {
+    using System.Linq;
+
     internal sealed class Inflate
     {
         internal const int ZNOFLUSH = 0;
@@ -13,7 +15,7 @@ namespace Elskom.Generic.Libs
         internal const int ZFULLFLUSH = 3;
         internal const int ZFINISH = 4;
 
-        private const int MAXWBITS = 15; // 32K LZ77 window
+        // private const int MAXWBITS = 15; // 32K LZ77 window
 
         // preset dictionary flag in zlib header
         private const int PRESETDICT = 0x20;
@@ -21,13 +23,15 @@ namespace Elskom.Generic.Libs
         private const int ZOK = 0;
         private const int ZSTREAMEND = 1;
         private const int ZNEEDDICT = 2;
-        private const int ZERRNO = -1;
+
+        // private const int ZERRNO = -1;
         private const int ZSTREAMERROR = -2;
         private const int ZDATAERROR = -3;
-        private const int ZMEMERROR = -4;
-        private const int ZBUFERROR = -5;
-        private const int ZVERSIONERROR = -6;
 
+        // private const int ZMEMERROR = -4;
+        private const int ZBUFERROR = -5;
+
+        // private const int ZVERSIONERROR = -6;
         private const int METHOD = 0; // waiting for method byte
         private const int FLAG = 1; // waiting for flag byte
         private const int DICT4 = 2; // four dictionary check bytes to go
@@ -65,7 +69,7 @@ namespace Elskom.Generic.Libs
 
         internal InfBlocks Blocks { get; private set; } // current inflate_blocks state
 
-        internal int InflateReset(ZStream z)
+        internal static int InflateReset(ZStream z)
         {
             if (z == null || z.Istate == null)
             {
@@ -79,49 +83,7 @@ namespace Elskom.Generic.Libs
             return ZOK;
         }
 
-        internal int InflateEnd(ZStream z)
-        {
-            if (this.Blocks != null)
-            {
-                this.Blocks.Free(z);
-            }
-
-            this.Blocks = null;
-
-            // ZFREE(z, z->state);
-            return ZOK;
-        }
-
-        internal int InflateInit(ZStream z, int w)
-        {
-            z.Msg = null;
-            this.Blocks = null;
-
-            // handle undocumented nowrap option (no zlib header or check)
-            this.Nowrap = 0;
-            if (w < 0)
-            {
-                w = -w;
-                this.Nowrap = 1;
-            }
-
-            // set window size
-            if (w < 8 || w > 15)
-            {
-                this.InflateEnd(z);
-                return ZSTREAMERROR;
-            }
-
-            this.Wbits = w;
-
-            z.Istate.Blocks = new InfBlocks(z, z.Istate.Nowrap != 0 ? null : this, 1 << w);
-
-            // reset state
-            this.InflateReset(z);
-            return ZOK;
-        }
-
-        internal int Decompress(ZStream z, int f)
+        internal static int Decompress(ZStream z, int f)
         {
             int r;
             int b;
@@ -148,7 +110,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        if (((z.Istate.Method = z.NextIn[z.NextInIndex++]) & 0xf) != ZDEFLATED)
+                        if (((z.Istate.Method = z.NextIn.ToArray()[z.NextInIndex++]) & 0xf) != ZDEFLATED)
                         {
                             z.Istate.Mode = BAD;
                             z.Msg = "unknown compression method";
@@ -177,7 +139,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        b = z.NextIn[z.NextInIndex++] & 0xff;
+                        b = z.NextIn.ToArray()[z.NextInIndex++] & 0xff;
 
                         if ((((z.Istate.Method << 8) + b) % 31) != 0)
                         {
@@ -206,7 +168,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need = ((z.NextIn[z.NextInIndex++] & 0xff) << 24) & unchecked((int)0xff000000L);
+                        z.Istate.Need = ((z.NextIn.ToArray()[z.NextInIndex++] & 0xff) << 24) & unchecked((int)0xff000000L);
                         z.Istate.Mode = DICT3;
                         goto case DICT3;
 
@@ -220,7 +182,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need += ((z.NextIn[z.NextInIndex++] & 0xff) << 16) & 0xff0000L;
+                        z.Istate.Need += ((z.NextIn.ToArray()[z.NextInIndex++] & 0xff) << 16) & 0xff0000L;
                         z.Istate.Mode = DICT2;
                         goto case DICT2;
 
@@ -234,7 +196,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need += ((z.NextIn[z.NextInIndex++] & 0xff) << 8) & 0xff00L;
+                        z.Istate.Need += ((z.NextIn.ToArray()[z.NextInIndex++] & 0xff) << 8) & 0xff00L;
                         z.Istate.Mode = DICT1;
                         goto case DICT1;
 
@@ -248,7 +210,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need += z.NextIn[z.NextInIndex++] & 0xffL;
+                        z.Istate.Need += z.NextIn.ToArray()[z.NextInIndex++] & 0xffL;
                         z.Adler = z.Istate.Need;
                         z.Istate.Mode = DICT0;
                         return ZNEEDDICT;
@@ -300,7 +262,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need = ((z.NextIn[z.NextInIndex++] & 0xff) << 24) & unchecked((int)0xff000000L);
+                        z.Istate.Need = ((z.NextIn.ToArray()[z.NextInIndex++] & 0xff) << 24) & unchecked((int)0xff000000L);
                         z.Istate.Mode = CHECK3;
                         goto case CHECK3;
 
@@ -314,7 +276,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need += ((z.NextIn[z.NextInIndex++] & 0xff) << 16) & 0xff0000L;
+                        z.Istate.Need += ((z.NextIn.ToArray()[z.NextInIndex++] & 0xff) << 16) & 0xff0000L;
                         z.Istate.Mode = CHECK2;
                         goto case CHECK2;
 
@@ -328,7 +290,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need += ((z.NextIn[z.NextInIndex++] & 0xff) << 8) & 0xff00L;
+                        z.Istate.Need += ((z.NextIn.ToArray()[z.NextInIndex++] & 0xff) << 8) & 0xff00L;
                         z.Istate.Mode = CHECK1;
                         goto case CHECK1;
 
@@ -342,7 +304,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need += z.NextIn[z.NextInIndex++] & 0xffL;
+                        z.Istate.Need += z.NextIn.ToArray()[z.NextInIndex++] & 0xffL;
 
                         if (((int)z.Istate.Was[0]) != ((int)z.Istate.Need))
                         {
@@ -367,7 +329,7 @@ namespace Elskom.Generic.Libs
             }
         }
 
-        internal int InflateSetDictionary(ZStream z, byte[] dictionary, int dictLength)
+        internal static int InflateSetDictionary(ZStream z, byte[] dictionary, int dictLength)
         {
             var index = 0;
             var length = dictLength;
@@ -376,12 +338,12 @@ namespace Elskom.Generic.Libs
                 return ZSTREAMERROR;
             }
 
-            if (z.Adler32.Calculate(1L, dictionary, 0, dictLength) != z.Adler)
+            if (Adler32.Calculate(1L, dictionary, 0, dictLength) != z.Adler)
             {
                 return ZDATAERROR;
             }
 
-            z.Adler = z.Adler32.Calculate(0, null, 0, 0);
+            z.Adler = Adler32.Calculate(0, null, 0, 0);
 
             if (length >= (1 << z.Istate.Wbits))
             {
@@ -394,7 +356,7 @@ namespace Elskom.Generic.Libs
             return ZOK;
         }
 
-        internal int InflateSync(ZStream z)
+        internal static int InflateSync(ZStream z)
         {
             int n; // number of bytes to look at
             int p; // pointer to bytes
@@ -424,13 +386,13 @@ namespace Elskom.Generic.Libs
             // search
             while (n != 0 && m < 4)
             {
-                if (z.NextIn[p] == Mark[m])
+                if (z.NextIn.ToArray()[p] == Mark[m])
                 {
                     m++;
                 }
                 else
                 {
-                    m = z.NextIn[p] != 0 ? 0 : 4 - m;
+                    m = z.NextIn.ToArray()[p] != 0 ? 0 : 4 - m;
                 }
 
                 p++;
@@ -451,7 +413,7 @@ namespace Elskom.Generic.Libs
 
             r = z.TotalIn;
             w = z.TotalOut;
-            this.InflateReset(z);
+            InflateReset(z);
             z.TotalIn = r;
             z.TotalOut = w;
             z.Istate.Mode = BLOCKS;
@@ -464,6 +426,48 @@ namespace Elskom.Generic.Libs
         // but removes the length bytes of the resulting empty stored block. When
         // decompressing, PPP checks that at the end of input packet, inflate is
         // waiting for these length bytes.
-        internal int InflateSyncPoint(ZStream z) => z == null || z.Istate == null || z.Istate.Blocks == null ? ZSTREAMERROR : z.Istate.Blocks.Sync_point();
+        internal static int InflateSyncPoint(ZStream z) => z == null || z.Istate == null || z.Istate.Blocks == null ? ZSTREAMERROR : z.Istate.Blocks.Sync_point();
+
+        internal int InflateEnd(ZStream z)
+        {
+            if (this.Blocks != null)
+            {
+                this.Blocks.Free(z);
+            }
+
+            this.Blocks = null;
+
+            // ZFREE(z, z->state);
+            return ZOK;
+        }
+
+        internal int InflateInit(ZStream z, int w)
+        {
+            z.Msg = null;
+            this.Blocks = null;
+
+            // handle undocumented nowrap option (no zlib header or check)
+            this.Nowrap = 0;
+            if (w < 0)
+            {
+                w = -w;
+                this.Nowrap = 1;
+            }
+
+            // set window size
+            if (w < 8 || w > 15)
+            {
+                this.InflateEnd(z);
+                return ZSTREAMERROR;
+            }
+
+            this.Wbits = w;
+
+            z.Istate.Blocks = new InfBlocks(z, z.Istate.Nowrap != 0 ? null : this, 1 << w);
+
+            // reset state
+            InflateReset(z);
+            return ZOK;
+        }
     }
 }

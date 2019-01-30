@@ -61,7 +61,7 @@ namespace Elskom.Generic.Libs
 
         // Bit length codes must not exceed MAX_BL_BITS bits
         private const int MAXBLBITS = 7;
-        private static readonly int LCODES = LITERALS + 1 + LENGTHCODES;
+        private const int LCODES = LITERALS + 1 + LENGTHCODES;
 
         static StaticTree()
         {

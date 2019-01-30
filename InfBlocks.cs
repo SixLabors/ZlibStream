@@ -6,6 +6,7 @@
 namespace Elskom.Generic.Libs
 {
     using System;
+    using System.Linq;
 
     internal sealed class InfBlocks
     {
@@ -18,14 +19,16 @@ namespace Elskom.Generic.Libs
         private const int MANY = 1440;
         private const int ZOK = 0;
         private const int ZSTREAMEND = 1;
-        private const int ZNEEDDICT = 2;
-        private const int ZERRNO = -1;
+
+        // private const int ZNEEDDICT = 2;
+        // private const int ZERRNO = -1;
         private const int ZSTREAMERROR = -2;
         private const int ZDATAERROR = -3;
-        private const int ZMEMERROR = -4;
-        private const int ZBUFERROR = -5;
-        private const int ZVERSIONERROR = -6;
 
+        // private const int ZMEMERROR = -4;
+        private const int ZBUFERROR = -5;
+
+        // private const int ZVERSIONERROR = -6;
         private const int TYPE = 0; // get type bits (3, including end bit)
         private const int LENS = 1; // get lengths for stored
         private const int STORED = 2; // processing stored block
@@ -101,7 +104,7 @@ namespace Elskom.Generic.Libs
 
             if (this.mode == CODES)
             {
-                this.codes.Free(z);
+                InfCodes.Free();
             }
 
             this.mode = TYPE;
@@ -111,7 +114,7 @@ namespace Elskom.Generic.Libs
 
             if (this.checkfn != null)
             {
-                z.Adler = this.check = z.Adler32.Calculate(0L, null, 0, 0);
+                z.Adler = this.check = Adler32.Calculate(0L, null, 0, 0);
             }
         }
 
@@ -163,7 +166,7 @@ namespace Elskom.Generic.Libs
                             }
 
                             n--;
-                            b |= (z.NextIn[p++] & 0xff) << k;
+                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -194,8 +197,8 @@ namespace Elskom.Generic.Libs
                                     var tl = new int[1][];
                                     var td = new int[1][];
 
-                                    InfTree.Inflate_trees_fixed(bl, bd, tl, td, z);
-                                    this.codes = new InfCodes(bl[0], bd[0], tl[0], td[0], z);
+                                    InfTree.Inflate_trees_fixed(bl, bd, tl, td);
+                                    this.codes = new InfCodes(bl[0], bd[0], tl[0], td[0]);
                                 }
 
                                 {
@@ -253,7 +256,7 @@ namespace Elskom.Generic.Libs
                             }
 
                             n--;
-                            b |= (z.NextIn[p++] & 0xff) << k;
+                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -335,7 +338,7 @@ namespace Elskom.Generic.Libs
                             t = m;
                         }
 
-                        Array.Copy(z.NextIn, p, this.Window, q, t);
+                        Array.Copy(z.NextIn.ToArray(), p, this.Window, q, t);
                         p += t; n -= t;
                         q += t; m -= t;
                         if ((this.left -= t) != 0)
@@ -366,7 +369,7 @@ namespace Elskom.Generic.Libs
                             }
 
                             n--;
-                            b |= (z.NextIn[p++] & 0xff) << k;
+                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -418,7 +421,7 @@ namespace Elskom.Generic.Libs
                                 }
 
                                 n--;
-                                b |= (z.NextIn[p++] & 0xff) << k;
+                                b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
                                 k += 8;
                             }
 
@@ -489,7 +492,7 @@ namespace Elskom.Generic.Libs
                                 }
 
                                 n--;
-                                b |= (z.NextIn[p++] & 0xff) << k;
+                                b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
                                 k += 8;
                             }
 
@@ -531,7 +534,7 @@ namespace Elskom.Generic.Libs
                                     }
 
                                     n--;
-                                    b |= (z.NextIn[p++] & 0xff) << k;
+                                    b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
                                     k += 8;
                                 }
 
@@ -601,7 +604,7 @@ namespace Elskom.Generic.Libs
                                 return this.Inflate_flush(z, r);
                             }
 
-                            this.codes = new InfCodes(bl[0], bd[0], this.hufts, tl[0], this.hufts, td[0], z);
+                            this.codes = new InfCodes(bl[0], bd[0], this.hufts, tl[0], this.hufts, td[0]);
                         }
 
                         this.blens = null;
@@ -619,7 +622,7 @@ namespace Elskom.Generic.Libs
                         }
 
                         r = ZOK;
-                        this.codes.Free(z);
+                        InfCodes.Free();
 
                         p = z.NextInIndex; n = z.AvailIn; b = this.Bitb; k = this.Bitk;
                         q = this.Write; m = q < this.Read ? this.Read - q - 1 : this.End - q;
@@ -727,11 +730,11 @@ namespace Elskom.Generic.Libs
             // update check information
             if (this.checkfn != null)
             {
-                z.Adler = this.check = z.Adler32.Calculate(this.check, this.Window, q, n);
+                z.Adler = this.check = Adler32.Calculate(this.check, this.Window, q, n);
             }
 
             // copy as far as end of window
-            Array.Copy(this.Window, q, z.NextOut, p, n);
+            Array.Copy(this.Window, q, z.NextOut.ToArray(), p, n);
             p += n;
             q += n;
 
@@ -764,11 +767,11 @@ namespace Elskom.Generic.Libs
                 // update check information
                 if (this.checkfn != null)
                 {
-                    z.Adler = this.check = z.Adler32.Calculate(this.check, this.Window, q, n);
+                    z.Adler = this.check = Adler32.Calculate(this.check, this.Window, q, n);
                 }
 
                 // copy
-                Array.Copy(this.Window, q, z.NextOut, p, n);
+                Array.Copy(this.Window, q, z.NextOut.ToArray(), p, n);
                 p += n;
                 q += n;
             }

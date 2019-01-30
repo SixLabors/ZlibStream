@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>netcoreapp3.0;netcoreapp2.2;netcoreapp2.1;netcoreapp2.0;netstandard2.0;net40;net45;net451;net452;net46;net461;net462;net47;net471;net472</TargetFrameworks>
@@ -13,9 +13,10 @@
     <PackageLicenseUrl>https://github.com/Elskom/zlib.managed/blob/master/LICENSE</PackageLicenseUrl>
     <Copyright>Copyright (c) 2018-2019</Copyright>
     <Description>A cleaned up and bug fixed version of zlib.net. This is also planned to be updated frequently if needed too.</Description>
-    <PackageReleaseNotes>Added .NET Core 3.0 and 2.2 to target frameworks.</PackageReleaseNotes>
-    <Version>1.1.1</Version>
+    <PackageReleaseNotes>Added reference assemblies.</PackageReleaseNotes>
+    <Version>1.1.2</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateReferenceAssembly>true</GenerateReferenceAssembly>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
