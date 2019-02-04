@@ -15,17 +15,14 @@ namespace Elskom.Generic.Libs
     /// </summary>
     public class ZInputStream : BinaryReader
     {
-        private readonly Stream inRenamed = null;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="ZInputStream"/> class.
         /// </summary>
-        /// <param name="inRenamed">The input stream.</param>
-        public ZInputStream(Stream inRenamed)
-            : base(inRenamed)
+        /// <param name="input">The input stream.</param>
+        public ZInputStream(Stream input)
+            : base(input)
         {
             this.InitBlock();
-            this.inRenamed = inRenamed;
             this.Z.InflateInit();
             this.Compress = false;
             this.Z.NextIn = this.Buf;
@@ -36,13 +33,12 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Initializes a new instance of the <see cref="ZInputStream"/> class.
         /// </summary>
-        /// <param name="inRenamed">The input stream.</param>
+        /// <param name="input">The input stream.</param>
         /// <param name="level">The compression level for the data to compress.</param>
-        public ZInputStream(Stream inRenamed, int level)
-            : base(inRenamed)
+        public ZInputStream(Stream input, int level)
+            : base(input)
         {
             this.InitBlock();
-            this.inRenamed = inRenamed;
             this.Z.DeflateInit(level);
             this.Compress = true;
             this.Z.NextIn = this.Buf;
@@ -121,7 +117,7 @@ namespace Elskom.Generic.Libs
                 {
                     // if buffer is empty and more input is avaiable, refill it
                     this.Z.NextInIndex = 0;
-                    this.Z.AvailIn = SupportClass.ReadInput(this.inRenamed, this.Buf.ToArray(), 0, this.Bufsize); // (bufsize<z.avail_out ? bufsize : z.avail_out));
+                    this.Z.AvailIn = SupportClass.ReadInput(this.BaseStream, this.Buf.ToArray(), 0, this.Bufsize); // (bufsize<z.avail_out ? bufsize : z.avail_out));
                     if (this.Z.AvailIn == -1)
                     {
                         this.Z.AvailIn = 0;
@@ -174,7 +170,7 @@ namespace Elskom.Generic.Libs
         }
 
         /// <inheritdoc/>
-        public override void Close() => this.inRenamed.Close();
+        public override void Close() => this.BaseStream.Close();
 
         private void InitBlock()
         {

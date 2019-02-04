@@ -14,19 +14,16 @@ namespace Elskom.Generic.Libs
     /// Class that provices a zlib output stream that supports
     /// compression and decompression.
     /// </summary>
-    public class ZOutputStream : Stream
+    public class ZOutputStream : BinaryWriter
     {
-        private Stream outRenamed;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="ZOutputStream"/> class.
         /// </summary>
-        /// <param name="outRenamed">The output stream.</param>
-        public ZOutputStream(Stream outRenamed)
-            : base()
+        /// <param name="output">The output stream.</param>
+        public ZOutputStream(Stream output)
+            : base(output)
         {
             this.InitBlock();
-            this.outRenamed = outRenamed;
             this.Z.InflateInit();
             this.Compress = false;
         }
@@ -34,13 +31,12 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Initializes a new instance of the <see cref="ZOutputStream"/> class.
         /// </summary>
-        /// <param name="outRenamed">The output stream.</param>
+        /// <param name="output">The output stream.</param>
         /// <param name="level">The compression level for the data to compress.</param>
-        public ZOutputStream(Stream outRenamed, int level)
-            : base()
+        public ZOutputStream(Stream output, int level)
+            : base(output)
         {
             this.InitBlock();
-            this.outRenamed = outRenamed;
             this.Z.DeflateInit(level);
             this.Compress = true;
         }
@@ -49,33 +45,6 @@ namespace Elskom.Generic.Libs
         /// Gets the base zlib stream.
         /// </summary>
         public ZStream Z { get; private set; } = new ZStream();
-
-        /// <inheritdoc/>
-        // UPGRADE_TODO: The following property was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
-        public override bool CanRead => false;
-
-        /// <inheritdoc/>
-        // UPGRADE_TODO: The following property was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
-        public override bool CanSeek => false;
-
-        /// <inheritdoc/>
-        // UPGRADE_TODO: The following property was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
-        public override bool CanWrite => true;
-
-        /// <inheritdoc/>
-        // UPGRADE_TODO: The following property was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
-        public override long Length => 0;
-
-        /// <inheritdoc/>
-        // UPGRADE_TODO: The following property was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
-        public override long Position
-        {
-            get => 0;
-
-            set
-            {
-            }
-        }
 
         /// <summary>
         /// Gets or sets the flush mode for this stream.
@@ -109,20 +78,15 @@ namespace Elskom.Generic.Libs
         /// </summary>
         protected internal bool Compress { get; private set; }
 
-        /// <summary>
-        /// Writes a byte to the current position in the stream and advances the position
-        /// within the stream by one byte.
-        /// </summary>
-        /// <param name="b">The byte to write to the stream.</param>
-        public void WriteByte(int b)
+        /// <inheritdoc/>
+        public override void Write(byte b) => this.Write((int)b);
+
+        /// <inheritdoc/>
+        public override void Write(int b)
         {
             this.Buf1.ToArray()[0] = (byte)b;
             this.Write(this.Buf1.ToArray(), 0, 1);
         }
-
-        /// <inheritdoc/>
-        // UPGRADE_TODO: The differences in the Expected value  of parameters for method 'WriteByte'  may cause compilation errors.  'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1092_3"'
-        public override void WriteByte(byte b) => this.WriteByte(b);
 
         /// <inheritdoc/>
         public override void Write(byte[] b1, int off, int len)
@@ -150,7 +114,7 @@ namespace Elskom.Generic.Libs
                     throw new ZStreamException((this.Compress ? "de" : "in") + "flating: " + this.Z.Msg);
                 }
 
-                this.outRenamed.Write(this.Buf.ToArray(), 0, this.Bufsize - this.Z.AvailOut);
+                this.BaseStream.Write(this.Buf.ToArray(), 0, this.Bufsize - this.Z.AvailOut);
                 if (!this.Compress && this.Z.AvailIn == 0 && this.Z.AvailOut == 0)
                 {
                     break;
@@ -184,7 +148,7 @@ namespace Elskom.Generic.Libs
 
                 if (this.Bufsize - this.Z.AvailOut > 0)
                 {
-                    this.outRenamed.Write(this.Buf.ToArray(), 0, this.Bufsize - this.Z.AvailOut);
+                    this.BaseStream.Write(this.Buf.ToArray(), 0, this.Bufsize - this.Z.AvailOut);
                 }
 
                 if (err == ZlibConst.ZSTREAMEND)
@@ -236,27 +200,12 @@ namespace Elskom.Generic.Libs
             finally
             {
                 this.EndStream();
-                this.outRenamed.Close();
-                this.outRenamed = null;
+                this.BaseStream.Close();
             }
         }
 
         /// <inheritdoc/>
-        public override void Flush() => this.outRenamed.Flush();
-
-        /// <inheritdoc/>
-        // UPGRADE_TODO: The following method was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
-        public override int Read(byte[] buffer, int offset, int count) => 0;
-
-        /// <inheritdoc/>
-        // UPGRADE_TODO: The following method was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
-        public override void SetLength(long value)
-        {
-        }
-
-        /// <inheritdoc/>
-        // UPGRADE_TODO: The following method was automatically generated and it must be implemented in order to preserve the class logic. 'ms-help://MS.VSCC.2003/commoner/redir/redirect.htm?keyword="jlca1232_3"'
-        public override long Seek(long offset, SeekOrigin origin) => 0;
+        public override void Flush() => base.Flush();
 
         private void InitBlock()
         {

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp3.0;netcoreapp2.2;netcoreapp2.1;netcoreapp2.0;netstandard2.0;net40;net45;net451;net452;net46;net461;net462;net47;net471;net472</TargetFrameworks>
+    <TargetFrameworks>netcoreapp2.0;netcoreapp2.1;netcoreapp2.2;netcoreapp3.0;netstandard2.0;net40;net45;net451;net452;net46;net461;net462;net47;net471;net472</TargetFrameworks>
     <AssemblyName>zlib.managed</AssemblyName>
     <LangVersion>latest</LangVersion>
     <Company>Els_kom org.</Company>
@@ -16,8 +16,23 @@
     <PackageReleaseNotes>Added reference assemblies.</PackageReleaseNotes>
     <Version>1.1.2</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <GenerateReferenceAssembly>true</GenerateReferenceAssembly>
+    <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Add reference binaries. -->
+    <TfmSpecificPackageFile Include="$(OutputPath)/ref/">
+      <PackagePath>ref/$(TargetFramework)</PackagePath>
+    </TfmSpecificPackageFile>
+    <!-- Add documentation file to each of the reference assembly paths. -->
+    <TfmSpecificPackageFile Include="$(OutputPath)/$(ProjectName).xml">
+      <PackagePath>ref/$(TargetFramework)</PackagePath>
+    </TfmSpecificPackageFile>
+    <!-- Add debugging symbols. -->
+    <TfmSpecificPackageFile Include="$(OutputPath)/$(ProjectName).pdb">
+      <PackagePath>lib/$(TargetFramework)</PackagePath>
+    </TfmSpecificPackageFile>
+  </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>DEBUG;TRACE</DefineConstants>
@@ -66,6 +81,12 @@
     <PackageReference Include="IDisposableAnalyzers" Version="2.0.6">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="System.Runtime" Condition="'$(TargetFramework)' != 'net40'">
+      <Version>4.3.0</Version>
+    </PackageReference>
+    <PackageReference Include="System.Runtime.Extensions" Condition="'$(TargetFramework)' != 'net40'">
+      <Version>4.3.0</Version>
     </PackageReference>
   </ItemGroup>
 
