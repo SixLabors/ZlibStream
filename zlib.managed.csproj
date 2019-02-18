@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp2.0;netcoreapp2.1;netcoreapp2.2;netcoreapp3.0;netstandard2.0;net40;net45;net451;net452;net46;net461;net462;net47;net471;net472</TargetFrameworks>
+    <TargetFrameworks>netcoreapp2.0;netcoreapp2.1;netcoreapp2.2;netcoreapp3.0;netstandard2.0;net40;net45;net451;net452;net46;net461;net462;net47;net471;net472;net48</TargetFrameworks>
     <AssemblyName>zlib.managed</AssemblyName>
     <LangVersion>latest</LangVersion>
     <Company>Els_kom org.</Company>
@@ -10,13 +10,14 @@
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Elskom/zlib.managed/</RepositoryUrl>
     <PackageProjectUrl>https://github.com/Elskom/zlib.managed/</PackageProjectUrl>
-    <PackageLicenseUrl>https://github.com/Elskom/zlib.managed/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <Copyright>Copyright (c) 2018-2019</Copyright>
     <Description>A cleaned up and bug fixed version of zlib.net. This is also planned to be updated frequently if needed too.</Description>
     <PackageReleaseNotes>Added reference assemblies.</PackageReleaseNotes>
     <Version>1.1.2</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+    <NoWarn>$(NoWarn);NU5104;NU5118</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,6 +32,25 @@
     <!-- Add debugging symbols. -->
     <TfmSpecificPackageFile Include="$(OutputPath)/$(ProjectName).pdb">
       <PackagePath>lib/$(TargetFramework)</PackagePath>
+    </TfmSpecificPackageFile>
+    <!-- Add source code. -->
+    <TfmSpecificPackageFile Include="$(ProjectPath)">
+      <PackagePath>src/$(ProjectName)/$(ProjectFileName)</PackagePath>
+    </TfmSpecificPackageFile>
+    <TfmSpecificPackageFile Include="$(ProjectDir)/$(ProjectName)/">
+      <PackagePath>src/$(ProjectName)/$(ProjectName)/</PackagePath>
+    </TfmSpecificPackageFile>
+    <TfmSpecificPackageFile Include="$(ProjectDir)/README.md">
+      <PackagePath>src/$(ProjectName)/README.md</PackagePath>
+    </TfmSpecificPackageFile>
+    <TfmSpecificPackageFile Include="$(ProjectDir)/stylecop.json">
+      <PackagePath>src/$(ProjectName)/stylecop.json</PackagePath>
+    </TfmSpecificPackageFile>
+    <TfmSpecificPackageFile Include="$(ProjectDir)/global.json">
+      <PackagePath>src/$(ProjectName)/global.json</PackagePath>
+    </TfmSpecificPackageFile>
+    <TfmSpecificPackageFile Include="$(ProjectDir)/$(ProjectName).ruleset">
+      <PackagePath>src/$(ProjectName)/$(ProjectName).ruleset</PackagePath>
     </TfmSpecificPackageFile>
   </ItemGroup>
 
@@ -56,7 +76,7 @@
   <ItemGroup>
     <None Remove=".gitignore" />
     <None Remove="appveyor.yml" />
-    <None Remove="LICENSE" />
+    <None Include="LICENSE" Pack="true" Visible="false" PackagePath=""/>
     <None Remove="readme.md" />
     <None Remove="stylecop.json" />
   </ItemGroup>
