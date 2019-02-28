@@ -12,7 +12,7 @@ install:
 
     {
 
-    Write-Host "Installing .NET Core SDK..." -ForegroundColor Cyan
+    Write-Host "Installing .NET Core 3.0.100-preview-010184 SDK..." -ForegroundColor Cyan
 
     Write-Host "Downloading..."
 
@@ -29,13 +29,30 @@ install:
     Write-Host "Installed" -ForegroundColor Green
 
 
-    Write-Host "Installing .NET Core runtime..." -ForegroundColor Cyan
+    Write-Host "Installing .NET Core 3.0.0-preview-27324-5 runtime..." -ForegroundColor Cyan
 
     Write-Host "Downloading..."
 
     $exePath = "$env:TEMP\dotnet-runtime-3.0.0-preview-27324-5-win-x64.exe"
 
     (New-Object Net.WebClient).DownloadFile('https://download.visualstudio.microsoft.com/download/pr/30594a10-9dcf-44c9-88c2-c559da2a0c6e/7cb211623fefc681750632dc6e5b3b36/dotnet-runtime-3.0.0-preview-27324-5-win-x64.exe', $exePath)
+
+    Write-Host "Installing..."
+
+    cmd /c start /wait "$exePath" /quiet /norestart
+
+    del $exePath
+
+    Write-Host "Installed" -ForegroundColor Green
+
+
+    Write-Host "Installing .NET Framework 4.8 Targeting Pack..." -ForegroundColor Cyan
+
+    Write-Host "Downloading..."
+
+    $exePath = "$env:TEMP\ndp48-devpack-enu.exe"
+
+    (New-Object Net.WebClient).DownloadFile('https://download.visualstudio.microsoft.com/download/pr/9854b5f2-2341-4136-ad7d-1d881ab8d603/e3a011f2a41a59b086f78d64e1c7a3fc/ndp48-devpack-enu.exe', $exePath)
 
     Write-Host "Installing..."
 
