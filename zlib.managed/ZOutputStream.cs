@@ -24,7 +24,7 @@ namespace Elskom.Generic.Libs
             : base(output)
         {
             this.InitBlock();
-            this.Z.InflateInit();
+            _ = this.Z.InflateInit();
             this.Compress = false;
         }
 
@@ -37,7 +37,7 @@ namespace Elskom.Generic.Libs
             : base(output)
         {
             this.InitBlock();
-            this.Z.DeflateInit(level);
+            _ = this.Z.DeflateInit(level);
             this.Compress = true;
         }
 
@@ -45,6 +45,11 @@ namespace Elskom.Generic.Libs
         /// Gets the base zlib stream.
         /// </summary>
         public ZStream Z { get; private set; } = new ZStream();
+
+        /// <summary>
+        /// Gets a value indicating whether the stream is finished.
+        /// </summary>
+        public bool IsFinished { get; private set; }
 
         /// <summary>
         /// Gets or sets the flush mode for this stream.
@@ -133,36 +138,41 @@ namespace Elskom.Generic.Libs
         /// </summary>
         public virtual void Finish()
         {
-            int err;
-            do
+            if (!this.IsFinished)
             {
-                this.Z.NextOut = this.Buf;
-                this.Z.NextOutIndex = 0;
-                this.Z.AvailOut = this.Bufsize;
-                err = this.Compress ? this.Z.Deflate(ZlibConst.ZFINISH) : this.Z.Inflate(ZlibConst.ZFINISH);
-
-                if (err != ZlibConst.ZSTREAMEND && err != ZlibConst.ZOK)
+                int err;
+                do
                 {
-                    throw new ZStreamException((this.Compress ? "de" : "in") + "flating: " + this.Z.Msg);
+                    this.Z.NextOut = this.Buf;
+                    this.Z.NextOutIndex = 0;
+                    this.Z.AvailOut = this.Bufsize;
+                    err = this.Compress ? this.Z.Deflate(ZlibConst.ZFINISH) : this.Z.Inflate(ZlibConst.ZFINISH);
+
+                    if (err != ZlibConst.ZSTREAMEND && err != ZlibConst.ZOK)
+                    {
+                        throw new ZStreamException((this.Compress ? "de" : "in") + "flating: " + this.Z.Msg);
+                    }
+
+                    if (this.Bufsize - this.Z.AvailOut > 0)
+                    {
+                        this.BaseStream.Write(this.Buf.ToArray(), 0, this.Bufsize - this.Z.AvailOut);
+                    }
+
+                    if (err == ZlibConst.ZSTREAMEND)
+                    {
+                        break;
+                    }
+                }
+                while (this.Z.AvailIn > 0 || this.Z.AvailOut == 0);
+                try
+                {
+                    this.Flush();
+                }
+                catch
+                {
                 }
 
-                if (this.Bufsize - this.Z.AvailOut > 0)
-                {
-                    this.BaseStream.Write(this.Buf.ToArray(), 0, this.Bufsize - this.Z.AvailOut);
-                }
-
-                if (err == ZlibConst.ZSTREAMEND)
-                {
-                    break;
-                }
-            }
-            while (this.Z.AvailIn > 0 || this.Z.AvailOut == 0);
-            try
-            {
-                this.Flush();
-            }
-            catch
-            {
+                this.IsFinished = true;
             }
         }
 
@@ -171,14 +181,7 @@ namespace Elskom.Generic.Libs
         /// </summary>
         public virtual void EndStream()
         {
-            if (this.Compress)
-            {
-                this.Z.DeflateEnd();
-            }
-            else
-            {
-                this.Z.InflateEnd();
-            }
+            _ = this.Compress ? this.Z.DeflateEnd() : this.Z.InflateEnd();
 
             this.Z.Free();
             this.Z = null;

@@ -197,7 +197,7 @@ namespace Elskom.Generic.Libs
                                     var tl = new int[1][];
                                     var td = new int[1][];
 
-                                    InfTree.Inflate_trees_fixed(bl, bd, tl, td);
+                                    _ = InfTree.Inflate_trees_fixed(bl, bd, tl, td);
                                     this.codes = new InfCodes(bl[0], bd[0], tl[0], td[0]);
                                 }
 

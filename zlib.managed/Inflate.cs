@@ -413,7 +413,7 @@ namespace Elskom.Generic.Libs
 
             r = z.TotalIn;
             w = z.TotalOut;
-            InflateReset(z);
+            _ = InflateReset(z);
             z.TotalIn = r;
             z.TotalOut = w;
             z.Istate.Mode = BLOCKS;
@@ -457,7 +457,7 @@ namespace Elskom.Generic.Libs
             // set window size
             if (w < 8 || w > 15)
             {
-                this.InflateEnd(z);
+                _ = this.InflateEnd(z);
                 return ZSTREAMERROR;
             }
 
@@ -466,7 +466,7 @@ namespace Elskom.Generic.Libs
             z.Istate.Blocks = new InfBlocks(z, z.Istate.Nowrap != 0 ? null : this, 1 << w);
 
             // reset state
-            InflateReset(z);
+            _ = InflateReset(z);
             return ZOK;
         }
     }
