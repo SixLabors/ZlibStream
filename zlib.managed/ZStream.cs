@@ -84,9 +84,15 @@ namespace Elskom.Generic.Libs
         /// </summary>
         public long Adler { get; set; }
 
-        internal Deflate Dstate { get; set; }
+        /// <summary>
+        /// Gets the current Deflate instance for this class.
+        /// </summary>
+        public Deflate Dstate { get; internal set; }
 
-        internal Inflate Istate { get; private set; }
+        /// <summary>
+        /// Gets the current Inflate instance for this class.
+        /// </summary>
+        public Inflate Istate { get; private set; }
 
         /// <summary>
         /// Gets or sets the data type to this instance of this class.

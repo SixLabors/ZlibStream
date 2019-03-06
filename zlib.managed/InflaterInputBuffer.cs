@@ -82,7 +82,7 @@ namespace Elskom.Generic.Libs
             if (this.Available > 0)
             {
                 // I think this should read.
-                zinput.Read(this.ClearText.ToArray(), this.ClearTextLength - this.Available, this.Available);
+                _ = zinput.Read(this.ClearText.ToArray(), this.ClearTextLength - this.Available, this.Available);
 
                 // .SetInput(this.ClearText, this.ClearTextLength - this.Available, this.Available);
                 this.Available = 0;

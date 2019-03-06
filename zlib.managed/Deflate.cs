@@ -8,7 +8,7 @@ namespace Elskom.Generic.Libs
     using System;
 
     /// <summary>
-    /// Class for compressing files through zlib.
+    /// Class for compressing data through zlib.
     /// </summary>
     public sealed class Deflate
     {

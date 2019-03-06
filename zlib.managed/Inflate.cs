@@ -7,7 +7,10 @@ namespace Elskom.Generic.Libs
 {
     using System.Linq;
 
-    internal sealed class Inflate
+    /// <summary>
+    /// Class for decompressing data through zlib.
+    /// </summary>
+    public sealed class Inflate
     {
         internal const int ZNOFLUSH = 0;
         internal const int ZPARTIALFLUSH = 1;
@@ -69,7 +72,12 @@ namespace Elskom.Generic.Libs
 
         internal InfBlocks Blocks { get; private set; } // current inflate_blocks state
 
-        internal static int InflateReset(ZStream z)
+        /// <summary>
+        /// Resets the inflate state.
+        /// </summary>
+        /// <param name="z">The Z stream.</param>
+        /// <returns>The zlib state.</returns>
+        public static int InflateReset(ZStream z)
         {
             if (z == null || z.Istate == null)
             {

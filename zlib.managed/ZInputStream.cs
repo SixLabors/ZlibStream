@@ -16,14 +16,12 @@ namespace Elskom.Generic.Libs
     /// </summary>
     public class ZInputStream : BinaryReader
     {
-        private readonly InflaterInputBuffer inputBuffer;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="ZInputStream"/> class.
         /// </summary>
         /// <param name="input">The input stream.</param>
         public ZInputStream(Stream input)
-            : this(input, 4096)
+            : this(input, 512)
         {
         }
 
@@ -43,7 +41,7 @@ namespace Elskom.Generic.Libs
             this.Z.NextIn = this.Buf;
             this.Z.NextInIndex = 0;
             this.Z.AvailIn = 0;
-            this.inputBuffer = new InflaterInputBuffer(input, bufferSize);
+            this.InputBuffer = new InflaterInputBuffer(input, bufferSize);
         }
 
         /// <summary>
@@ -102,6 +100,11 @@ namespace Elskom.Generic.Libs
         /// Gets a value indicating whether the stream is finished.
         /// </summary>
         public bool IsFinished { get; private set; }
+
+        /// <summary>
+        /// Gets the input buffer to this stream.
+        /// </summary>
+        public InflaterInputBuffer InputBuffer { get; private set; }
 
         /// <summary>
         /// Gets the stream's buffer size.
@@ -273,16 +276,16 @@ namespace Elskom.Generic.Libs
         protected void Fill()
         {
             // Protect against redundant calls
-            if (this.inputBuffer.Available <= 0)
+            if (this.InputBuffer.Available <= 0)
             {
-                this.inputBuffer.Fill();
-                if (this.inputBuffer.Available <= 0)
+                this.InputBuffer.Fill();
+                if (this.InputBuffer.Available <= 0)
                 {
                     throw new Exception("Unexpected EOF");
                 }
             }
 
-            this.inputBuffer.SetInflaterInput(this);
+            this.InputBuffer.SetInflaterInput(this);
         }
 
         private void InitBlock()
