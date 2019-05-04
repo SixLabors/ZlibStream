@@ -5,6 +5,7 @@
 
 namespace Elskom.Generic.Libs
 {
+    /*
     using System;
     using System.Collections.Generic;
     using System.IO;
@@ -76,9 +77,17 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Call <see cref="ZInputStream.Read(byte[], int, int)"/> passing the current clear text buffer contents.
         /// </summary>
+        /// <exception cref="ArgumentNullException">
+        /// When <paramref name="zinput"/> is <see langword="null"/>.
+        /// </exception>
         /// <param name="zinput">The stream for which to call Read.</param>
         public void SetInflaterInput(ZInputStream zinput)
         {
+            if (zinput == null)
+            {
+                throw new ArgumentNullException(nameof(zinput));
+            }
+
             if (this.Available > 0)
             {
                 // I think this should read.
@@ -239,4 +248,5 @@ namespace Elskom.Generic.Libs
         public long ReadLeLong()
             => (uint)this.ReadLeInt() | ((long)this.ReadLeInt() << 32);
     }
+    */
 }

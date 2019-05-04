@@ -7,6 +7,7 @@ namespace Elskom.Generic.Libs
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
     using System.IO;
     using System.Linq;
 
@@ -14,34 +15,21 @@ namespace Elskom.Generic.Libs
     /// Class that provices a zlib input stream that supports
     /// compression and decompression.
     /// </summary>
-    public class ZInputStream : BinaryReader
+    public class ZInputStream : Stream
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="ZInputStream"/> class.
         /// </summary>
         /// <param name="input">The input stream.</param>
         public ZInputStream(Stream input)
-            : this(input, 512)
         {
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ZInputStream"/> class.
-        /// </summary>
-        /// <param name="input">The input stream.</param>
-        /// <param name="bufferSize">The buffer size to use.</param>
-        /// <param name="noHeader">The data should not have a header or a footer.</param>
-        public ZInputStream(Stream input, int bufferSize, bool noHeader = false)
-            : base(input)
-        {
-            this.NoHeader = noHeader;
+            this.BaseStream = input;
             this.InitBlock();
             _ = this.Z.InflateInit();
             this.Compress = false;
             this.Z.NextIn = this.Buf;
             this.Z.NextInIndex = 0;
             this.Z.AvailIn = 0;
-            this.InputBuffer = new InflaterInputBuffer(input, bufferSize);
         }
 
         /// <summary>
@@ -50,8 +38,8 @@ namespace Elskom.Generic.Libs
         /// <param name="input">The input stream.</param>
         /// <param name="level">The compression level for the data to compress.</param>
         public ZInputStream(Stream input, int level)
-            : base(input)
         {
+            this.BaseStream = input;
             this.InitBlock();
             _ = this.Z.DeflateInit(level);
             this.Compress = true;
@@ -61,9 +49,9 @@ namespace Elskom.Generic.Libs
         }
 
         /// <summary>
-        /// Gets a value indicating whether the data should not have a header or a footer.
+        /// Gets the base stream that this stream contains.
         /// </summary>
-        public bool NoHeader { get; private set; }
+        public Stream BaseStream { get; private set; }
 
         /// <summary>
         /// Gets the base zlib stream.
@@ -91,20 +79,24 @@ namespace Elskom.Generic.Libs
         public bool Moreinput { get; set; }
 
         /// <summary>
-        /// Gets 0 when at the end of the stream (EOF).
-        /// Otherwise returns 1.
-        /// </summary>
-        public virtual int Available => this.IsFinished ? 0 : 1;
-
-        /// <summary>
         /// Gets a value indicating whether the stream is finished.
         /// </summary>
         public bool IsFinished { get; private set; }
 
-        /// <summary>
-        /// Gets the input buffer to this stream.
-        /// </summary>
-        public InflaterInputBuffer InputBuffer { get; private set; }
+        /// <inheritdoc/>
+        public override bool CanRead => true;
+
+        /// <inheritdoc/>
+        public override bool CanSeek => false;
+
+        /// <inheritdoc/>
+        public override bool CanWrite => false;
+
+        /// <inheritdoc/>
+        public override long Length => this.BaseStream.Length;
+
+        /// <inheritdoc/>
+        public override long Position { get => this.BaseStream.Position; set => this.BaseStream.Position = value; }
 
         /// <summary>
         /// Gets the stream's buffer size.
@@ -128,7 +120,7 @@ namespace Elskom.Generic.Libs
         protected bool Compress { get; private set; }
 
         /// <inheritdoc/>
-        public override int Read() => this.Read(this.Buf1.ToArray(), 0, 1) == -1 ? -1 : this.Buf1.ToArray()[0] & 0xFF;
+        public override int ReadByte() => this.Read(this.Buf1.ToArray(), 0, 1) == -1 ? -1 : this.Buf1.ToArray()[0] & 0xFF;
 
         /// <inheritdoc/>
         public override int Read(byte[] b, int off, int len)
@@ -248,6 +240,7 @@ namespace Elskom.Generic.Libs
         }
 
         /// <inheritdoc/>
+        [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "This method should not throw any exceptions.")]
         public override void Close()
         {
             try
@@ -256,7 +249,7 @@ namespace Elskom.Generic.Libs
                 {
                     this.Finish();
                 }
-                catch
+                catch (Exception)
                 {
                 }
             }
@@ -267,26 +260,17 @@ namespace Elskom.Generic.Libs
             }
         }
 
-        /// <summary>
-        /// Fills the buffer with more data to decompress.
-        /// </summary>
-        /// <exception cref="Exception">
-        /// Stream ends early.
-        /// </exception>
-        protected void Fill()
-        {
-            // Protect against redundant calls
-            if (this.InputBuffer.Available <= 0)
-            {
-                this.InputBuffer.Fill();
-                if (this.InputBuffer.Available <= 0)
-                {
-                    throw new Exception("Unexpected EOF");
-                }
-            }
+        /// <inheritdoc/>
+        public override void Flush() => this.BaseStream.Flush();
 
-            this.InputBuffer.SetInflaterInput(this);
-        }
+        /// <inheritdoc/>
+        public override long Seek(long offset, SeekOrigin origin) => 0;
+
+        /// <inheritdoc/>
+        public override void SetLength(long value) => throw new NotImplementedException();
+
+        /// <inheritdoc/>
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotImplementedException();
 
         private void InitBlock()
         {

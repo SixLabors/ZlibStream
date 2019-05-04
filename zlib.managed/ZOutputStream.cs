@@ -7,6 +7,7 @@ namespace Elskom.Generic.Libs
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
     using System.IO;
     using System.Linq;
 
@@ -14,15 +15,15 @@ namespace Elskom.Generic.Libs
     /// Class that provices a zlib output stream that supports
     /// compression and decompression.
     /// </summary>
-    public class ZOutputStream : BinaryWriter
+    public class ZOutputStream : Stream
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="ZOutputStream"/> class.
         /// </summary>
         /// <param name="output">The output stream.</param>
         public ZOutputStream(Stream output)
-            : base(output)
         {
+            this.BaseStream = output;
             this.InitBlock();
             _ = this.Z.InflateInit();
             this.Compress = false;
@@ -34,12 +35,17 @@ namespace Elskom.Generic.Libs
         /// <param name="output">The output stream.</param>
         /// <param name="level">The compression level for the data to compress.</param>
         public ZOutputStream(Stream output, int level)
-            : base(output)
         {
+            this.BaseStream = output;
             this.InitBlock();
             _ = this.Z.DeflateInit(level);
             this.Compress = true;
         }
+
+        /// <summary>
+        /// Gets the base stream that this stream contains.
+        /// </summary>
+        public Stream BaseStream { get; private set; }
 
         /// <summary>
         /// Gets the base zlib stream.
@@ -61,6 +67,21 @@ namespace Elskom.Generic.Libs
 
         /// <summary>Gets the total number of bytes output so far.</summary>
         public virtual long TotalOut => this.Z.TotalOut;
+
+        /// <inheritdoc/>
+        public override bool CanRead => false;
+
+        /// <inheritdoc/>
+        public override bool CanSeek => false;
+
+        /// <inheritdoc/>
+        public override bool CanWrite => true;
+
+        /// <inheritdoc/>
+        public override long Length => this.BaseStream.Length;
+
+        /// <inheritdoc/>
+        public override long Position { get => this.BaseStream.Position; set => this.BaseStream.Position = value; }
 
         /// <summary>
         /// Gets the stream's buffer size.
@@ -84,18 +105,38 @@ namespace Elskom.Generic.Libs
         protected internal bool Compress { get; private set; }
 
         /// <inheritdoc/>
-        public override void Write(byte b) => this.Write((int)b);
+        public override void WriteByte(byte value) => this.WriteByte((int)value);
 
-        /// <inheritdoc/>
-        public override void Write(int b)
+        /// <summary>
+        /// Writes a byte to the current position in the stream and advances the position
+        /// within the stream by one byte.
+        /// </summary>
+        /// <param name="value">
+        /// The byte to write to the stream.
+        /// </param>
+        /// <exception cref="IOException">
+        /// An I/O error occurs.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// The stream does not support writing, or the stream is already closed.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// Methods were called after the stream was closed.
+        /// </exception>
+        public void WriteByte(int value)
         {
-            this.Buf1.ToArray()[0] = (byte)b;
+            this.Buf1.ToArray()[0] = (byte)value;
             this.Write(this.Buf1.ToArray(), 0, 1);
         }
 
         /// <inheritdoc/>
         public override void Write(byte[] b1, int off, int len)
         {
+            if (b1 == null)
+            {
+                throw new ArgumentNullException(nameof(b1));
+            }
+
             if (len == 0)
             {
                 return;
@@ -136,6 +177,7 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Finishes the stream.
         /// </summary>
+        [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "This method should not throw any exceptions.")]
         public virtual void Finish()
         {
             if (!this.IsFinished)
@@ -168,7 +210,7 @@ namespace Elskom.Generic.Libs
                 {
                     this.Flush();
                 }
-                catch
+                catch (Exception)
                 {
                 }
 
@@ -188,6 +230,7 @@ namespace Elskom.Generic.Libs
         }
 
         /// <inheritdoc/>
+        [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "This method should not throw any exceptions.")]
         public override void Close()
         {
             try
@@ -196,7 +239,7 @@ namespace Elskom.Generic.Libs
                 {
                     this.Finish();
                 }
-                catch
+                catch (Exception)
                 {
                 }
             }
@@ -208,7 +251,16 @@ namespace Elskom.Generic.Libs
         }
 
         /// <inheritdoc/>
-        public override void Flush() => base.Flush();
+        public override void Flush() => this.BaseStream.Flush();
+
+        /// <inheritdoc/>
+        public override int Read(byte[] buffer, int offset, int count) => 0;
+
+        /// <inheritdoc/>
+        public override long Seek(long offset, SeekOrigin origin) => 0;
+
+        /// <inheritdoc/>
+        public override void SetLength(long value) => throw new NotImplementedException();
 
         private void InitBlock()
         {

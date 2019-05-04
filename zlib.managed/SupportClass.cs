@@ -5,6 +5,7 @@
 
 namespace Elskom.Generic.Libs
 {
+    using System;
     using System.IO;
     using System.Text;
 
@@ -78,6 +79,7 @@ namespace Elskom.Generic.Libs
         /*******************************/
 
         /// <summary>Reads a number of characters from the current source Stream and writes the data to the target array at the specified index.</summary>
+        /// <exception cref="ArgumentNullException">When <paramref name="sourceStream"/> or <paramref name="target"/> are <see langword="null"/>.</exception>
         /// <param name="sourceStream">The source Stream to read from.</param>
         /// <param name="target">Contains the array of characteres read from the source Stream.</param>
         /// <param name="start">The starting index of the target array.</param>
@@ -85,6 +87,16 @@ namespace Elskom.Generic.Libs
         /// <returns>The number of characters read. The number will be less than or equal to count depending on the data available in the source Stream. Returns -1 if the end of the stream is reached.</returns>
         public static int ReadInput(Stream sourceStream, byte[] target, int start, int count)
         {
+            if (sourceStream == null)
+            {
+                throw new ArgumentNullException(nameof(sourceStream));
+            }
+
+            if (target == null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+
             // Returns 0 bytes if not enough space in target
             if (target.Length == 0)
             {
@@ -109,6 +121,7 @@ namespace Elskom.Generic.Libs
         }
 
         /// <summary>Reads a number of characters from the current source TextReader and writes the data to the target array at the specified index.</summary>
+        /// <exception cref="ArgumentNullException">When <paramref name="sourceTextReader"/> or <paramref name="target"/> are <see langword="null"/>.</exception>
         /// <param name="sourceTextReader">The source TextReader to read from.</param>
         /// <param name="target">Contains the array of characteres read from the source TextReader.</param>
         /// <param name="start">The starting index of the target array.</param>
@@ -116,6 +129,16 @@ namespace Elskom.Generic.Libs
         /// <returns>The number of characters read. The number will be less than or equal to count depending on the data available in the source TextReader. Returns -1 if the end of the stream is reached.</returns>
         public static int ReadInput(TextReader sourceTextReader, byte[] target, int start, int count)
         {
+            if (sourceTextReader == null)
+            {
+                throw new ArgumentNullException(nameof(sourceTextReader));
+            }
+
+            if (target == null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+
             // Returns 0 bytes if not enough space in target
             if (target.Length == 0)
             {
