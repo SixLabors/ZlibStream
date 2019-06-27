@@ -12,13 +12,13 @@ install:
 
     {
 
-    Write-Host "Installing .NET Core 3.0.100-preview-010184 SDK..." -ForegroundColor Cyan
+    Write-Host "Installing .NET Core 3.0.100-preview5-011568 SDK..." -ForegroundColor Cyan
 
     Write-Host "Downloading..."
 
-    $exePath = "$env:TEMP\dotnet-sdk-3.0.100-preview-010184-win-x64.exe"
+    $exePath = "$env:TEMP\dotnet-sdk-3.0.100-preview5-011568-win-x64.exe"
 
-    (New-Object Net.WebClient).DownloadFile('https://download.visualstudio.microsoft.com/download/pr/a7e73d05-4e75-4543-ac41-fc69d2f617e5/3f65a44f90c9df66664b44e86b0e6d29/dotnet-sdk-3.0.100-preview-010184-win-x64.exe', $exePath)
+    (New-Object Net.WebClient).DownloadFile('https://download.visualstudio.microsoft.com/download/pr/c2521385-1648-415f-8503-b1860b80d57b/5d571a80ed7ba1cb5a085d28c8a018bf/dotnet-sdk-3.0.100-preview5-011568-win-x64.exe', $exePath)
 
     Write-Host "Installing..."
 
