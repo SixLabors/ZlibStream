@@ -63,8 +63,10 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <!--
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
+    -->
     <OutputPath>bin\Any CPU\Debug\</OutputPath>
     <DocumentationFile>bin\Any CPU\Debug\zlib.managed.xml</DocumentationFile>
     <DebugType>full</DebugType>
@@ -72,8 +74,10 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <!--
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
+    -->
     <OutputPath>bin\Any CPU\Release\</OutputPath>
     <DocumentationFile>bin\Any CPU\Release\zlib.managed.xml</DocumentationFile>
     <DebugType>full</DebugType>
