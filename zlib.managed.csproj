@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp2.0;netcoreapp2.1;netcoreapp2.2;netcoreapp3.0;netstandard2.0;net40;net45;net451;net452;net46;net461;net462;net47;net471;net472</TargetFrameworks>
+    <TargetFrameworks>netcoreapp2.0;netcoreapp2.1;netcoreapp2.2;netcoreapp3.0;netcoreapp3.1;netstandard2.0;net40;net45;net451;net452;net46;net461;net462;net47;net471;net472</TargetFrameworks>
     <AssemblyName>zlib.managed</AssemblyName>
     <LangVersion>latest</LangVersion>
     <Company>Els_kom org.</Company>
@@ -22,51 +22,18 @@
     <AssemblyOriginatorKeyFile>Elskom.snk</AssemblyOriginatorKeyFile>
     <DelaySign>false</DelaySign>
     <PackageOutputPath Condition="'$(SolutionName)' == 'build_all_packages'">$(MSBuildThisFileDirectory)..\artifacts\</PackageOutputPath>
+    <!-- Optional: Publish the repository URL in the built .nupkg (in the NuSpec <Repository> element) -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <!-- Optional: Embed source files that are not tracked by the source control manager in the PDB -->
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <!-- Optional: Build symbol package (.snupkg) to distribute the PDB containing Source Link -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <IncludeBuildOutput>true</IncludeBuildOutput>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
-
-  <ItemGroup>
-    <!-- Add reference binaries. -->
-    <TfmSpecificPackageFile Include="$(OutputPath)/ref/">
-      <PackagePath>ref/$(TargetFramework)</PackagePath>
-    </TfmSpecificPackageFile>
-    <!-- Add documentation file to each of the reference assembly paths. -->
-    <TfmSpecificPackageFile Include="$(OutputPath)/$(ProjectName).xml">
-      <PackagePath>ref/$(TargetFramework)</PackagePath>
-    </TfmSpecificPackageFile>
-    <!-- Add debugging symbols. -->
-    <TfmSpecificPackageFile Include="$(OutputPath)/$(ProjectName).pdb">
-      <PackagePath>lib/$(TargetFramework)</PackagePath>
-    </TfmSpecificPackageFile>
-    <!-- Add source code. -->
-    <TfmSpecificPackageFile Include="$(ProjectPath)">
-      <PackagePath>src/$(ProjectName)/$(ProjectFileName)</PackagePath>
-    </TfmSpecificPackageFile>
-    <TfmSpecificPackageFile Include="$(ProjectDir)/$(ProjectName)/">
-      <PackagePath>src/$(ProjectName)/$(ProjectName)/</PackagePath>
-    </TfmSpecificPackageFile>
-    <TfmSpecificPackageFile Include="$(ProjectDir)/README.md">
-      <PackagePath>src/$(ProjectName)/README.md</PackagePath>
-    </TfmSpecificPackageFile>
-    <TfmSpecificPackageFile Include="$(ProjectDir)/stylecop.json">
-      <PackagePath>src/$(ProjectName)/stylecop.json</PackagePath>
-    </TfmSpecificPackageFile>
-    <TfmSpecificPackageFile Include="$(ProjectDir)/global.json">
-      <PackagePath>src/$(ProjectName)/global.json</PackagePath>
-    </TfmSpecificPackageFile>
-    <TfmSpecificPackageFile Include="$(ProjectDir)/$(ProjectName).ruleset">
-      <PackagePath>src/$(ProjectName)/$(ProjectName).ruleset</PackagePath>
-    </TfmSpecificPackageFile>
-    <TfmSpecificPackageFile Include="$(ProjectDir)/Elskom.snk">
-      <PackagePath>src/$(ProjectName)/Elskom.snk</PackagePath>
-    </TfmSpecificPackageFile>
-  </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <!--
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-    -->
     <OutputPath>bin\Any CPU\Debug\</OutputPath>
     <DocumentationFile>bin\Any CPU\Debug\zlib.managed.xml</DocumentationFile>
     <DebugType>full</DebugType>
@@ -74,10 +41,6 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <!--
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-    -->
     <OutputPath>bin\Any CPU\Release\</OutputPath>
     <DocumentationFile>bin\Any CPU\Release\zlib.managed.xml</DocumentationFile>
     <DebugType>full</DebugType>
@@ -97,18 +60,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="GitBuildInfo" Version="0.18.0">
+    <PackageReference Include="GitBuildInfo" Version="0.20.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.164">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
-		<PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="2.9.8">
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-			<PrivateAssets>all</PrivateAssets>
-		</PackageReference>
+    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.0.0-beta2.20154.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="IDisposableAnalyzers" Version="3.3.2">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -119,6 +82,7 @@
     <PackageReference Include="System.Runtime.Extensions" Condition="!$(TargetFramework.StartsWith('net4'))">
       <Version>4.3.1</Version>
     </PackageReference>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.0-beta-20159-02" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup Condition="Exists('..\GitInformation\src\GitInformation\AraHaan.GitInformation.csproj')">
