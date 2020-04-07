@@ -5,8 +5,6 @@
 
 namespace Elskom.Generic.Libs
 {
-    using System.Linq;
-
     /// <summary>
     /// Class for decompressing data through zlib.
     /// </summary>
@@ -118,7 +116,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        if (((z.Istate.Method = z.NextIn.ToArray()[z.NextInIndex++]) & 0xf) != ZDEFLATED)
+                        if (((z.Istate.Method = z.NextIn[z.NextInIndex++]) & 0xf) != ZDEFLATED)
                         {
                             z.Istate.Mode = BAD;
                             z.Msg = "unknown compression method";
@@ -147,7 +145,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        b = z.NextIn.ToArray()[z.NextInIndex++] & 0xff;
+                        b = z.NextIn[z.NextInIndex++] & 0xff;
 
                         if ((((z.Istate.Method << 8) + b) % 31) != 0)
                         {
@@ -176,7 +174,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need = ((z.NextIn.ToArray()[z.NextInIndex++] & 0xff) << 24) & unchecked((int)0xff000000L);
+                        z.Istate.Need = ((z.NextIn[z.NextInIndex++] & 0xff) << 24) & unchecked((int)0xff000000L);
                         z.Istate.Mode = DICT3;
                         goto case DICT3;
 
@@ -190,7 +188,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need += ((z.NextIn.ToArray()[z.NextInIndex++] & 0xff) << 16) & 0xff0000L;
+                        z.Istate.Need += ((z.NextIn[z.NextInIndex++] & 0xff) << 16) & 0xff0000L;
                         z.Istate.Mode = DICT2;
                         goto case DICT2;
 
@@ -204,7 +202,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need += ((z.NextIn.ToArray()[z.NextInIndex++] & 0xff) << 8) & 0xff00L;
+                        z.Istate.Need += ((z.NextIn[z.NextInIndex++] & 0xff) << 8) & 0xff00L;
                         z.Istate.Mode = DICT1;
                         goto case DICT1;
 
@@ -218,7 +216,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need += z.NextIn.ToArray()[z.NextInIndex++] & 0xffL;
+                        z.Istate.Need += z.NextIn[z.NextInIndex++] & 0xffL;
                         z.Adler = z.Istate.Need;
                         z.Istate.Mode = DICT0;
                         return ZNEEDDICT;
@@ -270,7 +268,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need = ((z.NextIn.ToArray()[z.NextInIndex++] & 0xff) << 24) & unchecked((int)0xff000000L);
+                        z.Istate.Need = ((z.NextIn[z.NextInIndex++] & 0xff) << 24) & unchecked((int)0xff000000L);
                         z.Istate.Mode = CHECK3;
                         goto case CHECK3;
 
@@ -284,7 +282,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need += ((z.NextIn.ToArray()[z.NextInIndex++] & 0xff) << 16) & 0xff0000L;
+                        z.Istate.Need += ((z.NextIn[z.NextInIndex++] & 0xff) << 16) & 0xff0000L;
                         z.Istate.Mode = CHECK2;
                         goto case CHECK2;
 
@@ -298,7 +296,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need += ((z.NextIn.ToArray()[z.NextInIndex++] & 0xff) << 8) & 0xff00L;
+                        z.Istate.Need += ((z.NextIn[z.NextInIndex++] & 0xff) << 8) & 0xff00L;
                         z.Istate.Mode = CHECK1;
                         goto case CHECK1;
 
@@ -312,7 +310,7 @@ namespace Elskom.Generic.Libs
                         r = f;
 
                         z.AvailIn--; z.TotalIn++;
-                        z.Istate.Need += z.NextIn.ToArray()[z.NextInIndex++] & 0xffL;
+                        z.Istate.Need += z.NextIn[z.NextInIndex++] & 0xffL;
 
                         if (((int)z.Istate.Was[0]) != ((int)z.Istate.Need))
                         {
@@ -394,13 +392,13 @@ namespace Elskom.Generic.Libs
             // search
             while (n != 0 && m < 4)
             {
-                if (z.NextIn.ToArray()[p] == Mark[m])
+                if (z.NextIn[p] == Mark[m])
                 {
                     m++;
                 }
                 else
                 {
-                    m = z.NextIn.ToArray()[p] != 0 ? 0 : 4 - m;
+                    m = z.NextIn[p] != 0 ? 0 : 4 - m;
                 }
 
                 p++;

@@ -6,10 +6,8 @@
 namespace Elskom.Generic.Libs
 {
     using System;
-    using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
     using System.IO;
-    using System.Linq;
 
     /// <summary>
     /// Class that provices a zlib output stream that supports
@@ -91,13 +89,13 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Gets the stream's buffer.
         /// </summary>
-        protected internal IEnumerable<byte> Buf { get; private set; }
+        protected internal byte[] Buf { get; private set; }
 
         /// <summary>
         /// Gets the stream's single byte buffer value.
         /// For reading 1 byte at a time.
         /// </summary>
-        protected internal IEnumerable<byte> Buf1 { get; private set; } = new byte[1];
+        protected internal byte[] Buf1 { get; private set; } = new byte[1];
 
         /// <summary>
         /// Gets a value indicating whether this stream is setup for compression.
@@ -125,8 +123,8 @@ namespace Elskom.Generic.Libs
         /// </exception>
         public void WriteByte(int value)
         {
-            this.Buf1.ToArray()[0] = (byte)value;
-            this.Write(this.Buf1.ToArray(), 0, 1);
+            this.Buf1[0] = (byte)value;
+            this.Write(this.Buf1, 0, 1);
         }
 
         /// <inheritdoc/>
@@ -160,7 +158,7 @@ namespace Elskom.Generic.Libs
                     throw new ZStreamException((this.Compress ? "de" : "in") + "flating: " + this.Z.Msg);
                 }
 
-                this.BaseStream.Write(this.Buf.ToArray(), 0, this.Bufsize - this.Z.AvailOut);
+                this.BaseStream.Write(this.Buf, 0, this.Bufsize - this.Z.AvailOut);
                 if (!this.Compress && this.Z.AvailIn == 0 && this.Z.AvailOut == 0)
                 {
                     break;
@@ -197,7 +195,7 @@ namespace Elskom.Generic.Libs
 
                     if (this.Bufsize - this.Z.AvailOut > 0)
                     {
-                        this.BaseStream.Write(this.Buf.ToArray(), 0, this.Bufsize - this.Z.AvailOut);
+                        this.BaseStream.Write(this.Buf, 0, this.Bufsize - this.Z.AvailOut);
                     }
 
                     if (err == ZlibConst.ZSTREAMEND)

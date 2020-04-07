@@ -6,8 +6,6 @@
 namespace Elskom.Generic.Libs
 {
     using System;
-    using System.Collections.Generic;
-    using System.Linq;
 
     /// <summary>
     /// The zlib stream class.
@@ -37,7 +35,7 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Gets or sets the next input byte.
         /// </summary>
-        public IEnumerable<byte> NextIn { get; set; }
+        public byte[] NextIn { get; set; }
 
         /// <summary>
         /// Gets or sets the next input byte index.
@@ -57,7 +55,7 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Gets or sets the next output byte.
         /// </summary>
-        public IEnumerable<byte> NextOut { get; set; }
+        public byte[] NextOut { get; set; }
 
         /// <summary>
         /// Gets or sets the next output byte index.
@@ -239,13 +237,13 @@ namespace Elskom.Generic.Libs
                 return;
             }
 
-            if (this.Dstate.PendingBuf.Length <= this.Dstate.PendingOut || this.NextOut.ToArray().Length <= this.NextOutIndex || this.Dstate.PendingBuf.Length < (this.Dstate.PendingOut + len) || this.NextOut.ToArray().Length < (this.NextOutIndex + len))
+            if (this.Dstate.PendingBuf.Length <= this.Dstate.PendingOut || this.NextOut.Length <= this.NextOutIndex || this.Dstate.PendingBuf.Length < (this.Dstate.PendingOut + len) || this.NextOut.Length < (this.NextOutIndex + len))
             {
                 // System.Console.Out.WriteLine(dstate.pending_buf.Length + ", " + dstate.pending_out + ", " + next_out.Length + ", " + next_out_index + ", " + len);
                 // System.Console.Out.WriteLine("avail_out=" + avail_out);
             }
 
-            Array.Copy(this.Dstate.PendingBuf, this.Dstate.PendingOut, this.NextOut.ToArray(), this.NextOutIndex, len);
+            Array.Copy(this.Dstate.PendingBuf, this.Dstate.PendingOut, this.NextOut, this.NextOutIndex, len);
 
             this.NextOutIndex += len;
             this.Dstate.PendingOut += len;
@@ -281,10 +279,10 @@ namespace Elskom.Generic.Libs
 
             if (this.Dstate.Noheader == 0)
             {
-                this.Adler = Adler32.Calculate(this.Adler, this.NextIn.ToArray(), this.NextInIndex, len);
+                this.Adler = Adler32.Calculate(this.Adler, this.NextIn, this.NextInIndex, len);
             }
 
-            Array.Copy(this.NextIn.ToArray(), this.NextInIndex, buf, start, len);
+            Array.Copy(this.NextIn, this.NextInIndex, buf, start, len);
             this.NextInIndex += len;
             this.TotalIn += len;
             return len;

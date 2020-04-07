@@ -6,7 +6,6 @@
 namespace Elskom.Generic.Libs
 {
     using System;
-    using System.Linq;
 
     internal sealed class InfBlocks
     {
@@ -166,7 +165,7 @@ namespace Elskom.Generic.Libs
                             }
 
                             n--;
-                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -256,7 +255,7 @@ namespace Elskom.Generic.Libs
                             }
 
                             n--;
-                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -338,7 +337,7 @@ namespace Elskom.Generic.Libs
                             t = m;
                         }
 
-                        Array.Copy(z.NextIn.ToArray(), p, this.Window, q, t);
+                        Array.Copy(z.NextIn, p, this.Window, q, t);
                         p += t; n -= t;
                         q += t; m -= t;
                         if ((this.left -= t) != 0)
@@ -369,7 +368,7 @@ namespace Elskom.Generic.Libs
                             }
 
                             n--;
-                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -421,7 +420,7 @@ namespace Elskom.Generic.Libs
                                 }
 
                                 n--;
-                                b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                                b |= (z.NextIn[p++] & 0xff) << k;
                                 k += 8;
                             }
 
@@ -492,7 +491,7 @@ namespace Elskom.Generic.Libs
                                 }
 
                                 n--;
-                                b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                                b |= (z.NextIn[p++] & 0xff) << k;
                                 k += 8;
                             }
 
@@ -534,7 +533,7 @@ namespace Elskom.Generic.Libs
                                     }
 
                                     n--;
-                                    b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                                    b |= (z.NextIn[p++] & 0xff) << k;
                                     k += 8;
                                 }
 
@@ -734,7 +733,7 @@ namespace Elskom.Generic.Libs
             }
 
             // copy as far as end of window
-            Array.Copy(this.Window, q, z.NextOut.ToArray(), p, n);
+            Array.Copy(this.Window, q, z.NextOut, p, n);
             p += n;
             q += n;
 
@@ -771,7 +770,7 @@ namespace Elskom.Generic.Libs
                 }
 
                 // copy
-                Array.Copy(this.Window, q, z.NextOut.ToArray(), p, n);
+                Array.Copy(this.Window, q, z.NextOut, p, n);
                 p += n;
                 q += n;
             }

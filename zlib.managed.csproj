@@ -13,7 +13,7 @@
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <Copyright>Copyright (c) 2018-2019</Copyright>
     <Description>A cleaned up and bug fixed version of zlib.net. This is also planned to be updated frequently if needed too.</Description>
-    <PackageReleaseNotes>Code fixes to expose more members.</PackageReleaseNotes>
+    <PackageReleaseNotes>Code fixes to expose more members and fix null data output.</PackageReleaseNotes>
     <Version>1.1.4</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>

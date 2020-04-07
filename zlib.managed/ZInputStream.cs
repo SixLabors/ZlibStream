@@ -6,10 +6,8 @@
 namespace Elskom.Generic.Libs
 {
     using System;
-    using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
     using System.IO;
-    using System.Linq;
 
     /// <summary>
     /// Class that provices a zlib input stream that supports
@@ -106,13 +104,13 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Gets the stream's buffer.
         /// </summary>
-        protected IEnumerable<byte> Buf { get; private set; }
+        protected byte[] Buf { get; private set; }
 
         /// <summary>
         /// Gets the stream's single byte buffer value.
         /// For reading 1 byte at a time.
         /// </summary>
-        protected IEnumerable<byte> Buf1 { get; private set; } = new byte[1];
+        protected byte[] Buf1 { get; private set; } = new byte[1];
 
         /// <summary>
         /// Gets a value indicating whether this stream is setup for compression.
@@ -120,7 +118,7 @@ namespace Elskom.Generic.Libs
         protected bool Compress { get; private set; }
 
         /// <inheritdoc/>
-        public override int ReadByte() => this.Read(this.Buf1.ToArray(), 0, 1) == -1 ? -1 : this.Buf1.ToArray()[0] & 0xFF;
+        public override int ReadByte() => this.Read(this.Buf1, 0, 1) == -1 ? -1 : this.Buf1[0] & 0xFF;
 
         /// <inheritdoc/>
         public override int Read(byte[] b, int off, int len)
@@ -140,7 +138,7 @@ namespace Elskom.Generic.Libs
                 {
                     // if buffer is empty and more input is avaiable, refill it
                     this.Z.NextInIndex = 0;
-                    this.Z.AvailIn = SupportClass.ReadInput(this.BaseStream, this.Buf.ToArray(), 0, this.Bufsize); // (bufsize<z.avail_out ? bufsize : z.avail_out));
+                    this.Z.AvailIn = SupportClass.ReadInput(this.BaseStream, this.Buf, 0, this.Bufsize); // (bufsize<z.avail_out ? bufsize : z.avail_out));
                     if (this.Z.AvailIn == -1)
                     {
                         this.Z.AvailIn = 0;
@@ -214,7 +212,7 @@ namespace Elskom.Generic.Libs
 
                     if (this.Bufsize - this.Z.AvailOut > 0)
                     {
-                        this.BaseStream.Write(this.Buf.ToArray(), 0, this.Bufsize - this.Z.AvailOut);
+                        this.BaseStream.Write(this.Buf, 0, this.Bufsize - this.Z.AvailOut);
                     }
 
                     if (err == ZlibConst.ZSTREAMEND)

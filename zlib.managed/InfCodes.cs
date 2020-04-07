@@ -6,7 +6,6 @@
 namespace Elskom.Generic.Libs
 {
     using System;
-    using System.Linq;
 
     internal sealed class InfCodes
     {
@@ -142,7 +141,7 @@ namespace Elskom.Generic.Libs
                 {
                     // max bits for literal/length code
                     n--;
-                    b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                    b |= (z.NextIn[p++] & 0xff) << k;
                     k += 8;
                 }
 
@@ -177,7 +176,7 @@ namespace Elskom.Generic.Libs
                         {
                             // max bits for distance code
                             n--;
-                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -199,7 +198,7 @@ namespace Elskom.Generic.Libs
                                 {
                                     // get extra bits (up to 13)
                                     n--;
-                                    b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                                    b |= (z.NextIn[p++] & 0xff) << k;
                                     k += 8;
                                 }
 
@@ -467,7 +466,7 @@ namespace Elskom.Generic.Libs
                             }
 
                             n--;
-                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -540,7 +539,7 @@ namespace Elskom.Generic.Libs
                             }
 
                             n--;
-                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -576,7 +575,7 @@ namespace Elskom.Generic.Libs
                             }
 
                             n--;
-                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -633,7 +632,7 @@ namespace Elskom.Generic.Libs
                             }
 
                             n--;
-                            b |= (z.NextIn.ToArray()[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
