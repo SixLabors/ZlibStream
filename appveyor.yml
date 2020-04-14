@@ -46,10 +46,7 @@ install:
 
     }
 before_build:
-- ps: >-
-    nuget sources Add -Name "Generic Roslyn Analyzers" -Source https://dotnet.myget.org/F/roslyn-analyzers/api/v3/index.json
-
-    nuget restore
+- ps: nuget restore
 build:
   project: zlib.managed.sln
   publish_nuget: true
