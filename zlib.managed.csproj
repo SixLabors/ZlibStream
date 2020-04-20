@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp2.0;netcoreapp2.1;netcoreapp2.2;netcoreapp3.0;netcoreapp3.1;netstandard2.0;net40;net45;net451;net452;net46;net461;net462;net47;net471;net472</TargetFrameworks>
+    <TargetFrameworks>netcoreapp2.0;netcoreapp2.1;netcoreapp2.2;netcoreapp3.0;netcoreapp3.1;netstandard2.0;net40;net45;net451;net452;net46;net461;net462;net47;net471;net472;net48</TargetFrameworks>
     <AssemblyName>zlib.managed</AssemblyName>
     <LangVersion>latest</LangVersion>
     <Company>Els_kom org.</Company>
@@ -67,6 +67,7 @@
     <PackageReference Include="System.Runtime" Condition="!$(TargetFramework.StartsWith('net4'))" Version="4.3.1" />
     <PackageReference Include="System.Runtime.Extensions" Condition="!$(TargetFramework.StartsWith('net4'))" Version="4.3.1" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.0-beta-20217-01" PrivateAssets="All" />
+    <PackageReference Condition="!$(TargetFramework.StartsWith('netcoreapp')) AND !$(TargetFramework.StartsWith('netstandard'))" Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
   </ItemGroup>
 
   <ItemGroup Condition="Exists('..\GitInformation\src\GitInformation\AraHaan.GitInformation.csproj')">

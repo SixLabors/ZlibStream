@@ -28,22 +28,6 @@ install:
 
     Write-Host "Installed" -ForegroundColor Green
 
-    Write-Host "Installing .NET Framework 4.8 Targeting Pack..." -ForegroundColor Cyan
-
-    Write-Host "Downloading..."
-
-    $exePath = "$env:TEMP\ndp48-devpack-enu.exe"
-
-    (New-Object Net.WebClient).DownloadFile('https://download.visualstudio.microsoft.com/download/pr/9854b5f2-2341-4136-ad7d-1d881ab8d603/e3a011f2a41a59b086f78d64e1c7a3fc/ndp48-devpack-enu.exe', $exePath)
-
-    Write-Host "Installing..."
-
-    cmd /c start /wait "$exePath" /quiet /norestart
-
-    del $exePath
-
-    Write-Host "Installed" -ForegroundColor Green
-
     }
 before_build:
 - ps: nuget restore
