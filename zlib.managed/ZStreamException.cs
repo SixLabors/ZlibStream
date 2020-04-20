@@ -7,10 +7,12 @@ namespace Elskom.Generic.Libs
 {
     using System;
     using System.IO;
+    using System.Runtime.Serialization;
 
     /// <summary>
     /// The exception that is thrown when an zlib error occurs.
     /// </summary>
+    [Serializable]
     public class ZStreamException : IOException
     {
         /// <summary>
@@ -46,6 +48,17 @@ namespace Elskom.Generic.Libs
         /// </param>
         public ZStreamException(string message, Exception innerException)
             : base(message, innerException)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ZStreamException"/> class
+        /// with the specified serialization and context information.
+        /// </summary>
+        /// <param name="info">The data for serializing or deserializing the object.</param>
+        /// <param name="context">The source and destination for the object.</param>
+        protected ZStreamException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
         {
         }
     }

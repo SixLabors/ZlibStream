@@ -14,7 +14,7 @@
     <Copyright>Copyright (c) 2018-2019</Copyright>
     <Description>A cleaned up and bug fixed version of zlib.net. This is also planned to be updated frequently if needed too.</Description>
     <PackageReleaseNotes>Code fixes to expose more members and fix null data output.</PackageReleaseNotes>
-    <Version>1.1.4</Version>
+    <Version>1.1.5</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
     <NoWarn>$(NoWarn);NU5104;NU5118</NoWarn>
@@ -60,28 +60,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="GitBuildInfo" Version="0.22.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.164">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.0.0-beta4.20207.4+07df2f07">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="IDisposableAnalyzers" Version="3.3.7">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="System.Runtime" Condition="!$(TargetFramework.StartsWith('net4'))">
-      <Version>4.3.1</Version>
-    </PackageReference>
-    <PackageReference Include="System.Runtime.Extensions" Condition="!$(TargetFramework.StartsWith('net4'))">
-      <Version>4.3.1</Version>
-    </PackageReference>
+    <PackageReference Include="GitBuildInfo" Version="0.22.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.164" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.0.0-beta4.20207.4+07df2f07" IncludeAssets="runtime; build; native; contentfiles; analyzers" PrivateAssets="All" />
+    <PackageReference Include="IDisposableAnalyzers" Version="3.3.7" IncludeAssets="runtime; build; native; contentfiles; analyzers" PrivateAssets="All" />
+    <PackageReference Include="System.Runtime" Condition="!$(TargetFramework.StartsWith('net4'))" Version="4.3.1" />
+    <PackageReference Include="System.Runtime.Extensions" Condition="!$(TargetFramework.StartsWith('net4'))" Version="4.3.1" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.0-beta-20217-01" PrivateAssets="All" />
   </ItemGroup>
 
@@ -90,9 +74,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="!Exists('..\GitInformation\src\GitInformation\AraHaan.GitInformation.csproj')">
-    <PackageReference Include="AraHaan.GitInformation">
-      <Version>1.0.0</Version>
-    </PackageReference>
+    <PackageReference Include="AraHaan.GitInformation" Version="1.0.0" />
   </ItemGroup>
 
   <Target Name="GitBuildInfo" BeforeTargets="PrepareForBuild">

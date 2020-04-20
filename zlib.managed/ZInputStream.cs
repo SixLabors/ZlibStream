@@ -6,8 +6,10 @@
 namespace Elskom.Generic.Libs
 {
     using System;
+    using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
     using System.IO;
+    using System.Linq;
 
     /// <summary>
     /// Class that provices a zlib input stream that supports
@@ -15,6 +17,9 @@ namespace Elskom.Generic.Libs
     /// </summary>
     public class ZInputStream : Stream
     {
+        private byte[] pBuf;
+        private byte[] pBuf1 = new byte[1];
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ZInputStream"/> class.
         /// </summary>
@@ -25,7 +30,7 @@ namespace Elskom.Generic.Libs
             this.InitBlock();
             _ = this.Z.InflateInit();
             this.Compress = false;
-            this.Z.NextIn = this.Buf;
+            this.Z.INextIn = this.pBuf;
             this.Z.NextInIndex = 0;
             this.Z.AvailIn = 0;
         }
@@ -35,13 +40,13 @@ namespace Elskom.Generic.Libs
         /// </summary>
         /// <param name="input">The input stream.</param>
         /// <param name="level">The compression level for the data to compress.</param>
-        public ZInputStream(Stream input, int level)
+        public ZInputStream(Stream input, ZlibCompression level)
         {
             this.BaseStream = input;
             this.InitBlock();
             _ = this.Z.DeflateInit(level);
             this.Compress = true;
-            this.Z.NextIn = this.Buf;
+            this.Z.INextIn = this.pBuf;
             this.Z.NextInIndex = 0;
             this.Z.AvailIn = 0;
         }
@@ -59,7 +64,7 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Gets or sets the flush mode for this stream.
         /// </summary>
-        public virtual int FlushMode { get; set; }
+        public virtual ZlibFlushStrategy FlushMode { get; set; }
 
         /// <summary>
         /// Gets the total number of bytes input so far.
@@ -104,13 +109,13 @@ namespace Elskom.Generic.Libs
         /// <summary>
         /// Gets the stream's buffer.
         /// </summary>
-        protected byte[] Buf { get; private set; }
+        protected List<byte> Buf => this.pBuf.ToList();
 
         /// <summary>
         /// Gets the stream's single byte buffer value.
         /// For reading 1 byte at a time.
         /// </summary>
-        protected byte[] Buf1 { get; private set; } = new byte[1];
+        protected List<byte> Buf1 => this.pBuf1.ToList();
 
         /// <summary>
         /// Gets a value indicating whether this stream is setup for compression.
@@ -118,7 +123,7 @@ namespace Elskom.Generic.Libs
         protected bool Compress { get; private set; }
 
         /// <inheritdoc/>
-        public override int ReadByte() => this.Read(this.Buf1, 0, 1) == -1 ? -1 : this.Buf1[0] & 0xFF;
+        public override int ReadByte() => this.Read(this.pBuf1, 0, 1) == -1 ? -1 : this.pBuf1[0] & 0xFF;
 
         /// <inheritdoc/>
         public override int Read(byte[] b, int off, int len)
@@ -128,8 +133,8 @@ namespace Elskom.Generic.Libs
                 return 0;
             }
 
-            int err;
-            this.Z.NextOut = b;
+            ZlibCompressionState err;
+            this.Z.INextOut = b;
             this.Z.NextOutIndex = off;
             this.Z.AvailOut = len;
             do
@@ -138,7 +143,7 @@ namespace Elskom.Generic.Libs
                 {
                     // if buffer is empty and more input is avaiable, refill it
                     this.Z.NextInIndex = 0;
-                    this.Z.AvailIn = SupportClass.ReadInput(this.BaseStream, this.Buf, 0, this.Bufsize); // (bufsize<z.avail_out ? bufsize : z.avail_out));
+                    this.Z.AvailIn = SupportClass.ReadInput(this.BaseStream, this.pBuf, 0, this.Bufsize); // (bufsize<z.avail_out ? bufsize : z.avail_out));
                     if (this.Z.AvailIn == -1)
                     {
                         this.Z.AvailIn = 0;
@@ -148,12 +153,12 @@ namespace Elskom.Generic.Libs
 
                 err = this.Compress ? this.Z.Deflate(this.FlushMode) : this.Z.Inflate(this.FlushMode);
 
-                if (this.Moreinput && (err == ZlibConst.ZBUFERROR))
+                if (this.Moreinput && (err == ZlibCompressionState.ZBUFERROR))
                 {
                     return -1;
                 }
 
-                if (err != ZlibConst.ZOK && err != ZlibConst.ZSTREAMEND)
+                if (err != ZlibCompressionState.ZOK && err != ZlibCompressionState.ZSTREAMEND)
                 {
                     throw new ZStreamException((this.Compress ? "de" : "in") + "flating: " + this.Z.Msg);
                 }
@@ -163,7 +168,7 @@ namespace Elskom.Generic.Libs
                     return -1;
                 }
             }
-            while (this.Z.AvailOut == len && err == ZlibConst.ZOK);
+            while (this.Z.AvailOut == len && err == ZlibCompressionState.ZOK);
 
             // System.err.print("("+(len-z.avail_out)+")");
             return len - this.Z.AvailOut;
@@ -197,25 +202,25 @@ namespace Elskom.Generic.Libs
         {
             if (!this.IsFinished)
             {
-                int err;
+                ZlibCompressionState err;
                 do
                 {
-                    this.Z.NextOut = this.Buf;
+                    this.Z.INextOut = this.pBuf;
                     this.Z.NextOutIndex = 0;
                     this.Z.AvailOut = this.Bufsize;
-                    err = this.Compress ? this.Z.Deflate(ZlibConst.ZFINISH) : this.Z.Inflate(ZlibConst.ZFINISH);
+                    err = this.Compress ? this.Z.Deflate(ZlibFlushStrategy.ZFINISH) : this.Z.Inflate(ZlibFlushStrategy.ZFINISH);
 
-                    if (err != ZlibConst.ZSTREAMEND && err != ZlibConst.ZOK)
+                    if (err != ZlibCompressionState.ZSTREAMEND && err != ZlibCompressionState.ZOK)
                     {
                         throw new ZStreamException((this.Compress ? "de" : "in") + "flating: " + this.Z.Msg);
                     }
 
                     if (this.Bufsize - this.Z.AvailOut > 0)
                     {
-                        this.BaseStream.Write(this.Buf, 0, this.Bufsize - this.Z.AvailOut);
+                        this.BaseStream.Write(this.pBuf, 0, this.Bufsize - this.Z.AvailOut);
                     }
 
-                    if (err == ZlibConst.ZSTREAMEND)
+                    if (err == ZlibCompressionState.ZSTREAMEND)
                     {
                         break;
                     }
@@ -272,8 +277,8 @@ namespace Elskom.Generic.Libs
 
         private void InitBlock()
         {
-            this.FlushMode = ZlibConst.ZNOFLUSH;
-            this.Buf = new byte[this.Bufsize];
+            this.FlushMode = ZlibFlushStrategy.ZNOFLUSH;
+            this.pBuf = new byte[this.Bufsize];
         }
     }
 }

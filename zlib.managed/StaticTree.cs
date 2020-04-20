@@ -46,11 +46,11 @@ namespace Elskom.Generic.Libs
             29, 5, 3, 5, 19, 5, 11, 5, 27, 5, 7, 5, 23, 5,
         };
 
-        internal static readonly StaticTree StaticLDesc;
+        internal static readonly StaticTree StaticLDesc = new StaticTree(StaticLtree, Tree.ExtraLbits, LITERALS + 1, LCODES, MAXBITS);
 
-        internal static readonly StaticTree StaticDDesc;
+        internal static readonly StaticTree StaticDDesc = new StaticTree(StaticDtree, Tree.ExtraDbits, 0, DCODES, MAXBITS);
 
-        internal static readonly StaticTree StaticBlDesc;
+        internal static readonly StaticTree StaticBlDesc = new StaticTree(null, Tree.ExtraBlbits, 0, BLCODES, MAXBLBITS);
 
         private const int MAXBITS = 15;
 
@@ -62,13 +62,6 @@ namespace Elskom.Generic.Libs
         // Bit length codes must not exceed MAX_BL_BITS bits
         private const int MAXBLBITS = 7;
         private const int LCODES = LITERALS + 1 + LENGTHCODES;
-
-        static StaticTree()
-        {
-            StaticLDesc = new StaticTree(StaticLtree, Tree.ExtraLbits, LITERALS + 1, LCODES, MAXBITS);
-            StaticDDesc = new StaticTree(StaticDtree, Tree.ExtraDbits, 0, DCODES, MAXBITS);
-            StaticBlDesc = new StaticTree(null, Tree.ExtraBlbits, 0, BLCODES, MAXBLBITS);
-        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="StaticTree"/> class.

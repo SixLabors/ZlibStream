@@ -16,18 +16,6 @@ namespace Elskom.Generic.Libs
         };
 
         private const int MANY = 1440;
-        private const int ZOK = 0;
-        private const int ZSTREAMEND = 1;
-
-        // private const int ZNEEDDICT = 2;
-        // private const int ZERRNO = -1;
-        private const int ZSTREAMERROR = -2;
-        private const int ZDATAERROR = -3;
-
-        // private const int ZMEMERROR = -4;
-        private const int ZBUFERROR = -5;
-
-        // private const int ZVERSIONERROR = -6;
         private const int TYPE = 0; // get type bits (3, including end bit)
         private const int LENS = 1; // get lengths for stored
         private const int STORED = 2; // processing stored block
@@ -117,7 +105,7 @@ namespace Elskom.Generic.Libs
             }
         }
 
-        internal int Proc(ZStream z, int r)
+        internal ZlibCompressionState Proc(ZStream z, ZlibCompressionState r)
         {
             int t; // temporary storage
             int b; // bit buffer
@@ -151,7 +139,7 @@ namespace Elskom.Generic.Libs
                         {
                             if (n != 0)
                             {
-                                r = ZOK;
+                                r = ZlibCompressionState.ZOK;
                             }
                             else
                             {
@@ -165,7 +153,7 @@ namespace Elskom.Generic.Libs
                             }
 
                             n--;
-                            b |= (z.NextIn[p++] & 0xff) << k;
+                            b |= (z.INextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -225,7 +213,7 @@ namespace Elskom.Generic.Libs
 
                                 this.mode = BAD;
                                 z.Msg = "invalid block type";
-                                r = ZDATAERROR;
+                                r = ZlibCompressionState.ZDATAERROR;
 
                                 this.Bitb = b; this.Bitk = k;
                                 z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
@@ -241,7 +229,7 @@ namespace Elskom.Generic.Libs
                         {
                             if (n != 0)
                             {
-                                r = ZOK;
+                                r = ZlibCompressionState.ZOK;
                             }
                             else
                             {
@@ -255,7 +243,7 @@ namespace Elskom.Generic.Libs
                             }
 
                             n--;
-                            b |= (z.NextIn[p++] & 0xff) << k;
+                            b |= (z.INextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -263,7 +251,7 @@ namespace Elskom.Generic.Libs
                         {
                             this.mode = BAD;
                             z.Msg = "invalid stored block lengths";
-                            r = ZDATAERROR;
+                            r = ZlibCompressionState.ZDATAERROR;
 
                             this.Bitb = b;
                             this.Bitk = k;
@@ -324,7 +312,7 @@ namespace Elskom.Generic.Libs
                             }
                         }
 
-                        r = ZOK;
+                        r = ZlibCompressionState.ZOK;
 
                         t = this.left;
                         if (t > n)
@@ -337,7 +325,7 @@ namespace Elskom.Generic.Libs
                             t = m;
                         }
 
-                        Array.Copy(z.NextIn, p, this.Window, q, t);
+                        Array.Copy(z.INextIn, p, this.Window, q, t);
                         p += t; n -= t;
                         q += t; m -= t;
                         if ((this.left -= t) != 0)
@@ -354,7 +342,7 @@ namespace Elskom.Generic.Libs
                         {
                             if (n != 0)
                             {
-                                r = ZOK;
+                                r = ZlibCompressionState.ZOK;
                             }
                             else
                             {
@@ -368,7 +356,7 @@ namespace Elskom.Generic.Libs
                             }
 
                             n--;
-                            b |= (z.NextIn[p++] & 0xff) << k;
+                            b |= (z.INextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -377,7 +365,7 @@ namespace Elskom.Generic.Libs
                         {
                             this.mode = BAD;
                             z.Msg = "too many length or distance symbols";
-                            r = ZDATAERROR;
+                            r = ZlibCompressionState.ZDATAERROR;
 
                             this.Bitb = b;
                             this.Bitk = k;
@@ -406,7 +394,7 @@ namespace Elskom.Generic.Libs
                             {
                                 if (n != 0)
                                 {
-                                    r = ZOK;
+                                    r = ZlibCompressionState.ZOK;
                                 }
                                 else
                                 {
@@ -420,7 +408,7 @@ namespace Elskom.Generic.Libs
                                 }
 
                                 n--;
-                                b |= (z.NextIn[p++] & 0xff) << k;
+                                b |= (z.INextIn[p++] & 0xff) << k;
                                 k += 8;
                             }
 
@@ -437,11 +425,11 @@ namespace Elskom.Generic.Libs
                         }
 
                         this.bb[0] = 7;
-                        t = InfTree.Inflate_trees_bits(this.blens, this.bb, this.tb, this.hufts, z);
-                        if (t != ZOK)
+                        t = (int)InfTree.Inflate_trees_bits(this.blens, this.bb, this.tb, this.hufts, z);
+                        if (t != (int)ZlibCompressionState.ZOK)
                         {
-                            r = t;
-                            if (r == ZDATAERROR)
+                            r = (ZlibCompressionState)t;
+                            if (r == ZlibCompressionState.ZDATAERROR)
                             {
                                 this.blens = null;
                                 this.mode = BAD;
@@ -477,7 +465,7 @@ namespace Elskom.Generic.Libs
                             {
                                 if (n != 0)
                                 {
-                                    r = ZOK;
+                                    r = ZlibCompressionState.ZOK;
                                 }
                                 else
                                 {
@@ -491,7 +479,7 @@ namespace Elskom.Generic.Libs
                                 }
 
                                 n--;
-                                b |= (z.NextIn[p++] & 0xff) << k;
+                                b |= (z.INextIn[p++] & 0xff) << k;
                                 k += 8;
                             }
 
@@ -519,7 +507,7 @@ namespace Elskom.Generic.Libs
                                 {
                                     if (n != 0)
                                     {
-                                        r = ZOK;
+                                        r = ZlibCompressionState.ZOK;
                                     }
                                     else
                                     {
@@ -533,7 +521,7 @@ namespace Elskom.Generic.Libs
                                     }
 
                                     n--;
-                                    b |= (z.NextIn[p++] & 0xff) << k;
+                                    b |= (z.INextIn[p++] & 0xff) << k;
                                     k += 8;
                                 }
 
@@ -552,7 +540,7 @@ namespace Elskom.Generic.Libs
                                     this.blens = null;
                                     this.mode = BAD;
                                     z.Msg = "invalid bit length repeat";
-                                    r = ZDATAERROR;
+                                    r = ZlibCompressionState.ZDATAERROR;
 
                                     this.Bitb = b;
                                     this.Bitk = k;
@@ -583,16 +571,16 @@ namespace Elskom.Generic.Libs
                             bl[0] = 9; // must be <= 9 for lookahead assumptions
                             bd[0] = 6; // must be <= 9 for lookahead assumptions
                             t = this.table;
-                            t = InfTree.Inflate_trees_dynamic(257 + (t & 0x1f), 1 + ((t >> 5) & 0x1f), this.blens, bl, bd, tl, td, this.hufts, z);
-                            if (t != ZOK)
+                            t = (int)InfTree.Inflate_trees_dynamic(257 + (t & 0x1f), 1 + ((t >> 5) & 0x1f), this.blens, bl, bd, tl, td, this.hufts, z);
+                            if (t != (int)ZlibCompressionState.ZOK)
                             {
-                                if (t == ZDATAERROR)
+                                if (t == (int)ZlibCompressionState.ZDATAERROR)
                                 {
                                     this.blens = null;
                                     this.mode = BAD;
                                 }
 
-                                r = t;
+                                r = (ZlibCompressionState)t;
 
                                 this.Bitb = b;
                                 this.Bitk = k;
@@ -615,12 +603,12 @@ namespace Elskom.Generic.Libs
                         z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
                         this.Write = q;
 
-                        if ((r = this.codes.Proc(this, z, r)) != ZSTREAMEND)
+                        if ((r = this.codes.Proc(this, z, r)) != ZlibCompressionState.ZSTREAMEND)
                         {
                             return this.Inflate_flush(z, r);
                         }
 
-                        r = ZOK;
+                        r = ZlibCompressionState.ZOK;
                         InfCodes.Free();
 
                         p = z.NextInIndex; n = z.AvailIn; b = this.Bitb; k = this.Bitk;
@@ -654,7 +642,7 @@ namespace Elskom.Generic.Libs
                         goto case DONE;
 
                     case DONE:
-                        r = ZSTREAMEND;
+                        r = ZlibCompressionState.ZSTREAMEND;
 
                         this.Bitb = b; this.Bitk = k;
                         z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
@@ -662,7 +650,7 @@ namespace Elskom.Generic.Libs
                         return this.Inflate_flush(z, r);
 
                     case BAD:
-                        r = ZDATAERROR;
+                        r = ZlibCompressionState.ZDATAERROR;
 
                         this.Bitb = b; this.Bitk = k;
                         z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
@@ -670,7 +658,7 @@ namespace Elskom.Generic.Libs
                         return this.Inflate_flush(z, r);
 
                     default:
-                        r = ZSTREAMERROR;
+                        r = ZlibCompressionState.ZSTREAMERROR;
 
                         this.Bitb = b; this.Bitk = k;
                         z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
@@ -697,10 +685,10 @@ namespace Elskom.Generic.Libs
 
         // Returns true if inflate is currently at the end of a block generated
         // by Z_SYNC_FLUSH or Z_FULL_FLUSH.
-        internal int Sync_point() => this.mode == LENS ? 1 : 0;
+        internal ZlibCompressionState Sync_point() => this.mode == LENS ? ZlibCompressionState.ZSTREAMEND : ZlibCompressionState.ZOK;
 
         // copy as much as possible from the sliding window to the output area
-        internal int Inflate_flush(ZStream z, int r)
+        internal ZlibCompressionState Inflate_flush(ZStream z, ZlibCompressionState r)
         {
             int n;
             int p;
@@ -717,9 +705,9 @@ namespace Elskom.Generic.Libs
                 n = z.AvailOut;
             }
 
-            if (n != 0 && r == ZBUFERROR)
+            if (n != 0 && r == ZlibCompressionState.ZBUFERROR)
             {
-                r = ZOK;
+                r = ZlibCompressionState.ZOK;
             }
 
             // update counters
@@ -733,7 +721,7 @@ namespace Elskom.Generic.Libs
             }
 
             // copy as far as end of window
-            Array.Copy(this.Window, q, z.NextOut, p, n);
+            Array.Copy(this.Window, q, z.INextOut, p, n);
             p += n;
             q += n;
 
@@ -754,9 +742,9 @@ namespace Elskom.Generic.Libs
                     n = z.AvailOut;
                 }
 
-                if (n != 0 && r == ZBUFERROR)
+                if (n != 0 && r == ZlibCompressionState.ZBUFERROR)
                 {
-                    r = ZOK;
+                    r = ZlibCompressionState.ZOK;
                 }
 
                 // update counters
@@ -770,7 +758,7 @@ namespace Elskom.Generic.Libs
                 }
 
                 // copy
-                Array.Copy(this.Window, q, z.NextOut, p, n);
+                Array.Copy(this.Window, q, z.INextOut, p, n);
                 p += n;
                 q += n;
             }

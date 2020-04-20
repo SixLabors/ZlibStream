@@ -13,9 +13,6 @@ namespace Elskom.Generic.Libs
     public sealed class Deflate
     {
         private const int MAXMEMLEVEL = 9;
-
-        private const int ZDEFAULTCOMPRESSION = -1;
-
         private const int MAXWBITS = 15; // 32K LZ77 window
         private const int DEFMEMLEVEL = 8;
         private const int STORED = 0;
@@ -36,30 +33,6 @@ namespace Elskom.Generic.Libs
 
         // preset dictionary flag in zlib header
         private const int PRESETDICT = 0x20;
-
-        private const int ZFILTERED = 1;
-        private const int ZHUFFMANONLY = 2;
-        private const int ZDEFAULTSTRATEGY = 0;
-
-        private const int ZNOFLUSH = 0;
-        private const int ZPARTIALFLUSH = 1;
-
-        // private const int ZSYNCFLUSH = 2;
-        private const int ZFULLFLUSH = 3;
-        private const int ZFINISH = 4;
-
-        private const int ZOK = 0;
-        private const int ZSTREAMEND = 1;
-        private const int ZNEEDDICT = 2;
-
-        // private const int ZERRNO = -1;
-        private const int ZSTREAMERROR = -2;
-        private const int ZDATAERROR = -3;
-
-        // private const int ZMEMERROR = -4;
-        private const int ZBUFERROR = -5;
-
-        // private const int ZVERSIONERROR = -6;
         private const int INITSTATE = 42;
         private const int BUSYSTATE = 113;
         private const int FINISHSTATE = 666;
@@ -100,7 +73,21 @@ namespace Elskom.Generic.Libs
         private const int LCODES = LITERALS + 1 + LENGTHCODES;
         private const int HEAPSIZE = (2 * LCODES) + 1;
 
-        private static readonly Config[] ConfigTable;
+        private static readonly Config[] ConfigTable = new Config[10]
+        {
+            // good  lazy  nice  chain
+            new Config(0, 0, 0, 0, STORED), // 0
+            new Config(4, 4, 8, 4, FAST),  // 1
+            new Config(4, 5, 16, 8, FAST),  // 2
+            new Config(4, 6, 32, 32, FAST),  // 3
+
+            new Config(4, 4, 16, 16, SLOW),  // 4
+            new Config(8, 16, 32, 32, SLOW),  // 5
+            new Config(8, 16, 128, 128, SLOW),  // 6
+            new Config(8, 32, 128, 256, SLOW),  // 7
+            new Config(32, 128, 258, 1024, SLOW),  // 8
+            new Config(32, 258, 258, 4096, SLOW),  // 9
+        };
 
         private static readonly string[] ZErrmsg = new string[]
         {
@@ -108,26 +95,6 @@ namespace Elskom.Generic.Libs
             "data error", "insufficient memory", "buffer error", "incompatible version",
             string.Empty,
         };
-
-        static Deflate()
-        {
-            {
-                ConfigTable = new Config[10];
-
-                // good  lazy  nice  chain
-                ConfigTable[0] = new Config(0, 0, 0, 0, STORED);
-                ConfigTable[1] = new Config(4, 4, 8, 4, FAST);
-                ConfigTable[2] = new Config(4, 5, 16, 8, FAST);
-                ConfigTable[3] = new Config(4, 6, 32, 32, FAST);
-
-                ConfigTable[4] = new Config(4, 4, 16, 16, SLOW);
-                ConfigTable[5] = new Config(8, 16, 32, 32, SLOW);
-                ConfigTable[6] = new Config(8, 16, 128, 128, SLOW);
-                ConfigTable[7] = new Config(8, 32, 128, 256, SLOW);
-                ConfigTable[8] = new Config(32, 128, 258, 1024, SLOW);
-                ConfigTable[9] = new Config(32, 258, 258, 4096, SLOW);
-            }
-        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Deflate"/> class.
@@ -157,7 +124,7 @@ namespace Elskom.Generic.Libs
 
         internal byte Method { get; private set; } // STORED (for zip only) or DEFLATED
 
-        internal int LastFlush { get; private set; } // value of flush param for previous deflate call
+        internal ZlibFlushStrategy LastFlush { get; private set; } // value of flush param for previous deflate call
 
         internal int WSize { get; private set; } // LZ77 window size (32K by default)
 
@@ -231,9 +198,9 @@ namespace Elskom.Generic.Libs
         // Insert new strings in the hash table only if the match length is not
         // greater than this length. This saves time but degrades compression.
         // max_insert_length is used only for compression levels <= 3.
-        internal int Level { get; private set; } // compression level (1..9)
+        internal ZlibCompression Level { get; private set; } // compression level (1..9)
 
-        internal int Strategy { get; private set; } // favor or force Huffman coding
+        internal ZlibCompressionStrategy Strategy { get; private set; } // favor or force Huffman coding
 
         // Use a faster search when the previous match is longer than this
         internal int GoodMatch { get; private set; }
@@ -327,10 +294,10 @@ namespace Elskom.Generic.Libs
             }
 
             // Set the default configuration parameters:
-            this.MaxLazyMatch = ConfigTable[this.Level].MaxLazy;
-            this.GoodMatch = ConfigTable[this.Level].GoodLength;
-            this.NiceMatch = ConfigTable[this.Level].NiceLength;
-            this.MaxChainLength = ConfigTable[this.Level].MaxChain;
+            this.MaxLazyMatch = ConfigTable[(int)this.Level].MaxLazy;
+            this.GoodMatch = ConfigTable[(int)this.Level].GoodLength;
+            this.NiceMatch = ConfigTable[(int)this.Level].NiceLength;
+            this.MaxChainLength = ConfigTable[(int)this.Level].MaxChain;
 
             this.Strstart = 0;
             this.BlockStart = 0;
@@ -714,7 +681,7 @@ namespace Elskom.Generic.Libs
                 this.DynDtree[Tree.D_code(dist) * 2]++;
             }
 
-            if ((this.LastLit & 0x1fff) == 0 && this.Level > 2)
+            if ((this.LastLit & 0x1fff) == 0 && this.Level > (ZlibCompression)2)
             {
                 // Compute an upper bound for the compressed length
                 var out_length = this.LastLit * 8;
@@ -891,7 +858,7 @@ namespace Elskom.Generic.Libs
         // only for the level=0 compression option.
         // NOTE: this function should be optimized to avoid extra copying from
         // window to pending_buf.
-        internal int Deflate_stored(int flush)
+        internal int Deflate_stored(ZlibFlushStrategy flush)
         {
             // Stored blocks are limited to 0xffff bytes, pending_buf is limited
             // to pending_buf_size, and each stored block has a 5 byte header:
@@ -910,7 +877,7 @@ namespace Elskom.Generic.Libs
                 if (this.Lookahead <= 1)
                 {
                     this.Fill_window();
-                    if (this.Lookahead == 0 && flush == ZNOFLUSH)
+                    if (this.Lookahead == 0 && flush == ZlibFlushStrategy.ZNOFLUSH)
                     {
                         return NeedMore;
                     }
@@ -951,8 +918,8 @@ namespace Elskom.Generic.Libs
                 }
             }
 
-            this.Flush_block_only(flush == ZFINISH);
-            return this.Strm.AvailOut == 0 ? (flush == ZFINISH) ? FinishStarted : NeedMore : flush == ZFINISH ? FinishDone : BlockDone;
+            this.Flush_block_only(flush == ZlibFlushStrategy.ZFINISH);
+            return this.Strm.AvailOut == 0 ? (flush == ZlibFlushStrategy.ZFINISH) ? FinishStarted : NeedMore : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
         }
 
         // Send a stored block
@@ -1142,7 +1109,7 @@ namespace Elskom.Generic.Libs
         // This function does not perform lazy evaluation of matches and inserts
         // new strings in the dictionary only for unmatched strings or for short
         // matches. It is used only for the fast compression options.
-        internal int Deflate_fast(int flush)
+        internal int Deflate_fast(ZlibFlushStrategy flush)
         {
             // short hash_head = 0; // head of the hash chain
             var hash_head = 0; // head of the hash chain
@@ -1157,7 +1124,7 @@ namespace Elskom.Generic.Libs
                 if (this.Lookahead < MINLOOKAHEAD)
                 {
                     this.Fill_window();
-                    if (this.Lookahead < MINLOOKAHEAD && flush == ZNOFLUSH)
+                    if (this.Lookahead < MINLOOKAHEAD && flush == ZlibFlushStrategy.ZNOFLUSH)
                     {
                         return NeedMore;
                     }
@@ -1187,7 +1154,7 @@ namespace Elskom.Generic.Libs
                     // To simplify the code, we prevent matches with the string
                     // of window index 0 (in particular we have to avoid a match
                     // of the string with itself at the start of the input file).
-                    if (this.Strategy != ZHUFFMANONLY)
+                    if (this.Strategy != ZlibCompressionStrategy.ZHUFFMANONLY)
                     {
                         this.MatchLength = this.Longest_match(hash_head);
                     }
@@ -1254,14 +1221,14 @@ namespace Elskom.Generic.Libs
                 }
             }
 
-            this.Flush_block_only(flush == ZFINISH);
-            return this.Strm.AvailOut == 0 ? flush == ZFINISH ? FinishStarted : NeedMore : flush == ZFINISH ? FinishDone : BlockDone;
+            this.Flush_block_only(flush == ZlibFlushStrategy.ZFINISH);
+            return this.Strm.AvailOut == 0 ? flush == ZlibFlushStrategy.ZFINISH ? FinishStarted : NeedMore : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
         }
 
         // Same as above, but achieves better compression. We use a lazy
         // evaluation for matches: a match is finally adopted only if there is
         // no better match at the next window position.
-        internal int Deflate_slow(int flush)
+        internal int Deflate_slow(ZlibFlushStrategy flush)
         {
             // short hash_head = 0;    // head of hash chain
             var hash_head = 0; // head of hash chain
@@ -1277,7 +1244,7 @@ namespace Elskom.Generic.Libs
                 if (this.Lookahead < MINLOOKAHEAD)
                 {
                     this.Fill_window();
-                    if (this.Lookahead < MINLOOKAHEAD && flush == ZNOFLUSH)
+                    if (this.Lookahead < MINLOOKAHEAD && flush == ZlibFlushStrategy.ZNOFLUSH)
                     {
                         return NeedMore;
                     }
@@ -1310,13 +1277,13 @@ namespace Elskom.Generic.Libs
                     // To simplify the code, we prevent matches with the string
                     // of window index 0 (in particular we have to avoid a match
                     // of the string with itself at the start of the input file).
-                    if (this.Strategy != ZHUFFMANONLY)
+                    if (this.Strategy != ZlibCompressionStrategy.ZHUFFMANONLY)
                     {
                         this.MatchLength = this.Longest_match(hash_head);
                     }
 
                     // longest_match() sets match_start
-                    if (this.MatchLength <= 5 && (this.Strategy == ZFILTERED || (this.MatchLength == MINMATCH && this.Strstart - this.MatchStart > 4096)))
+                    if (this.MatchLength <= 5 && (this.Strategy == ZlibCompressionStrategy.ZFILTERED || (this.MatchLength == MINMATCH && this.Strstart - this.MatchStart > 4096)))
                     {
                         // If prev_match is also MIN_MATCH, match_start is garbage
                         // but we will ignore the current match anyway.
@@ -1402,9 +1369,9 @@ namespace Elskom.Generic.Libs
                 this.MatchAvailable = 0;
             }
 
-            this.Flush_block_only(flush == ZFINISH);
+            this.Flush_block_only(flush == ZlibFlushStrategy.ZFINISH);
 
-            return this.Strm.AvailOut == 0 ? flush == ZFINISH ? FinishStarted : NeedMore : flush == ZFINISH ? FinishDone : BlockDone;
+            return this.Strm.AvailOut == 0 ? flush == ZlibFlushStrategy.ZFINISH ? FinishStarted : NeedMore : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
         }
 
         internal int Longest_match(int cur_match)
@@ -1488,11 +1455,11 @@ namespace Elskom.Generic.Libs
             return best_len <= this.Lookahead ? best_len : this.Lookahead;
         }
 
-        internal int DeflateInit(ZStream strm, int level, int bits) => this.DeflateInit2(strm, level, ZDEFLATED, bits, DEFMEMLEVEL, ZDEFAULTSTRATEGY);
+        internal ZlibCompressionState DeflateInit(ZStream strm, ZlibCompression level, int bits) => this.DeflateInit2(strm, level, ZDEFLATED, bits, DEFMEMLEVEL, ZlibCompressionStrategy.ZDEFAULTSTRATEGY);
 
-        internal int DeflateInit(ZStream strm, int level) => this.DeflateInit(strm, level, MAXWBITS);
+        internal ZlibCompressionState DeflateInit(ZStream strm, ZlibCompression level) => this.DeflateInit(strm, level, MAXWBITS);
 
-        internal int DeflateInit2(ZStream strm, int level, int method, int windowBits, int memLevel, int strategy)
+        internal ZlibCompressionState DeflateInit2(ZStream strm, ZlibCompression level, int method, int windowBits, int memLevel, ZlibCompressionStrategy strategy)
         {
             var noheader = 0;
 
@@ -1505,9 +1472,9 @@ namespace Elskom.Generic.Libs
             //  }
             strm.Msg = null;
 
-            if (level == ZDEFAULTCOMPRESSION)
+            if (level == ZlibCompression.ZDEFAULTCOMPRESSION)
             {
-                level = 6;
+                level = (ZlibCompression)6;
             }
 
             if (windowBits < 0)
@@ -1517,9 +1484,9 @@ namespace Elskom.Generic.Libs
                 windowBits = -windowBits;
             }
 
-            if (memLevel < 1 || memLevel > MAXMEMLEVEL || method != ZDEFLATED || windowBits < 9 || windowBits > 15 || level < 0 || level > 9 || strategy < 0 || strategy > ZHUFFMANONLY)
+            if (memLevel < 1 || memLevel > MAXMEMLEVEL || method != ZDEFLATED || windowBits < 9 || windowBits > 15 || level < ZlibCompression.ZNOCOMPRESSION || level > ZlibCompression.ZBESTCOMPRESSION || strategy < ZlibCompressionStrategy.ZDEFAULTSTRATEGY || strategy > ZlibCompressionStrategy.ZHUFFMANONLY)
             {
-                return ZSTREAMERROR;
+                return ZlibCompressionState.ZSTREAMERROR;
             }
 
             strm.Dstate = this;
@@ -1557,7 +1524,7 @@ namespace Elskom.Generic.Libs
             return this.DeflateReset(strm);
         }
 
-        internal int DeflateReset(ZStream strm)
+        internal ZlibCompressionState DeflateReset(ZStream strm)
         {
             strm.TotalIn = strm.TotalOut = 0;
             strm.Msg = null;
@@ -1574,18 +1541,18 @@ namespace Elskom.Generic.Libs
             this.Status = (this.Noheader != 0) ? BUSYSTATE : INITSTATE;
             strm.Adler = Adler32.Calculate(0, null, 0, 0);
 
-            this.LastFlush = ZNOFLUSH;
+            this.LastFlush = ZlibFlushStrategy.ZNOFLUSH;
 
             this.Tr_init();
             this.Lm_init();
-            return ZOK;
+            return ZlibCompressionState.ZOK;
         }
 
-        internal int DeflateEnd()
+        internal ZlibCompressionState DeflateEnd()
         {
             if (this.Status != INITSTATE && this.Status != BUSYSTATE && this.Status != FINISHSTATE)
             {
-                return ZSTREAMERROR;
+                return ZlibCompressionState.ZSTREAMERROR;
             }
 
             // Deallocate in reverse order of allocations:
@@ -1596,57 +1563,57 @@ namespace Elskom.Generic.Libs
 
             // free
             // dstate=null;
-            return this.Status == BUSYSTATE ? ZDATAERROR : ZOK;
+            return this.Status == BUSYSTATE ? ZlibCompressionState.ZDATAERROR : ZlibCompressionState.ZOK;
         }
 
-        internal int DeflateParams(ZStream strm, int level, int strategy)
+        internal ZlibCompressionState DeflateParams(ZStream strm, ZlibCompression level, ZlibCompressionStrategy strategy)
         {
-            var err = ZOK;
+            var err = ZlibCompressionState.ZOK;
 
-            if (level == ZDEFAULTCOMPRESSION)
+            if (level == ZlibCompression.ZDEFAULTCOMPRESSION)
             {
-                level = 6;
+                level = (ZlibCompression)6;
             }
 
-            if (level < 0 || level > 9 || strategy < 0 || strategy > ZHUFFMANONLY)
+            if (level < ZlibCompression.ZNOCOMPRESSION || level > ZlibCompression.ZBESTCOMPRESSION || strategy < ZlibCompressionStrategy.ZDEFAULTSTRATEGY || strategy > ZlibCompressionStrategy.ZHUFFMANONLY)
             {
-                return ZSTREAMERROR;
+                return ZlibCompressionState.ZSTREAMERROR;
             }
 
-            if (ConfigTable[this.Level].Func != ConfigTable[level].Func && strm.TotalIn != 0)
+            if (ConfigTable[(int)this.Level].Func != ConfigTable[(int)level].Func && strm.TotalIn != 0)
             {
                 // Flush the last buffer:
-                err = strm.Deflate(ZPARTIALFLUSH);
+                err = strm.Deflate(ZlibFlushStrategy.ZPARTIALFLUSH);
             }
 
             if (this.Level != level)
             {
                 this.Level = level;
-                this.MaxLazyMatch = ConfigTable[this.Level].MaxLazy;
-                this.GoodMatch = ConfigTable[this.Level].GoodLength;
-                this.NiceMatch = ConfigTable[this.Level].NiceLength;
-                this.MaxChainLength = ConfigTable[this.Level].MaxChain;
+                this.MaxLazyMatch = ConfigTable[(int)this.Level].MaxLazy;
+                this.GoodMatch = ConfigTable[(int)this.Level].GoodLength;
+                this.NiceMatch = ConfigTable[(int)this.Level].NiceLength;
+                this.MaxChainLength = ConfigTable[(int)this.Level].MaxChain;
             }
 
             this.Strategy = strategy;
             return err;
         }
 
-        internal int DeflateSetDictionary(ZStream strm, byte[] dictionary, int dictLength)
+        internal ZlibCompressionState DeflateSetDictionary(ZStream strm, byte[] dictionary, int dictLength)
         {
             var length = dictLength;
             var index = 0;
 
             if (dictionary == null || this.Status != INITSTATE)
             {
-                return ZSTREAMERROR;
+                return ZlibCompressionState.ZSTREAMERROR;
             }
 
             strm.Adler = Adler32.Calculate(strm.Adler, dictionary, 0, dictLength);
 
             if (length < MINMATCH)
             {
-                return ZOK;
+                return ZlibCompressionState.ZOK;
             }
 
             if (length > this.WSize - MINLOOKAHEAD)
@@ -1672,28 +1639,28 @@ namespace Elskom.Generic.Libs
                 this.Head[this.InsH] = (short)n;
             }
 
-            return ZOK;
+            return ZlibCompressionState.ZOK;
         }
 
-        internal int Compress(ZStream strm, int flush)
+        internal ZlibCompressionState Compress(ZStream strm, ZlibFlushStrategy flush)
         {
-            int old_flush;
+            ZlibFlushStrategy old_flush;
 
-            if (flush > ZFINISH || flush < 0)
+            if (flush > ZlibFlushStrategy.ZFINISH || flush < 0)
             {
-                return ZSTREAMERROR;
+                return ZlibCompressionState.ZSTREAMERROR;
             }
 
-            if (strm.NextOut == null || (strm.NextIn == null && strm.AvailIn != 0) || (this.Status == FINISHSTATE && flush != ZFINISH))
+            if (strm.INextOut == null || (strm.INextIn == null && strm.AvailIn != 0) || (this.Status == FINISHSTATE && flush != ZlibFlushStrategy.ZFINISH))
             {
-                strm.Msg = ZErrmsg[ZNEEDDICT - ZSTREAMERROR];
-                return ZSTREAMERROR;
+                strm.Msg = ZErrmsg[ZlibCompressionState.ZNEEDDICT - ZlibCompressionState.ZSTREAMERROR];
+                return ZlibCompressionState.ZSTREAMERROR;
             }
 
             if (strm.AvailOut == 0)
             {
-                strm.Msg = ZErrmsg[ZNEEDDICT - ZBUFERROR];
-                return ZBUFERROR;
+                strm.Msg = ZErrmsg[ZlibCompressionState.ZNEEDDICT - ZlibCompressionState.ZBUFERROR];
+                return ZlibCompressionState.ZBUFERROR;
             }
 
             this.Strm = strm; // just in case
@@ -1704,7 +1671,7 @@ namespace Elskom.Generic.Libs
             if (this.Status == INITSTATE)
             {
                 var header = (ZDEFLATED + ((this.WBits - 8) << 4)) << 8;
-                var level_flags = ((this.Level - 1) & 0xff) >> 1;
+                var level_flags = (((int)this.Level - 1) & 0xff) >> 1;
 
                 if (level_flags > 3)
                 {
@@ -1744,32 +1711,32 @@ namespace Elskom.Generic.Libs
                     // avail_in equal to zero. There won't be anything to do,
                     // but this is not an error situation so make sure we
                     // return OK instead of BUF_ERROR at next call of deflate:
-                    this.LastFlush = -1;
-                    return ZOK;
+                    this.LastFlush = (ZlibFlushStrategy)(-1);
+                    return ZlibCompressionState.ZOK;
                 }
 
                 // Make sure there is something to do and avoid duplicate consecutive
                 // flushes. For repeated and useless calls with Z_FINISH, we keep
                 // returning Z_STREAM_END instead of Z_BUFF_ERROR.
             }
-            else if (strm.AvailIn == 0 && flush <= old_flush && flush != ZFINISH)
+            else if (strm.AvailIn == 0 && flush <= old_flush && flush != ZlibFlushStrategy.ZFINISH)
             {
-                strm.Msg = ZErrmsg[ZNEEDDICT - ZBUFERROR];
-                return ZBUFERROR;
+                strm.Msg = ZErrmsg[ZlibCompressionState.ZNEEDDICT - ZlibCompressionState.ZBUFERROR];
+                return ZlibCompressionState.ZBUFERROR;
             }
 
             // User must not provide more input after the first FINISH:
             if (this.Status == FINISHSTATE && strm.AvailIn != 0)
             {
-                strm.Msg = ZErrmsg[ZNEEDDICT - ZBUFERROR];
-                return ZBUFERROR;
+                strm.Msg = ZErrmsg[ZlibCompressionState.ZNEEDDICT - ZlibCompressionState.ZBUFERROR];
+                return ZlibCompressionState.ZBUFERROR;
             }
 
             // Start a new block or continue the current one.
-            if (strm.AvailIn != 0 || this.Lookahead != 0 || (flush != ZNOFLUSH && this.Status != FINISHSTATE))
+            if (strm.AvailIn != 0 || this.Lookahead != 0 || (flush != ZlibFlushStrategy.ZNOFLUSH && this.Status != FINISHSTATE))
             {
                 var bstate = -1;
-                switch (ConfigTable[this.Level].Func)
+                switch (ConfigTable[(int)this.Level].Func)
                 {
                     case STORED:
                         bstate = this.Deflate_stored(flush);
@@ -1796,10 +1763,10 @@ namespace Elskom.Generic.Libs
                 {
                     if (strm.AvailOut == 0)
                     {
-                        this.LastFlush = -1; // avoid BUF_ERROR next call, see above
+                        this.LastFlush = (ZlibFlushStrategy)(-1); // avoid BUF_ERROR next call, see above
                     }
 
-                    return ZOK;
+                    return ZlibCompressionState.ZOK;
 
                     // If flush != Z_NO_FLUSH && avail_out == 0, the next call
                     // of deflate should use the same flush parameter to make sure
@@ -1811,7 +1778,7 @@ namespace Elskom.Generic.Libs
 
                 if (bstate == BlockDone)
                 {
-                    if (flush == ZPARTIALFLUSH)
+                    if (flush == ZlibFlushStrategy.ZPARTIALFLUSH)
                     {
                         this.Tr_align();
                     }
@@ -1822,7 +1789,7 @@ namespace Elskom.Generic.Libs
 
                         // For a full flush, this empty block will be recognized
                         // as a special marker by inflate_sync().
-                        if (flush == ZFULLFLUSH)
+                        if (flush == ZlibFlushStrategy.ZFULLFLUSH)
                         {
                             // state.head[s.hash_size-1]=0;
                             for (var i = 0; i < this.HashSize; i++)
@@ -1836,20 +1803,20 @@ namespace Elskom.Generic.Libs
                     strm.Flush_pending();
                     if (strm.AvailOut == 0)
                     {
-                        this.LastFlush = -1; // avoid BUF_ERROR at next call, see above
-                        return ZOK;
+                        this.LastFlush = (ZlibFlushStrategy)(-1); // avoid BUF_ERROR at next call, see above
+                        return ZlibCompressionState.ZOK;
                     }
                 }
             }
 
-            if (flush != ZFINISH)
+            if (flush != ZlibFlushStrategy.ZFINISH)
             {
-                return ZOK;
+                return ZlibCompressionState.ZOK;
             }
 
             if (this.Noheader != 0)
             {
-                return ZSTREAMEND;
+                return ZlibCompressionState.ZSTREAMEND;
             }
 
             // Write the zlib trailer (adler32)
@@ -1860,7 +1827,7 @@ namespace Elskom.Generic.Libs
             // If avail_out is zero, the application will call deflate again
             // to flush the rest.
             this.Noheader = -1; // write the trailer only once!
-            return this.Pending != 0 ? ZOK : ZSTREAMEND;
+            return this.Pending != 0 ? ZlibCompressionState.ZOK : ZlibCompressionState.ZSTREAMEND;
         }
 
         private class Config

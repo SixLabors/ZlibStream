@@ -7,6 +7,7 @@ namespace Elskom.Generic.Libs
 {
     using System;
     using System.IO;
+    using System.Runtime.Serialization;
 
     /// <summary>
     /// Zlib Memory Packing failure error.
@@ -38,6 +39,17 @@ namespace Elskom.Generic.Libs
         /// <param name="ex">The Exception that caused this Exception.</param>
         public NotPackableException(string s, Exception ex)
             : base(s, ex)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="NotPackableException"/> class
+        /// with the specified serialization and context information.
+        /// </summary>
+        /// <param name="info">The data for serializing or deserializing the object.</param>
+        /// <param name="context">The source and destination for the object.</param>
+        private NotPackableException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
         {
         }
     }

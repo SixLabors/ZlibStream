@@ -41,8 +41,8 @@ namespace Elskom.Generic.Libs
         /// <param name="outData">The compressed output data.</param>
         /// <param name="level">The compression level to use.</param>
         /// <exception cref="NotPackableException">Thrown when the stream Errors in any way.</exception>
-        [Obsolete("Use MemoryZlib.Compress(byte[], out byte[], int) instead. This will be removed in a future release.")]
-        public static void CompressData(byte[] inData, out byte[] outData, int level)
+        [Obsolete("Use MemoryZlib.Compress(byte[], out byte[], ZlibCompression) instead. This will be removed in a future release.")]
+        public static void CompressData(byte[] inData, out byte[] outData, ZlibCompression level)
             => Compress(inData, out outData, level);
 
         /// <summary>
@@ -53,8 +53,8 @@ namespace Elskom.Generic.Libs
         /// <param name="level">The compression level to use.</param>
         /// <param name="adler32">The output adler32 of the data.</param>
         /// <exception cref="NotPackableException">Thrown when the stream Errors in any way.</exception>
-        [Obsolete("Use MemoryZlib.Compress(byte[], out byte[], int, out int) instead. This will be removed in a future release.")]
-        public static void CompressData(byte[] inData, out byte[] outData, int level, out int adler32)
+        [Obsolete("Use MemoryZlib.Compress(byte[], out byte[], ZlibCompression, out int) instead. This will be removed in a future release.")]
+        public static void CompressData(byte[] inData, out byte[] outData, ZlibCompression level, out int adler32)
             => Compress(inData, out outData, level, out adler32);
 
         /// <summary>
@@ -79,7 +79,7 @@ namespace Elskom.Generic.Libs
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
         public static void Compress(byte[] inData, out byte[] outData, out int adler32)
-            => Compress(inData, out outData, ZlibConst.ZDEFAULTCOMPRESSION, out adler32);
+            => Compress(inData, out outData, ZlibCompression.ZDEFAULTCOMPRESSION, out adler32);
 
         /// <summary>
         /// Compresses a file using the default compression level.
@@ -91,7 +91,7 @@ namespace Elskom.Generic.Libs
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
         public static void Compress(string path, out byte[] outData, out int adler32)
-            => Compress(File.ReadAllBytes(path), out outData, ZlibConst.ZDEFAULTCOMPRESSION, out adler32);
+            => Compress(File.ReadAllBytes(path), out outData, ZlibCompression.ZDEFAULTCOMPRESSION, out adler32);
 
         /// <summary>
         /// Compresses data using the default compression level.
@@ -102,7 +102,7 @@ namespace Elskom.Generic.Libs
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
         public static void Compress(byte[] inData, out byte[] outData)
-            => Compress(inData, out outData, ZlibConst.ZDEFAULTCOMPRESSION);
+            => Compress(inData, out outData, ZlibCompression.ZDEFAULTCOMPRESSION);
 
         /// <summary>
         /// Compresses a file using the default compression level.
@@ -113,7 +113,7 @@ namespace Elskom.Generic.Libs
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
         public static void Compress(string path, out byte[] outData)
-            => Compress(File.ReadAllBytes(path), out outData, ZlibConst.ZDEFAULTCOMPRESSION);
+            => Compress(File.ReadAllBytes(path), out outData, ZlibCompression.ZDEFAULTCOMPRESSION);
 
         /// <summary>
         /// Compresses data using an specific compression level.
@@ -125,7 +125,7 @@ namespace Elskom.Generic.Libs
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
         // discard returned adler32. The caller does not want it.
-        public static void Compress(byte[] inData, out byte[] outData, int level)
+        public static void Compress(byte[] inData, out byte[] outData, ZlibCompression level)
             => Compress(inData, out outData, level, out var adler32);
 
         /// <summary>
@@ -138,7 +138,7 @@ namespace Elskom.Generic.Libs
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
         // discard returned adler32. The caller does not want it.
-        public static void Compress(string path, out byte[] outData, int level)
+        public static void Compress(string path, out byte[] outData, ZlibCompression level)
             => Compress(File.ReadAllBytes(path), out outData, level, out var adler32);
 
         /// <summary>
@@ -151,7 +151,7 @@ namespace Elskom.Generic.Libs
         /// <exception cref="NotPackableException">
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
-        public static void Compress(byte[] inData, out byte[] outData, int level, out int adler32)
+        public static void Compress(byte[] inData, out byte[] outData, ZlibCompression level, out int adler32)
         {
             using (var outMemoryStream = new MemoryStream())
             using (var outZStream = new ZOutputStream(outMemoryStream, level))
@@ -199,7 +199,7 @@ namespace Elskom.Generic.Libs
         /// <exception cref="NotPackableException">
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
-        public static void Compress(string path, out byte[] outData, int level, out int adler32)
+        public static void Compress(string path, out byte[] outData, ZlibCompression level, out int adler32)
             => Compress(File.ReadAllBytes(path), out outData, level, out adler32);
 
         /// <summary>
@@ -257,5 +257,62 @@ namespace Elskom.Generic.Libs
         /// </exception>
         public static void Decompress(string path, out byte[] outData)
             => Decompress(File.ReadAllBytes(path), out outData);
+
+        /// <summary>
+        /// Check data for compression by zlib.
+        /// </summary>
+        /// <param name="stream">Input stream.</param>
+        /// <returns>Returns <see langword="true" /> if data is compressed by zlib, else <see langword="false" />.</returns>
+        /// <exception cref="ArgumentNullException">When <paramref name="stream"/> is <see langword="null" />.</exception>
+        public static bool IsCompressedByZlib(Stream stream)
+        {
+            if (stream == null)
+            {
+                throw new ArgumentNullException(nameof(stream));
+            }
+
+            var data = new byte[2];
+            stream.Read(data, 0, 2);
+            stream.Seek(-2, SeekOrigin.Current);
+            return IsCompressedByZlib(data);
+        }
+
+        /// <summary>
+        /// Check data for compression by zlib.
+        /// </summary>
+        /// <param name="path">The file to check on if it is compressed by zlib.</param>
+        /// <returns>Returns <see langword="true" /> if data is compressed by zlib, else <see langword="false" />.</returns>
+        /// <exception cref="ArgumentNullException">When <paramref name="path"/> is <see langword="null" /> or <see cref="string.Empty"/>.</exception>
+        public static bool IsCompressedByZlib(string path)
+            => IsCompressedByZlib(File.ReadAllBytes(path));
+
+        /// <summary>
+        /// Check data for compression by zlib.
+        /// </summary>
+        /// <param name="data">Input array.</param>
+        /// <returns>Returns <see langword="true" /> if data is compressed by zlib, else <see langword="false" />.</returns>
+        /// <exception cref="ArgumentNullException">When <paramref name="data"/> is <see langword="null" />.</exception>
+        public static bool IsCompressedByZlib(byte[] data)
+        {
+            if (data == null)
+            {
+                throw new ArgumentNullException(nameof(data));
+            }
+
+            if (data.Length < 2)
+            {
+                return false;
+            }
+
+            if (data[0] == 0x78)
+            {
+                if (data[1] == 0x01 || data[1] == 0x5E || data[1] == 0x9C || data[1] == 0xDA)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 }
