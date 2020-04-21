@@ -60,7 +60,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="GitBuildInfo" Version="0.22.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Include="GitBuildInfo" Version="0.23.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.164" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.0.0-beta4.20210.2+38fe3493" IncludeAssets="runtime; build; native; contentfiles; analyzers" PrivateAssets="All" />
     <PackageReference Include="IDisposableAnalyzers" Version="3.3.7" IncludeAssets="runtime; build; native; contentfiles; analyzers" PrivateAssets="All" />
