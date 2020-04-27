@@ -66,7 +66,7 @@
     <PackageReference Include="IDisposableAnalyzers" Version="3.3.7" IncludeAssets="runtime; build; native; contentfiles; analyzers" PrivateAssets="All" />
     <PackageReference Include="System.Runtime" Condition="!$(TargetFramework.StartsWith('net4'))" Version="4.3.1" />
     <PackageReference Include="System.Runtime.Extensions" Condition="!$(TargetFramework.StartsWith('net4'))" Version="4.3.1" />
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.0-beta-20217-01" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.0-beta-20225-02" PrivateAssets="All" />
     <PackageReference Condition="!$(TargetFramework.StartsWith('netcoreapp')) AND !$(TargetFramework.StartsWith('netstandard'))" Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
   </ItemGroup>
 
