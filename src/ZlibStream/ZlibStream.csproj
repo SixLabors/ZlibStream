@@ -1,0 +1,74 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netcoreapp2.0;netcoreapp2.1;netcoreapp3.1;netstandard1.3;netstandard2.0;netstandard2.1;net472</TargetFrameworks>
+    <AssemblyName>zlib.managed</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <Company>Els_kom org.</Company>
+    <Authors>Els_kom org.</Authors>
+    <PackageTags>zlib</PackageTags>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/Elskom/zlib.managed/</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Elskom/zlib.managed/</PackageProjectUrl>
+    <!--<PackageLicenseFile>LICENSE</PackageLicenseFile>-->
+    <Copyright>Copyright (c) 2018-2019</Copyright>
+    <Description>A cleaned up and bug fixed version of zlib.net. This is also planned to be updated frequently if needed too.</Description>
+    <PackageReleaseNotes>Code fixes to expose more members and fix null data output.</PackageReleaseNotes>
+    <Version>1.1.5</Version>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+    <NoWarn>$(NoWarn);NU5104;NU5118</NoWarn>
+    <PackageOutputPath Condition="'$(SolutionName)' == 'build_all_packages'">$(MSBuildThisFileDirectory)..\..\artifacts\</PackageOutputPath>
+    <!-- Optional: Publish the repository URL in the built .nupkg (in the NuSpec <Repository> element) -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <!-- Optional: Embed source files that are not tracked by the source control manager in the PDB -->
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <!-- Optional: Build symbol package (.snupkg) to distribute the PDB containing Source Link -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <IncludeBuildOutput>true</IncludeBuildOutput>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\..\SixLabors.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <OutputPath>bin\Any CPU\Debug\</OutputPath>
+    <DocumentationFile>bin\Any CPU\Debug\zlib.managed.xml</DocumentationFile>
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <OutputPath>bin\Any CPU\Release\</OutputPath>
+    <DocumentationFile>bin\Any CPU\Release\zlib.managed.xml</DocumentationFile>
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' != 'netstandard1.3'">
+    <DefineConstants>$(DefineConstants);SUPPORTS_SERIALIZATION</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove=".gitignore" />
+    <None Remove="appveyor.yml" />
+    <!--<None Include="LICENSE" Pack="true" Visible="false" PackagePath="" />-->
+    <None Remove="readme.md" />
+    <None Remove="stylecop.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)..\..\stylecop.json" />
+    <InternalsVisibleTo Include="ZlibStream.Tests"/>
+    <!--<InternalsVisibleTo Include="ZlibStream.Benchmarks"/>-->
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="Microsoft.Net.Compilers.Toolset" PrivateAssets="All" Version="3.3.1" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Include="System.Runtime.Extensions" Condition="!$(TargetFramework.StartsWith('net4'))" Version="4.3.1" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.0-beta-20225-01" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" PrivateAssets="All"  />
+  </ItemGroup>
+
+</Project>
