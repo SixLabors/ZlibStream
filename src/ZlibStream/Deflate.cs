@@ -5,6 +5,7 @@ namespace SixLabors.ZlibStream
 {
     using System;
     using System.Runtime.CompilerServices;
+    using System.Runtime.InteropServices;
 
     /// <summary>
     /// Class for compressing data through zlib.
@@ -1384,8 +1385,11 @@ namespace SixLabors.ZlibStream
             return this.Strm.AvailOut == 0 ? flush == ZlibFlushStrategy.ZFINISH ? FinishStarted : NeedMore : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
         }
 
+        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
         internal int Longest_match(int cur_match)
         {
+            ref byte windowRef = ref MemoryMarshal.GetReference<byte>(this.Window);
+
             var chain_length = this.MaxChainLength; // max hash chain length
             var scan = this.Strstart; // current string
             int match; // matched string
@@ -1399,8 +1403,8 @@ namespace SixLabors.ZlibStream
             var wmask = this.WMask;
 
             var strend = this.Strstart + MAXMATCH;
-            var scan_end1 = this.Window[scan + best_len - 1];
-            var scan_end = this.Window[scan + best_len];
+            var scan_end1 = Unsafe.Add(ref windowRef, scan + best_len - 1);
+            var scan_end = Unsafe.Add(ref windowRef, scan + best_len);
 
             // The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
             // It is easy to get rid of this optimization if necessary.
@@ -1418,13 +1422,18 @@ namespace SixLabors.ZlibStream
                 nice_match = this.Lookahead;
             }
 
+            ref short prevRef = ref MemoryMarshal.GetReference<short>(this.Prev);
+
             do
             {
                 match = cur_match;
 
                 // Skip to next match if the match length cannot increase
                 // or if the match length is less than 2:
-                if (this.Window[match + best_len] != scan_end || this.Window[match + best_len - 1] != scan_end1 || this.Window[match] != this.Window[scan] || this.Window[++match] != this.Window[scan + 1])
+                if (Unsafe.Add(ref windowRef, match + best_len) != scan_end
+                    || Unsafe.Add(ref windowRef, match + best_len - 1) != scan_end1
+                    || Unsafe.Add(ref windowRef, match) != Unsafe.Add(ref windowRef, scan)
+                    || Unsafe.Add(ref windowRef, ++match) != Unsafe.Add(ref windowRef, scan + 1))
                 {
                     continue;
                 }
@@ -1442,7 +1451,15 @@ namespace SixLabors.ZlibStream
                 do
                 {
                 }
-                while (this.Window[++scan] == this.Window[++match] && this.Window[++scan] == this.Window[++match] && this.Window[++scan] == this.Window[++match] && this.Window[++scan] == this.Window[++match] && this.Window[++scan] == this.Window[++match] && this.Window[++scan] == this.Window[++match] && this.Window[++scan] == this.Window[++match] && this.Window[++scan] == this.Window[++match] && scan < strend);
+                while (Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
+                && Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
+                && Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
+                && Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
+                && Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
+                && Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
+                && Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
+                && Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
+                && scan < strend);
 
                 len = MAXMATCH - (strend - scan);
                 scan = strend - MAXMATCH;
@@ -1456,11 +1473,11 @@ namespace SixLabors.ZlibStream
                         break;
                     }
 
-                    scan_end1 = this.Window[scan + best_len - 1];
-                    scan_end = this.Window[scan + best_len];
+                    scan_end1 = Unsafe.Add(ref windowRef, scan + best_len - 1);
+                    scan_end = Unsafe.Add(ref windowRef, scan + best_len);
                 }
             }
-            while ((cur_match = this.Prev[cur_match & wmask] & 0xffff) > limit && --chain_length != 0);
+            while ((cur_match = Unsafe.Add(ref prevRef, cur_match & wmask) & 0xFFFF) > limit && --chain_length != 0);
 
             return best_len <= this.Lookahead ? best_len : this.Lookahead;
         }
@@ -1474,14 +1491,6 @@ namespace SixLabors.ZlibStream
         internal ZlibCompressionState DeflateInit2(ZStream strm, ZlibCompressionLevel level, int method, int windowBits, int memLevel, ZlibCompressionStrategy strategy)
         {
             var noheader = 0;
-
-            // byte[] my_version=ZLIB_VERSION;
-
-            //
-            //  if (version == null || version[0] != my_version[0]
-            //  || stream_size != sizeof(z_stream)) {
-            //  return Z_VERSION_ERROR;
-            //  }
             strm.Msg = null;
 
             if (level == ZlibCompressionLevel.ZDEFAULTCOMPRESSION)
