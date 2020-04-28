@@ -1496,7 +1496,15 @@ namespace SixLabors.ZlibStream
                 windowBits = -windowBits;
             }
 
-            if (memLevel < 1 || memLevel > MAXMEMLEVEL || method != ZDEFLATED || windowBits < 9 || windowBits > 15 || level < ZlibCompressionLevel.ZNOCOMPRESSION || level > ZlibCompressionLevel.ZBESTCOMPRESSION || strategy < ZlibCompressionStrategy.ZDEFAULTSTRATEGY || strategy > ZlibCompressionStrategy.ZHUFFMANONLY)
+            if (memLevel < 1
+                || memLevel > MAXMEMLEVEL
+                || method != ZDEFLATED
+                || windowBits < 9
+                || windowBits > 15
+                || level < ZlibCompressionLevel.ZNOCOMPRESSION
+                || level > ZlibCompressionLevel.ZBESTCOMPRESSION
+                || strategy < ZlibCompressionStrategy.ZDEFAULTSTRATEGY
+                || strategy > ZlibCompressionStrategy.ZHUFFMANONLY)
             {
                 return ZlibCompressionState.ZSTREAMERROR;
             }
@@ -1584,10 +1592,13 @@ namespace SixLabors.ZlibStream
 
             if (level == ZlibCompressionLevel.ZDEFAULTCOMPRESSION)
             {
-                level = (ZlibCompressionLevel)6;
+                level = ZlibCompressionLevel.Six;
             }
 
-            if (level < ZlibCompressionLevel.ZNOCOMPRESSION || level > ZlibCompressionLevel.ZBESTCOMPRESSION || strategy < ZlibCompressionStrategy.ZDEFAULTSTRATEGY || strategy > ZlibCompressionStrategy.ZHUFFMANONLY)
+            if (level < ZlibCompressionLevel.ZNOCOMPRESSION
+                || level > ZlibCompressionLevel.ZBESTCOMPRESSION
+                || strategy < ZlibCompressionStrategy.ZDEFAULTSTRATEGY
+                || strategy > ZlibCompressionStrategy.ZHUFFMANONLY)
             {
                 return ZlibCompressionState.ZSTREAMERROR;
             }

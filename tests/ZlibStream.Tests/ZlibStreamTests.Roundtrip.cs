@@ -25,7 +25,7 @@ namespace ZlibStream.Tests
 
             using (var compressed = new MemoryStream())
             {
-                using (var deflate = new ZOutputStream(compressed, compression))
+                using (var deflate = new ZlibOutputStream(compressed, compression))
                 {
                     deflate.Write(expected);
                 }
@@ -40,7 +40,7 @@ namespace ZlibStream.Tests
 
                 compressed.Position = 0;
 
-                using (var inflate = new ZInputStream(compressed))
+                using (var inflate = new ZlibInputStream(compressed))
                 {
                     inflate.Read(actual);
                 }

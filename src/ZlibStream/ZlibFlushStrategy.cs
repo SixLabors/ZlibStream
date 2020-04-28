@@ -4,7 +4,7 @@
 namespace SixLabors.ZlibStream
 {
     /// <summary>
-    /// Flush Strategy for zlib.
+    /// Provides enumeration of flushing strategies for Zlib.
     /// </summary>
     public enum ZlibFlushStrategy
     {

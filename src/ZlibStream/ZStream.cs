@@ -71,7 +71,7 @@ namespace SixLabors.ZlibStream
         public long Adler { get; set; }
 
         /// <summary>
-        /// Gets the current Deflate instance for this class.
+        /// Gets or sets the current Deflate instance for this class.
         /// </summary>
         public Deflate Dstate { get; internal set; }
 

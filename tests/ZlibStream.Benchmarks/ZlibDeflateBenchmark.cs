@@ -43,7 +43,7 @@ namespace ZlibStream.Benchmarks
             using (var output = new MemoryStream())
             {
                 // Defaults to compression -1, buffer 512.
-                using (var deflate = new ZOutputStream(output, ZlibCompressionLevel.ZDEFAULTCOMPRESSION))
+                using (var deflate = new ZlibOutputStream(output, ZlibCompressionLevel.ZDEFAULTCOMPRESSION))
                 {
                     deflate.Write(this.data, 0, this.data.Length);
                 }
