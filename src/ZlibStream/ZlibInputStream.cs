@@ -2,6 +2,7 @@
 // See LICENSE for more details.
 
 using System;
+using System.Buffers;
 using System.IO;
 
 namespace SixLabors.ZlibStream
@@ -178,6 +179,7 @@ namespace SixLabors.ZlibStream
                     finally
                     {
                         this.EndStream();
+                        ArrayPool<byte>.Shared.Return(this.chunkBuffer);
                     }
                 }
 
@@ -236,7 +238,7 @@ namespace SixLabors.ZlibStream
         private void InitBlock()
         {
             this.FlushMode = ZlibFlushStrategy.ZNOFLUSH;
-            this.chunkBuffer = new byte[BufferSize];
+            this.chunkBuffer = ArrayPool<byte>.Shared.Rent(BufferSize);
         }
     }
 }

@@ -22,7 +22,7 @@ namespace ZlibStream.Benchmarks
             new Random(1).NextBytes(this.data);
         }
 
-        [Benchmark]
+        [Benchmark(Baseline = true)]
         public long SharpZipLibUpdate()
         {
             var adler32 = new ICSharpCode.SharpZipLib.Checksum.Adler32();

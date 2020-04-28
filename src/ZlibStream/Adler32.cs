@@ -1,6 +1,9 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
 namespace SixLabors.ZlibStream
 {
     internal static class Adler32
@@ -22,6 +25,8 @@ namespace SixLabors.ZlibStream
             var s2 = (adler >> 16) & 0xFFFF;
             int k;
 
+            ref byte bufferRef = ref MemoryMarshal.GetReference<byte>(buffer);
+
             while (length > 0)
             {
                 k = length < NMAX ? length : NMAX;
@@ -31,37 +36,37 @@ namespace SixLabors.ZlibStream
                 // https://software.intel.com/en-us/articles/fast-computation-of-adler32-checksums
                 while (k >= 16)
                 {
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    s1 += buffer[index++];
+                    s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
                     k -= 16;
                 }
@@ -70,7 +75,7 @@ namespace SixLabors.ZlibStream
                 {
                     do
                     {
-                        s1 += buffer[index++];
+                        s1 += Unsafe.Add(ref bufferRef, index++);
                         s2 += s1;
                     }
                     while (--k != 0);

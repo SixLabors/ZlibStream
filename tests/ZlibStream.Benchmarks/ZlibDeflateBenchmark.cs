@@ -21,7 +21,7 @@ namespace ZlibStream.Benchmarks
             this.data = GetBuffer(1000 * 1000 * 4);
         }
 
-        [Benchmark]
+        [Benchmark(Baseline = true)]
         public long SharpZipLibDeflate()
         {
             using (var output = new MemoryStream())
