@@ -174,7 +174,8 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="flush">The flush mode to use on the data.</param>
         /// <returns>The zlib status state.</returns>
-        public ZlibCompressionState Deflate(ZlibFlushStrategy flush) => this.Dstate == null ? ZlibCompressionState.ZSTREAMERROR : this.Dstate.Compress(this, flush);
+        public ZlibCompressionState Deflate(ZlibFlushStrategy flush)
+            => this.Dstate == null ? ZlibCompressionState.ZSTREAMERROR : this.Dstate.Compress(this, flush);
 
         /// <summary>
         /// Ends compression.

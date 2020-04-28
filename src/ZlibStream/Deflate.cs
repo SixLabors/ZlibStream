@@ -4,6 +4,7 @@
 namespace SixLabors.ZlibStream
 {
     using System;
+    using System.Buffers;
     using System.Runtime.CompilerServices;
     using System.Runtime.InteropServices;
 
@@ -102,9 +103,9 @@ namespace SixLabors.ZlibStream
         internal Deflate()
         {
             // TODO: Array Pooling.
-            this.DynLtree = new short[HEAPSIZE * 2];
-            this.DynDtree = new short[((2 * DCODES) + 1) * 2]; // distance tree
-            this.BlTree = new short[((2 * BLCODES) + 1) * 2]; // Huffman tree for bit lengths
+            this.DynLtree = ArrayPool<short>.Shared.Rent(HEAPSIZE * 2);
+            this.DynDtree = ArrayPool<short>.Shared.Rent(((2 * DCODES) + 1) * 2); // distance tree
+            this.BlTree = ArrayPool<short>.Shared.Rent(((2 * BLCODES) + 1) * 2); // Huffman tree for bit lengths
         }
 
         internal ZStream Strm { get; private set; } // pointer back to this zlib stream
@@ -1530,15 +1531,15 @@ namespace SixLabors.ZlibStream
             this.HashMask = this.HashSize - 1;
             this.HashShift = (this.HashBits + MINMATCH - 1) / MINMATCH;
 
-            this.Window = new byte[this.WSize * 2];
-            this.Prev = new short[this.WSize];
-            this.Head = new short[this.HashSize];
+            this.Window = ArrayPool<byte>.Shared.Rent(this.WSize * 2);
+            this.Prev = ArrayPool<short>.Shared.Rent(this.WSize);
+            this.Head = ArrayPool<short>.Shared.Rent(this.HashSize);
 
             this.LitBufsize = 1 << (memLevel + 6); // 16K elements by default
 
             // We overlay pending_buf and d_buf+l_buf. This works since the average
             // output size for (length,distance) codes is <= 24 bits.
-            this.PendingBuf = new byte[this.LitBufsize * 4];
+            this.PendingBuf = ArrayPool<byte>.Shared.Rent(this.LitBufsize * 4);
             this.PendingBufSize = this.LitBufsize * 4;
 
             this.DBuf = this.LitBufsize;
@@ -1585,10 +1586,14 @@ namespace SixLabors.ZlibStream
             }
 
             // Deallocate in reverse order of allocations:
-            this.PendingBuf = null;
-            this.Head = null;
-            this.Prev = null;
-            this.Window = null;
+            ArrayPool<byte>.Shared.Return(this.PendingBuf);
+            ArrayPool<short>.Shared.Return(this.Head);
+            ArrayPool<short>.Shared.Return(this.Prev);
+            ArrayPool<byte>.Shared.Return(this.Window);
+
+            ArrayPool<short>.Shared.Return(this.BlTree);
+            ArrayPool<short>.Shared.Return(this.DynDtree);
+            ArrayPool<short>.Shared.Return(this.DynLtree);
 
             // free
             // dstate=null;
