@@ -196,7 +196,7 @@ namespace SixLabors
         // Insert new strings in the hash table only if the match length is not
         // greater than this length. This saves time but degrades compression.
         // max_insert_length is used only for compression levels <= 3.
-        internal ZlibCompression Level { get; private set; } // compression level (1..9)
+        internal ZlibCompressionLevel Level { get; private set; } // compression level (1..9)
 
         internal ZlibCompressionStrategy Strategy { get; private set; } // favor or force Huffman coding
 
@@ -679,7 +679,7 @@ namespace SixLabors
                 this.DynDtree[Tree.D_code(dist) * 2]++;
             }
 
-            if ((this.LastLit & 0x1fff) == 0 && this.Level > (ZlibCompression)2)
+            if ((this.LastLit & 0x1fff) == 0 && this.Level > (ZlibCompressionLevel)2)
             {
                 // Compute an upper bound for the compressed length
                 var out_length = this.LastLit * 8;
@@ -1453,13 +1453,13 @@ namespace SixLabors
             return best_len <= this.Lookahead ? best_len : this.Lookahead;
         }
 
-        internal ZlibCompressionState DeflateInit(ZStream strm, ZlibCompression level, int bits)
+        internal ZlibCompressionState DeflateInit(ZStream strm, ZlibCompressionLevel level, int bits)
             => this.DeflateInit2(strm, level, ZDEFLATED, bits, DEFMEMLEVEL, ZlibCompressionStrategy.ZDEFAULTSTRATEGY);
 
-        internal ZlibCompressionState DeflateInit(ZStream strm, ZlibCompression level)
+        internal ZlibCompressionState DeflateInit(ZStream strm, ZlibCompressionLevel level)
             => this.DeflateInit(strm, level, MAXWBITS);
 
-        internal ZlibCompressionState DeflateInit2(ZStream strm, ZlibCompression level, int method, int windowBits, int memLevel, ZlibCompressionStrategy strategy)
+        internal ZlibCompressionState DeflateInit2(ZStream strm, ZlibCompressionLevel level, int method, int windowBits, int memLevel, ZlibCompressionStrategy strategy)
         {
             var noheader = 0;
 
@@ -1472,9 +1472,9 @@ namespace SixLabors
             //  }
             strm.Msg = null;
 
-            if (level == ZlibCompression.ZDEFAULTCOMPRESSION)
+            if (level == ZlibCompressionLevel.ZDEFAULTCOMPRESSION)
             {
-                level = (ZlibCompression)6;
+                level = (ZlibCompressionLevel)6;
             }
 
             if (windowBits < 0)
@@ -1484,7 +1484,7 @@ namespace SixLabors
                 windowBits = -windowBits;
             }
 
-            if (memLevel < 1 || memLevel > MAXMEMLEVEL || method != ZDEFLATED || windowBits < 9 || windowBits > 15 || level < ZlibCompression.ZNOCOMPRESSION || level > ZlibCompression.ZBESTCOMPRESSION || strategy < ZlibCompressionStrategy.ZDEFAULTSTRATEGY || strategy > ZlibCompressionStrategy.ZHUFFMANONLY)
+            if (memLevel < 1 || memLevel > MAXMEMLEVEL || method != ZDEFLATED || windowBits < 9 || windowBits > 15 || level < ZlibCompressionLevel.ZNOCOMPRESSION || level > ZlibCompressionLevel.ZBESTCOMPRESSION || strategy < ZlibCompressionStrategy.ZDEFAULTSTRATEGY || strategy > ZlibCompressionStrategy.ZHUFFMANONLY)
             {
                 return ZlibCompressionState.ZSTREAMERROR;
             }
@@ -1566,16 +1566,16 @@ namespace SixLabors
             return this.Status == BUSYSTATE ? ZlibCompressionState.ZDATAERROR : ZlibCompressionState.ZOK;
         }
 
-        internal ZlibCompressionState DeflateParams(ZStream strm, ZlibCompression level, ZlibCompressionStrategy strategy)
+        internal ZlibCompressionState DeflateParams(ZStream strm, ZlibCompressionLevel level, ZlibCompressionStrategy strategy)
         {
             var err = ZlibCompressionState.ZOK;
 
-            if (level == ZlibCompression.ZDEFAULTCOMPRESSION)
+            if (level == ZlibCompressionLevel.ZDEFAULTCOMPRESSION)
             {
-                level = (ZlibCompression)6;
+                level = (ZlibCompressionLevel)6;
             }
 
-            if (level < ZlibCompression.ZNOCOMPRESSION || level > ZlibCompression.ZBESTCOMPRESSION || strategy < ZlibCompressionStrategy.ZDEFAULTSTRATEGY || strategy > ZlibCompressionStrategy.ZHUFFMANONLY)
+            if (level < ZlibCompressionLevel.ZNOCOMPRESSION || level > ZlibCompressionLevel.ZBESTCOMPRESSION || strategy < ZlibCompressionStrategy.ZDEFAULTSTRATEGY || strategy > ZlibCompressionStrategy.ZHUFFMANONLY)
             {
                 return ZlibCompressionState.ZSTREAMERROR;
             }

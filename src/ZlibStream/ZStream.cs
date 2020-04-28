@@ -154,7 +154,7 @@ namespace SixLabors
         /// </summary>
         /// <param name="level">The compression level to use.</param>
         /// <returns>The zlib status state.</returns>
-        public ZlibCompressionState DeflateInit(ZlibCompression level)
+        public ZlibCompressionState DeflateInit(ZlibCompressionLevel level)
             => this.DeflateInit(level, MAXWBITS);
 
         /// <summary>
@@ -163,7 +163,7 @@ namespace SixLabors
         /// <param name="level">The compression level to use.</param>
         /// <param name="bits">The window bits to use.</param>
         /// <returns>The zlib status state.</returns>
-        public ZlibCompressionState DeflateInit(ZlibCompression level, int bits)
+        public ZlibCompressionState DeflateInit(ZlibCompressionLevel level, int bits)
         {
             this.Dstate = new Deflate();
             return this.Dstate.DeflateInit(this, level, bits);
@@ -198,7 +198,7 @@ namespace SixLabors
         /// <param name="level">The compression level to use.</param>
         /// <param name="strategy">The strategy to use for compression.</param>
         /// <returns>The zlib status state.</returns>
-        public ZlibCompressionState DeflateParams(ZlibCompression level, ZlibCompressionStrategy strategy)
+        public ZlibCompressionState DeflateParams(ZlibCompressionLevel level, ZlibCompressionStrategy strategy)
             => this.Dstate == null
             ? ZlibCompressionState.ZSTREAMERROR
             : this.Dstate.DeflateParams(this, level, strategy);

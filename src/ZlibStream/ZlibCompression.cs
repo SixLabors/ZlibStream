@@ -4,9 +4,9 @@
 namespace SixLabors
 {
     /// <summary>
-    /// Compression levels for zlib.
+    /// Provides enumeration of general compression levels for Zlib.
     /// </summary>
-    public enum ZlibCompression
+    public enum ZlibCompressionLevel
     {
         /// <summary>
         /// The default compression level.

@@ -36,7 +36,7 @@ namespace SixLabors
         /// </summary>
         /// <param name="output">The output stream.</param>
         /// <param name="level">The compression level for the data to compress.</param>
-        public ZOutputStream(Stream output, ZlibCompression level)
+        public ZOutputStream(Stream output, ZlibCompressionLevel level)
         {
             this.BaseStream = output;
             this.InitBlock();

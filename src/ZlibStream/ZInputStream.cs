@@ -5,7 +5,6 @@ namespace SixLabors
 {
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics.CodeAnalysis;
     using System.IO;
     using System.Linq;
 
@@ -15,8 +14,8 @@ namespace SixLabors
     /// </summary>
     public class ZInputStream : Stream
     {
-        private byte[] pBuf;
-        private byte[] pBuf1 = new byte[1];
+        private byte[] chunkBuffer;
+        private readonly byte[] byteBuffer = new byte[1];
         private bool isDisposed;
 
         /// <summary>
@@ -29,7 +28,7 @@ namespace SixLabors
             this.InitBlock();
             _ = this.Z.InflateInit();
             this.Compress = false;
-            this.Z.INextIn = this.pBuf;
+            this.Z.INextIn = this.chunkBuffer;
             this.Z.NextInIndex = 0;
             this.Z.AvailIn = 0;
         }
@@ -39,13 +38,13 @@ namespace SixLabors
         /// </summary>
         /// <param name="input">The input stream.</param>
         /// <param name="level">The compression level for the data to compress.</param>
-        public ZInputStream(Stream input, ZlibCompression level)
+        public ZInputStream(Stream input, ZlibCompressionLevel level)
         {
             this.BaseStream = input;
             this.InitBlock();
             _ = this.Z.DeflateInit(level);
             this.Compress = true;
-            this.Z.INextIn = this.pBuf;
+            this.Z.INextIn = this.chunkBuffer;
             this.Z.NextInIndex = 0;
             this.Z.AvailIn = 0;
         }
@@ -108,13 +107,13 @@ namespace SixLabors
         /// <summary>
         /// Gets the stream's buffer.
         /// </summary>
-        protected List<byte> Buf => this.pBuf.ToList();
+        protected List<byte> Buf => this.chunkBuffer.ToList();
 
         /// <summary>
         /// Gets the stream's single byte buffer value.
         /// For reading 1 byte at a time.
         /// </summary>
-        protected List<byte> Buf1 => this.pBuf1.ToList();
+        protected List<byte> Buf1 => this.byteBuffer.ToList();
 
         /// <summary>
         /// Gets a value indicating whether this stream is setup for compression.
@@ -123,29 +122,30 @@ namespace SixLabors
 
         /// <inheritdoc/>
         public override int ReadByte()
-            => this.Read(this.pBuf1, 0, 1) == -1
+            => this.Read(this.byteBuffer, 0, 1) == -1
             ? -1
-            : this.pBuf1[0] & 0xFF;
+            : this.byteBuffer[0] & 0xFF;
 
         /// <inheritdoc/>
-        public override int Read(byte[] b, int off, int len)
+        public override int Read(byte[] buffer, int offset, int length)
         {
-            if (len == 0)
+            if (length == 0)
             {
                 return 0;
             }
 
             ZlibCompressionState err;
-            this.Z.INextOut = b;
-            this.Z.NextOutIndex = off;
-            this.Z.AvailOut = len;
+            this.Z.INextOut = buffer;
+            this.Z.NextOutIndex = offset;
+            this.Z.AvailOut = length;
             do
             {
                 if ((this.Z.AvailIn == 0) && (!this.NoMoreinput))
                 {
-                    // if buffer is empty and more input is avaiable, refill it
+                    // If buffer is empty and more input is available, refill it
                     this.Z.NextInIndex = 0;
-                    this.Z.AvailIn = SupportClass.ReadInput(this.BaseStream, this.pBuf, 0, this.Bufsize); // (bufsize<z.avail_out ? bufsize : z.avail_out));
+                    this.Z.AvailIn = this.BaseStream.Read(this.chunkBuffer, 0, this.Bufsize);
+
                     if (this.Z.AvailIn == -1)
                     {
                         this.Z.AvailIn = 0;
@@ -167,15 +167,14 @@ namespace SixLabors
                     throw new ZStreamException((this.Compress ? "de" : "in") + "flating: " + this.Z.Msg);
                 }
 
-                if (this.NoMoreinput && (this.Z.AvailOut == len))
+                if (this.NoMoreinput && (this.Z.AvailOut == length))
                 {
                     return -1;
                 }
             }
             while (this.Z.AvailOut > 0 && err == ZlibCompressionState.ZOK);
 
-            // System.err.print("("+(len-z.avail_out)+")");
-            return len - this.Z.AvailOut;
+            return length - this.Z.AvailOut;
         }
 
         /// <summary>
@@ -209,7 +208,7 @@ namespace SixLabors
                 ZlibCompressionState err;
                 do
                 {
-                    this.Z.INextOut = this.pBuf;
+                    this.Z.INextOut = this.chunkBuffer;
                     this.Z.NextOutIndex = 0;
                     this.Z.AvailOut = this.Bufsize;
                     err = this.Compress ? this.Z.Deflate(ZlibFlushStrategy.ZFINISH) : this.Z.Inflate(ZlibFlushStrategy.ZFINISH);
@@ -221,7 +220,7 @@ namespace SixLabors
 
                     if (this.Bufsize - this.Z.AvailOut > 0)
                     {
-                        this.BaseStream.Write(this.pBuf, 0, this.Bufsize - this.Z.AvailOut);
+                        this.BaseStream.Write(this.chunkBuffer, 0, this.Bufsize - this.Z.AvailOut);
                     }
 
                     if (err == ZlibCompressionState.ZSTREAMEND)
@@ -289,7 +288,7 @@ namespace SixLabors
         private void InitBlock()
         {
             this.FlushMode = ZlibFlushStrategy.ZNOFLUSH;
-            this.pBuf = new byte[this.Bufsize];
+            this.chunkBuffer = new byte[this.Bufsize];
         }
     }
 }

@@ -40,7 +40,7 @@ namespace SixLabors
         /// <param name="level">The compression level to use.</param>
         /// <exception cref="NotPackableException">Thrown when the stream Errors in any way.</exception>
         [Obsolete("Use MemoryZlib.Compress(byte[], out byte[], ZlibCompression) instead. This will be removed in a future release.")]
-        public static void CompressData(byte[] inData, out byte[] outData, ZlibCompression level)
+        public static void CompressData(byte[] inData, out byte[] outData, ZlibCompressionLevel level)
             => Compress(inData, out outData, level);
 
         /// <summary>
@@ -52,7 +52,7 @@ namespace SixLabors
         /// <param name="adler32">The output adler32 of the data.</param>
         /// <exception cref="NotPackableException">Thrown when the stream Errors in any way.</exception>
         [Obsolete("Use MemoryZlib.Compress(byte[], out byte[], ZlibCompression, out int) instead. This will be removed in a future release.")]
-        public static void CompressData(byte[] inData, out byte[] outData, ZlibCompression level, out int adler32)
+        public static void CompressData(byte[] inData, out byte[] outData, ZlibCompressionLevel level, out int adler32)
             => Compress(inData, out outData, level, out adler32);
 
         /// <summary>
@@ -77,7 +77,7 @@ namespace SixLabors
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
         public static void Compress(byte[] inData, out byte[] outData, out int adler32)
-            => Compress(inData, out outData, ZlibCompression.ZDEFAULTCOMPRESSION, out adler32);
+            => Compress(inData, out outData, ZlibCompressionLevel.ZDEFAULTCOMPRESSION, out adler32);
 
         /// <summary>
         /// Compresses a file using the default compression level.
@@ -89,7 +89,7 @@ namespace SixLabors
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
         public static void Compress(string path, out byte[] outData, out int adler32)
-            => Compress(File.ReadAllBytes(path), out outData, ZlibCompression.ZDEFAULTCOMPRESSION, out adler32);
+            => Compress(File.ReadAllBytes(path), out outData, ZlibCompressionLevel.ZDEFAULTCOMPRESSION, out adler32);
 
         /// <summary>
         /// Compresses data using the default compression level.
@@ -100,7 +100,7 @@ namespace SixLabors
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
         public static void Compress(byte[] inData, out byte[] outData)
-            => Compress(inData, out outData, ZlibCompression.ZDEFAULTCOMPRESSION);
+            => Compress(inData, out outData, ZlibCompressionLevel.ZDEFAULTCOMPRESSION);
 
         /// <summary>
         /// Compresses a file using the default compression level.
@@ -111,7 +111,7 @@ namespace SixLabors
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
         public static void Compress(string path, out byte[] outData)
-            => Compress(File.ReadAllBytes(path), out outData, ZlibCompression.ZDEFAULTCOMPRESSION);
+            => Compress(File.ReadAllBytes(path), out outData, ZlibCompressionLevel.ZDEFAULTCOMPRESSION);
 
         /// <summary>
         /// Compresses data using an specific compression level.
@@ -123,7 +123,7 @@ namespace SixLabors
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
         // discard returned adler32. The caller does not want it.
-        public static void Compress(byte[] inData, out byte[] outData, ZlibCompression level)
+        public static void Compress(byte[] inData, out byte[] outData, ZlibCompressionLevel level)
             => Compress(inData, out outData, level, out var adler32);
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace SixLabors
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
         // discard returned adler32. The caller does not want it.
-        public static void Compress(string path, out byte[] outData, ZlibCompression level)
+        public static void Compress(string path, out byte[] outData, ZlibCompressionLevel level)
             => Compress(File.ReadAllBytes(path), out outData, level, out var adler32);
 
         /// <summary>
@@ -149,7 +149,7 @@ namespace SixLabors
         /// <exception cref="NotPackableException">
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
-        public static void Compress(byte[] inData, out byte[] outData, ZlibCompression level, out int adler32)
+        public static void Compress(byte[] inData, out byte[] outData, ZlibCompressionLevel level, out int adler32)
         {
             using (var outMemoryStream = new MemoryStream())
             using (var outZStream = new ZOutputStream(outMemoryStream, level))
@@ -197,7 +197,7 @@ namespace SixLabors
         /// <exception cref="NotPackableException">
         /// Thrown when the internal compression stream errors in any way.
         /// </exception>
-        public static void Compress(string path, out byte[] outData, ZlibCompression level, out int adler32)
+        public static void Compress(string path, out byte[] outData, ZlibCompressionLevel level, out int adler32)
             => Compress(File.ReadAllBytes(path), out outData, level, out adler32);
 
         /// <summary>

@@ -12,11 +12,11 @@ namespace ZlibStream.Tests
     public partial class ZlibStreamTests
     {
         [Theory]
-        [InlineData(ZlibCompression.ZBESTCOMPRESSION)]
-        [InlineData(ZlibCompression.ZBESTSPEED)]
-        [InlineData(ZlibCompression.ZDEFAULTCOMPRESSION)]
-        [InlineData(ZlibCompression.ZNOCOMPRESSION)]
-        public void EncodeDecode(ZlibCompression compression)
+        [InlineData(ZlibCompressionLevel.ZBESTCOMPRESSION)]
+        [InlineData(ZlibCompressionLevel.ZBESTSPEED)]
+        [InlineData(ZlibCompressionLevel.ZDEFAULTCOMPRESSION)]
+        [InlineData(ZlibCompressionLevel.ZNOCOMPRESSION)]
+        public void EncodeDecode(ZlibCompressionLevel compression)
         {
             const int count = 4096 * 4;
             var expected = GetBuffer(count);
