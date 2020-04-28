@@ -89,7 +89,8 @@ namespace SixLabors
         /// Initializes decompression.
         /// </summary>
         /// <returns>The state.</returns>
-        public ZlibCompressionState InflateInit() => this.InflateInit(DEFWBITS);
+        public ZlibCompressionState InflateInit()
+            => this.InflateInit(DEFWBITS);
 
         /// <summary>
         /// Initializes decompression.
@@ -107,7 +108,10 @@ namespace SixLabors
         /// </summary>
         /// <param name="f">The flush mode to use.</param>
         /// <returns>The zlib status state.</returns>
-        public ZlibCompressionState Inflate(ZlibFlushStrategy f) => this.Istate == null ? ZlibCompressionState.ZSTREAMERROR : SixLabors.Inflate.Decompress(this, f);
+        public ZlibCompressionState Inflate(ZlibFlushStrategy f)
+            => this.Istate == null
+            ? ZlibCompressionState.ZSTREAMERROR
+            : SixLabors.Inflate.Decompress(this, f);
 
         /// <summary>
         /// Ends decompression.
@@ -120,7 +124,7 @@ namespace SixLabors
                 return ZlibCompressionState.ZSTREAMERROR;
             }
 
-            var ret = this.Istate.InflateEnd(this);
+            ZlibCompressionState ret = this.Istate.InflateEnd(this);
             this.Istate = null;
             return ret;
         }
@@ -129,7 +133,10 @@ namespace SixLabors
         /// Syncs inflate.
         /// </summary>
         /// <returns>The zlib status state.</returns>
-        public ZlibCompressionState InflateSync() => this.Istate == null ? ZlibCompressionState.ZSTREAMERROR : SixLabors.Inflate.InflateSync(this);
+        public ZlibCompressionState InflateSync()
+            => this.Istate == null
+            ? ZlibCompressionState.ZSTREAMERROR
+            : SixLabors.Inflate.InflateSync(this);
 
         /// <summary>
         /// Sets the inflate dictionary.
@@ -137,14 +144,18 @@ namespace SixLabors
         /// <param name="dictionary">The dictionary to use.</param>
         /// <param name="dictLength">The dictionary length.</param>
         /// <returns>The zlib status state.</returns>
-        public ZlibCompressionState InflateSetDictionary(byte[] dictionary, int dictLength) => this.Istate == null ? ZlibCompressionState.ZSTREAMERROR : SixLabors.Inflate.InflateSetDictionary(this, dictionary, dictLength);
+        public ZlibCompressionState InflateSetDictionary(byte[] dictionary, int dictLength)
+            => this.Istate == null
+            ? ZlibCompressionState.ZSTREAMERROR
+            : SixLabors.Inflate.InflateSetDictionary(this, dictionary, dictLength);
 
         /// <summary>
         /// Initializes compression.
         /// </summary>
         /// <param name="level">The compression level to use.</param>
         /// <returns>The zlib status state.</returns>
-        public ZlibCompressionState DeflateInit(ZlibCompression level) => this.DeflateInit(level, MAXWBITS);
+        public ZlibCompressionState DeflateInit(ZlibCompression level)
+            => this.DeflateInit(level, MAXWBITS);
 
         /// <summary>
         /// Initializes compression.
@@ -176,7 +187,7 @@ namespace SixLabors
                 return ZlibCompressionState.ZSTREAMERROR;
             }
 
-            var ret = this.Dstate.DeflateEnd();
+            ZlibCompressionState ret = this.Dstate.DeflateEnd();
             this.Dstate = null;
             return ret;
         }
@@ -187,7 +198,10 @@ namespace SixLabors
         /// <param name="level">The compression level to use.</param>
         /// <param name="strategy">The strategy to use for compression.</param>
         /// <returns>The zlib status state.</returns>
-        public ZlibCompressionState DeflateParams(ZlibCompression level, ZlibCompressionStrategy strategy) => this.Dstate == null ? ZlibCompressionState.ZSTREAMERROR : this.Dstate.DeflateParams(this, level, strategy);
+        public ZlibCompressionState DeflateParams(ZlibCompression level, ZlibCompressionStrategy strategy)
+            => this.Dstate == null
+            ? ZlibCompressionState.ZSTREAMERROR
+            : this.Dstate.DeflateParams(this, level, strategy);
 
         /// <summary>
         /// Sets the deflate dictionary.
@@ -195,7 +209,10 @@ namespace SixLabors
         /// <param name="dictionary">The dictionary to use.</param>
         /// <param name="dictLength">The dictionary length.</param>
         /// <returns>The zlib status state.</returns>
-        public ZlibCompressionState DeflateSetDictionary(byte[] dictionary, int dictLength) => this.Dstate == null ? ZlibCompressionState.ZSTREAMERROR : this.Dstate.DeflateSetDictionary(this, dictionary, dictLength);
+        public ZlibCompressionState DeflateSetDictionary(byte[] dictionary, int dictLength)
+            => this.Dstate == null
+            ? ZlibCompressionState.ZSTREAMERROR
+            : this.Dstate.DeflateSetDictionary(this, dictionary, dictLength);
 
         /// <summary>
         /// Frees everything.

@@ -78,7 +78,7 @@ namespace SixLabors
         /// <summary>
         /// Gets or sets a value indicating whether there is more input.
         /// </summary>
-        public bool Moreinput { get; set; }
+        public bool NoMoreinput { get; set; }
 
         /// <summary>
         /// Gets a value indicating whether the stream is finished.
@@ -122,7 +122,10 @@ namespace SixLabors
         protected bool Compress { get; private set; }
 
         /// <inheritdoc/>
-        public override int ReadByte() => this.Read(this.pBuf1, 0, 1) == -1 ? -1 : this.pBuf1[0] & 0xFF;
+        public override int ReadByte()
+            => this.Read(this.pBuf1, 0, 1) == -1
+            ? -1
+            : this.pBuf1[0] & 0xFF;
 
         /// <inheritdoc/>
         public override int Read(byte[] b, int off, int len)
@@ -138,7 +141,7 @@ namespace SixLabors
             this.Z.AvailOut = len;
             do
             {
-                if ((this.Z.AvailIn == 0) && (!this.Moreinput))
+                if ((this.Z.AvailIn == 0) && (!this.NoMoreinput))
                 {
                     // if buffer is empty and more input is avaiable, refill it
                     this.Z.NextInIndex = 0;
@@ -146,13 +149,15 @@ namespace SixLabors
                     if (this.Z.AvailIn == -1)
                     {
                         this.Z.AvailIn = 0;
-                        this.Moreinput = true;
+                        this.NoMoreinput = true;
                     }
                 }
 
-                err = this.Compress ? this.Z.Deflate(this.FlushMode) : this.Z.Inflate(this.FlushMode);
+                err = this.Compress
+                    ? this.Z.Deflate(this.FlushMode)
+                    : this.Z.Inflate(this.FlushMode);
 
-                if (this.Moreinput && (err == ZlibCompressionState.ZBUFERROR))
+                if (this.NoMoreinput && (err == ZlibCompressionState.ZBUFERROR))
                 {
                     return -1;
                 }
@@ -162,12 +167,12 @@ namespace SixLabors
                     throw new ZStreamException((this.Compress ? "de" : "in") + "flating: " + this.Z.Msg);
                 }
 
-                if (this.Moreinput && (this.Z.AvailOut == len))
+                if (this.NoMoreinput && (this.Z.AvailOut == len))
                 {
                     return -1;
                 }
             }
-            while (this.Z.AvailOut == len && err == ZlibCompressionState.ZOK);
+            while (this.Z.AvailOut > 0 && err == ZlibCompressionState.ZOK);
 
             // System.err.print("("+(len-z.avail_out)+")");
             return len - this.Z.AvailOut;

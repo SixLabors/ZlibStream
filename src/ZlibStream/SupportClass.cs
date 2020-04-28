@@ -101,21 +101,21 @@ namespace SixLabors
                 return 0;
             }
 
-            var receiver = new byte[target.Length];
-            var bytesRead = sourceStream.Read(receiver, start, count);
+            // var receiver = new byte[target.Length];
+            return sourceStream.Read(target, start, count);
 
-            // Returns -1 if EOF
-            if (bytesRead == 0)
-            {
-                return -1;
-            }
+            //// Returns -1 if EOF
+            //if (bytesRead == 0)
+            //{
+            //    return -1;
+            //}
 
-            for (var i = start; i < start + bytesRead; i++)
-            {
-                target[i] = receiver[i];
-            }
+            //for (var i = start; i < start + bytesRead; i++)
+            //{
+            //    target[i] = receiver[i];
+            //}
 
-            return bytesRead;
+            //return bytesRead;
         }
 
         /// <summary>Reads a number of characters from the current source TextReader and writes the data to the target array at the specified index.</summary>
