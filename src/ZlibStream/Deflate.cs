@@ -8,7 +8,7 @@ namespace SixLabors.ZlibStream
     /// <summary>
     /// Class for compressing data through zlib.
     /// </summary>
-    public sealed class Deflate
+    internal sealed class Deflate
     {
         private const int MAXMEMLEVEL = 9;
         private const int MAXWBITS = 15; // 32K LZ77 window

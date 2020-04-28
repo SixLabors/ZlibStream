@@ -6,7 +6,7 @@ namespace SixLabors.ZlibStream
     /// <summary>
     /// Class for decompressing data through zlib.
     /// </summary>
-    public sealed class Inflate
+    internal sealed class Inflate
     {
         // preset dictionary flag in zlib header
         private const int PRESETDICT = 0x20;

@@ -9,7 +9,7 @@ namespace SixLabors.ZlibStream
     /// <summary>
     /// Zlib Memory Compression and Decompression Helper Class.
     /// </summary>
-    public static class MemoryZlib
+    internal static class MemoryZlib
     {
         /// <summary>
         /// Compresses data using the default compression level.

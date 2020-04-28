@@ -11,7 +11,7 @@ namespace SixLabors.ZlibStream
     /// <summary>
     /// The zlib stream class.
     /// </summary>
-    public sealed class ZStream
+    internal sealed class ZStream
     {
         [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:Fields should be private", Justification = "Only way this library works with this.")]
         internal byte[] INextIn;
