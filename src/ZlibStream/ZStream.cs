@@ -1,7 +1,7 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
-namespace SixLabors
+namespace SixLabors.ZlibStream
 {
     using System;
     using System.Collections.Generic;
@@ -111,7 +111,7 @@ namespace SixLabors
         public ZlibCompressionState Inflate(ZlibFlushStrategy f)
             => this.Istate == null
             ? ZlibCompressionState.ZSTREAMERROR
-            : SixLabors.Inflate.Decompress(this, f);
+            : ZlibStream.Inflate.Decompress(this, f);
 
         /// <summary>
         /// Ends decompression.
@@ -136,7 +136,7 @@ namespace SixLabors
         public ZlibCompressionState InflateSync()
             => this.Istate == null
             ? ZlibCompressionState.ZSTREAMERROR
-            : SixLabors.Inflate.InflateSync(this);
+            : ZlibStream.Inflate.InflateSync(this);
 
         /// <summary>
         /// Sets the inflate dictionary.
@@ -147,7 +147,7 @@ namespace SixLabors
         public ZlibCompressionState InflateSetDictionary(byte[] dictionary, int dictLength)
             => this.Istate == null
             ? ZlibCompressionState.ZSTREAMERROR
-            : SixLabors.Inflate.InflateSetDictionary(this, dictionary, dictLength);
+            : ZlibStream.Inflate.InflateSetDictionary(this, dictionary, dictLength);
 
         /// <summary>
         /// Initializes compression.

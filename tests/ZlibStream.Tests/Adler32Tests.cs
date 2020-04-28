@@ -2,7 +2,7 @@
 // See LICENSE for more details.
 
 using System;
-using SixLabors;
+using SixLabors.ZlibStream;
 using Xunit;
 
 namespace ZlibStream.Tests

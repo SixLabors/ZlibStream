@@ -4,7 +4,7 @@
 using System;
 using System.IO;
 using ICSharpCode.SharpZipLib.Zip.Compression.Streams;
-using SixLabors;
+using SixLabors.ZlibStream;
 using Xunit;
 
 namespace ZlibStream.Tests

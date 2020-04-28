@@ -1,7 +1,7 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
-namespace SixLabors
+namespace SixLabors.ZlibStream
 {
     /// <summary>
     /// Provides enumeration of general compression levels for Zlib.

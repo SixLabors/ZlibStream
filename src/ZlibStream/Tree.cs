@@ -1,7 +1,7 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
-namespace SixLabors
+namespace SixLabors.ZlibStream
 {
     internal sealed class Tree
     {
@@ -135,7 +135,7 @@ namespace SixLabors
         // Mapping from a distance to a distance code. dist is the distance - 1 and
         // must not have side effects. _dist_code[256] and _dist_code[257] are never
         // used.
-        internal static int D_code(int dist) => dist < 256 ? DistCode[dist] : DistCode[256 + SupportClass.URShift(dist, 7)];
+        internal static int D_code(int dist) => dist < 256 ? DistCode[dist] : DistCode[256 + ZlibUtilities.URShift(dist, 7)];
 
         // Generate the codes for a given tree and bit counts (which need not be
         // optimal).
@@ -184,11 +184,11 @@ namespace SixLabors
             do
             {
                 res |= code & 1;
-                code = SupportClass.URShift(code, 1);
+                code = ZlibUtilities.URShift(code, 1);
                 res <<= 1;
             }
             while (--len > 0);
-            return SupportClass.URShift(res, 1);
+            return ZlibUtilities.URShift(res, 1);
         }
 
         // Compute the optimal bit lengths for a tree and update the total bit length

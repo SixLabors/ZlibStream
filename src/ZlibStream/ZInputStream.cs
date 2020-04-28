@@ -1,7 +1,7 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
-namespace SixLabors
+namespace SixLabors.ZlibStream
 {
     using System;
     using System.Collections.Generic;
@@ -175,27 +175,6 @@ namespace SixLabors
             while (this.Z.AvailOut > 0 && err == ZlibCompressionState.ZOK);
 
             return length - this.Z.AvailOut;
-        }
-
-        /// <summary>
-        /// Skips a certin amount of data.
-        /// </summary>
-        /// <param name="n">The amount to skip.</param>
-        /// <returns>
-        /// less than or equal to count depending on the data available
-        /// in the source Stream or -1 if the end of the stream is
-        /// reached.
-        /// </returns>
-        public long Skip(long n)
-        {
-            var len = 512;
-            if (n < len)
-            {
-                len = (int)n;
-            }
-
-            var tmp = new byte[len];
-            return SupportClass.ReadInput(this.BaseStream, tmp, 0, tmp.Length);
         }
 
         /// <summary>

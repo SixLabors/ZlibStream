@@ -61,7 +61,6 @@
     <DefineConstants>$(DefineConstants);SUPPORTS_SPAN_STREAM</DefineConstants>
     <DefineConstants>$(DefineConstants);SUPPORTS_ENCODING_STRING</DefineConstants>
     <DefineConstants>$(DefineConstants);SUPPORTS_CODECOVERAGE</DefineConstants>
-    <DefineConstants>$(DefineConstants);SUPPORTS_HOTPATH</DefineConstants>
     <DefineConstants>$(DefineConstants);SUPPORTS_SERIALIZATION</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">

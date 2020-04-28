@@ -1,6 +1,9 @@
+// Copyright (c) Six Labors and contributors.
+// See LICENSE for more details.
+
 using System;
 using BenchmarkDotNet.Attributes;
-using SixLabors;
+using SixLabors.ZlibStream;
 
 namespace ZlibStream.Benchmarks
 {
@@ -34,14 +37,14 @@ namespace ZlibStream.Benchmarks
         }
 
         [Benchmark]
-        public long ManagedUpdate()
+        public long ZlibManagedUpdate()
         {
-            return ManagedAdler32.Calculate(1, this.data, 0, this.data.Length);
+            return ZlibManagedAdler32.Calculate(1, this.data, 0, this.data.Length);
         }
     }
 
     // Reference implementation taken from zlib.managed.
-    internal static class ManagedAdler32
+    internal static class ZlibManagedAdler32
     {
         // largest prime smaller than 65536
         private const int BASE = 65521;

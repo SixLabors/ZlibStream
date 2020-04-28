@@ -1,7 +1,7 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
-namespace SixLabors
+namespace SixLabors.ZlibStream
 {
     using System;
 
@@ -158,17 +158,17 @@ namespace SixLabors
                         t = b & 7;
                         this.last = t & 1;
 
-                        switch (SupportClass.URShift(t, 1))
+                        switch (ZlibUtilities.URShift(t, 1))
                         {
                             case 0: // stored
                                 {
-                                    b = SupportClass.URShift(b, 3);
+                                    b = ZlibUtilities.URShift(b, 3);
                                     k -= 3;
                                 }
 
                                 t = k & 7; // go to byte boundary
                                 {
-                                    b = SupportClass.URShift(b, t);
+                                    b = ZlibUtilities.URShift(b, t);
                                     k -= t;
                                 }
 
@@ -187,7 +187,7 @@ namespace SixLabors
                                 }
 
                                 {
-                                    b = SupportClass.URShift(b, 3);
+                                    b = ZlibUtilities.URShift(b, 3);
                                     k -= 3;
                                 }
 
@@ -196,7 +196,7 @@ namespace SixLabors
 
                             case 2: // dynamic
                                 {
-                                    b = SupportClass.URShift(b, 3);
+                                    b = ZlibUtilities.URShift(b, 3);
                                     k -= 3;
                                 }
 
@@ -205,7 +205,7 @@ namespace SixLabors
 
                             case 3: // illegal
                                 {
-                                    b = SupportClass.URShift(b, 3);
+                                    b = ZlibUtilities.URShift(b, 3);
                                     k -= 3;
                                 }
 
@@ -245,7 +245,7 @@ namespace SixLabors
                             k += 8;
                         }
 
-                        if ((SupportClass.URShift(~b, 16) & 0xffff) != (b & 0xffff))
+                        if ((ZlibUtilities.URShift(~b, 16) & 0xffff) != (b & 0xffff))
                         {
                             this.mode = BAD;
                             z.Msg = "invalid stored block lengths";
@@ -377,7 +377,7 @@ namespace SixLabors
                         t = 258 + (t & 0x1f) + ((t >> 5) & 0x1f);
                         this.blens = new int[t];
                         {
-                            b = SupportClass.URShift(b, 14);
+                            b = ZlibUtilities.URShift(b, 14);
                             k -= 14;
                         }
 
@@ -386,7 +386,7 @@ namespace SixLabors
                         goto case BTREE;
 
                     case BTREE:
-                        while (this.index < 4 + SupportClass.URShift(this.table, 10))
+                        while (this.index < 4 + ZlibUtilities.URShift(this.table, 10))
                         {
                             while (k < 3)
                             {
@@ -412,7 +412,7 @@ namespace SixLabors
 
                             this.blens[Border[this.index++]] = b & 7;
                             {
-                                b = SupportClass.URShift(b, 3);
+                                b = ZlibUtilities.URShift(b, 3);
                                 k -= 3;
                             }
                         }
@@ -491,7 +491,7 @@ namespace SixLabors
 
                             if (c < 16)
                             {
-                                b = SupportClass.URShift(b, t);
+                                b = ZlibUtilities.URShift(b, t);
                                 k -= t;
                                 this.blens[this.index++] = c;
                             }
@@ -523,12 +523,12 @@ namespace SixLabors
                                     k += 8;
                                 }
 
-                                b = SupportClass.URShift(b, t);
+                                b = ZlibUtilities.URShift(b, t);
                                 k -= t;
 
                                 j += b & InflateMask[i];
 
-                                b = SupportClass.URShift(b, i);
+                                b = ZlibUtilities.URShift(b, i);
                                 k -= i;
 
                                 i = this.index;

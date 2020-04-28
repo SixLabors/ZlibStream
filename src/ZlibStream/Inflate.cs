@@ -1,7 +1,7 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
-namespace SixLabors
+namespace SixLabors.ZlibStream
 {
     /// <summary>
     /// Class for decompressing data through zlib.
@@ -27,7 +27,7 @@ namespace SixLabors
         private const int DONE = 12; // finished check, done
         private const int BAD = 13; // got an error--stay here
 
-        private static readonly byte[] Mark = new byte[] { 0, 0, (byte)SupportClass.Identity(0xff), (byte)SupportClass.Identity(0xff) };
+        private static readonly byte[] Mark = new byte[] { 0, 0, 0xFF, 0xFF };
 
         internal int Mode { get; private set; } // current inflate mode
 

@@ -1,7 +1,7 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
-namespace SixLabors
+namespace SixLabors.ZlibStream
 {
     using System;
 
@@ -459,7 +459,7 @@ namespace SixLabors
 
                         tindex = (this.TreeIndex + (b & InflateMask[j])) * 3;
 
-                        b = SupportClass.URShift(b, this.Tree[tindex + 1]);
+                        b = ZlibUtilities.URShift(b, this.Tree[tindex + 1]);
                         k -= this.Tree[tindex + 1];
 
                         e = this.Tree[tindex];

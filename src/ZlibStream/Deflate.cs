@@ -1,7 +1,7 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
-namespace SixLabors
+namespace SixLabors.ZlibStream
 {
     using System;
 
@@ -348,10 +348,14 @@ namespace SixLabors
             this.LastLit = this.Matches = 0;
         }
 
-        // Restore the heap property by moving down the tree starting at node k,
-        // exchanging a node with the smallest of its two sons if necessary, stopping
-        // when the heap property is re-established (each father smaller than its
-        // two sons).
+        /// <summary>
+        /// Restore the heap property by moving down the tree starting at node k,
+        /// exchanging a node with the smallest of its two sons if necessary, stopping
+        /// when the heap property is re-established (each father smaller than its
+        /// two sons).
+        /// </summary>
+        /// <param name="tree">The tree to restore.</param>
+        /// <param name="k">The node to move down.</param>
         internal void Pqdownheap(short[] tree, int k)
         {
             var v = this.Heap[k];
@@ -381,8 +385,12 @@ namespace SixLabors
             this.Heap[k] = v;
         }
 
-        // Scan a literal or distance tree to determine the frequencies of the codes
-        // in the bit length tree.
+        /// <summary>
+        /// Scan a literal or distance tree to determine the frequencies of the codes
+        /// in the bit length tree.
+        /// </summary>
+        /// <param name="tree">The tree to be scanned.</param>
+        /// <param name="max_code">And its largest code of non zero frequency</param>
         internal void Scan_tree(short[] tree, int max_code)
         {
             int n; // iterates over all tree elements
@@ -399,7 +407,7 @@ namespace SixLabors
                 min_count = 3;
             }
 
-            tree[((max_code + 1) * 2) + 1] = (short)SupportClass.Identity(0xffff); // guard
+            tree[((max_code + 1) * 2) + 1] = -1; // guard
 
             for (n = 0; n <= max_code; n++)
             {
@@ -592,7 +600,7 @@ namespace SixLabors
         internal void Put_short(int w)
         {
             this.Put_byte((byte)w);
-            this.Put_byte((byte)SupportClass.URShift(w, 8));
+            this.Put_byte((byte)ZlibUtilities.URShift(w, 8));
         }
 
         internal void PutShortMSB(int b)
@@ -613,7 +621,7 @@ namespace SixLabors
                 // bi_buf |= (val << bi_valid);
                 this.BiBuf = (short)((ushort)this.BiBuf | (ushort)((val << this.BiValid) & 0xffff));
                 this.Put_short(this.BiBuf);
-                this.BiBuf = (short)SupportClass.URShift(val, BufSize - this.BiValid);
+                this.BiBuf = (short)ZlibUtilities.URShift(val, BufSize - this.BiValid);
                 this.BiValid += len - BufSize;
             }
             else
@@ -658,7 +666,7 @@ namespace SixLabors
         // the current block must be flushed.
         internal bool Tr_tally(int dist, int lc)
         {
-            this.PendingBuf[this.DBuf + (this.LastLit * 2)] = (byte)SupportClass.URShift(dist, 8);
+            this.PendingBuf[this.DBuf + (this.LastLit * 2)] = (byte)ZlibUtilities.URShift(dist, 8);
             this.PendingBuf[this.DBuf + (this.LastLit * 2) + 1] = (byte)dist;
 
             this.PendingBuf[this.LBuf + this.LastLit] = (byte)lc;
@@ -690,7 +698,7 @@ namespace SixLabors
                     out_length = (int)(out_length + (this.DynDtree[dcode * 2] * (5L + Tree.ExtraDbits[dcode])));
                 }
 
-                out_length = SupportClass.URShift(out_length, 3);
+                out_length = ZlibUtilities.URShift(out_length, 3);
                 if ((this.Matches < (this.LastLit / 2)) && out_length < in_length / 2)
                 {
                     return true;
@@ -786,7 +794,7 @@ namespace SixLabors
                 n++;
             }
 
-            this.DataType = (byte)(bin_freq > SupportClass.URShift(ascii_freq, 2) ? ZBINARY : ZASCII);
+            this.DataType = (byte)(bin_freq > ZlibUtilities.URShift(ascii_freq, 2) ? ZBINARY : ZASCII);
         }
 
         // Flush the bit buffer, keeping at most 7 bits in it.
@@ -801,7 +809,7 @@ namespace SixLabors
             else if (this.BiValid >= 8)
             {
                 this.Put_byte((byte)this.BiBuf);
-                this.BiBuf = (short)SupportClass.URShift(this.BiBuf, 8);
+                this.BiBuf = (short)ZlibUtilities.URShift(this.BiBuf, 8);
                 this.BiValid -= 8;
             }
         }
@@ -956,8 +964,8 @@ namespace SixLabors
                 max_blindex = this.Build_bl_tree();
 
                 // Determine the best encoding. Compute first the block length in bytes
-                opt_lenb = SupportClass.URShift(this.OptLen + 3 + 7, 3);
-                static_lenb = SupportClass.URShift(this.StaticLen + 3 + 7, 3);
+                opt_lenb = ZlibUtilities.URShift(this.OptLen + 3 + 7, 3);
+                static_lenb = ZlibUtilities.URShift(this.StaticLen + 3 + 7, 3);
 
                 if (static_lenb <= opt_lenb)
                 {
@@ -1568,7 +1576,7 @@ namespace SixLabors
 
         internal ZlibCompressionState DeflateParams(ZStream strm, ZlibCompressionLevel level, ZlibCompressionStrategy strategy)
         {
-            var err = ZlibCompressionState.ZOK;
+            ZlibCompressionState err = ZlibCompressionState.ZOK;
 
             if (level == ZlibCompressionLevel.ZDEFAULTCOMPRESSION)
             {
@@ -1692,7 +1700,7 @@ namespace SixLabors
                 // Save the adler32 of the preset dictionary:
                 if (this.Strstart != 0)
                 {
-                    this.PutShortMSB((int)SupportClass.URShift(strm.Adler, 16));
+                    this.PutShortMSB((int)ZlibUtilities.URShift(strm.Adler, 16));
                     this.PutShortMSB((int)(strm.Adler & 0xffff));
                 }
 
@@ -1820,7 +1828,7 @@ namespace SixLabors
             }
 
             // Write the zlib trailer (adler32)
-            this.PutShortMSB((int)SupportClass.URShift(strm.Adler, 16));
+            this.PutShortMSB((int)ZlibUtilities.URShift(strm.Adler, 16));
             this.PutShortMSB((int)(strm.Adler & 0xffff));
             strm.Flush_pending();
 
