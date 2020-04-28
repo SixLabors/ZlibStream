@@ -9,73 +9,73 @@ namespace SixLabors.ZlibStream
     public enum ZlibCompressionLevel
     {
         /// <summary>
-        /// The default compression level. Equivalent to <see cref="Six"/>.
+        /// The default compression level. Equivalent to <see cref="Level6"/>.
         /// </summary>
         ZDEFAULTCOMPRESSION = -1,
 
         /// <summary>
         /// Level 0. Equivalent to <see cref="ZNOCOMPRESSION"/>.
         /// </summary>
-        Zero = 0,
+        Level0 = 0,
 
         /// <summary>
-        /// No compression. Equivalent to <see cref="Zero"/>.
+        /// No compression. Equivalent to <see cref="Level0"/>.
         /// </summary>
-        ZNOCOMPRESSION = Zero,
+        ZNOCOMPRESSION = Level0,
 
         /// <summary>
         /// Level 1. Equivalent to <see cref="ZBESTSPEED"/>.
         /// </summary>
-        One = 1,
+        Level1 = 1,
 
         /// <summary>
         /// Best speed compression level.
         /// </summary>
-        ZBESTSPEED = One,
+        ZBESTSPEED = Level1,
 
         /// <summary>
         /// Level 2.
         /// </summary>
-        Two = 2,
+        Level2 = 2,
 
         /// <summary>
         /// Level 3.
         /// </summary>
-        Three = 3,
+        Level3 = 3,
 
         /// <summary>
         /// Level 4.
         /// </summary>
-        Four = 4,
+        Level4 = 4,
 
         /// <summary>
         /// Level 5.
         /// </summary>
-        Five = 5,
+        Level5 = 5,
 
         /// <summary>
         /// Level 6.
         /// </summary>
-        Six = 6,
+        Level6 = 6,
 
         /// <summary>
         /// Level 7.
         /// </summary>
-        Seven = 7,
+        Level7 = 7,
 
         /// <summary>
         /// Level 8.
         /// </summary>
-        Eight = 8,
+        Level8 = 8,
 
         /// <summary>
         /// Level 9. Equivalent to <see cref="ZBESTCOMPRESSION"/>.
         /// </summary>
-        Nine = 9,
+        Level9 = 9,
 
         /// <summary>
-        /// Best compression level. Equivalent to <see cref="Nine"/>.
+        /// Best compression level. Equivalent to <see cref="Level9"/>.
         /// </summary>
-        ZBESTCOMPRESSION = Nine,
+        ZBESTCOMPRESSION = Level9,
     }
 }

@@ -1592,7 +1592,7 @@ namespace SixLabors.ZlibStream
 
             if (level == ZlibCompressionLevel.ZDEFAULTCOMPRESSION)
             {
-                level = ZlibCompressionLevel.Six;
+                level = ZlibCompressionLevel.Level6;
             }
 
             if (level < ZlibCompressionLevel.ZNOCOMPRESSION

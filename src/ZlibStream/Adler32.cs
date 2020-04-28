@@ -14,6 +14,7 @@ namespace SixLabors.ZlibStream
         // NMAX is the largest n such that 255n(n+1)/2 + (n+1)(BASE-1) <= 2^32-1
         private const int NMAX = 5552;
 
+        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
         public static long Calculate(long adler, byte[] buffer, int index, int length)
         {
             if (buffer is null)
