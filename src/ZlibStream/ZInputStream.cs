@@ -57,7 +57,7 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Gets the base zlib stream.
         /// </summary>
-        public ZStream Z { get; private set; } = new ZStream();
+        internal ZStream Z { get; private set; } = new ZStream();
 
         /// <summary>
         /// Gets or sets the flush mode for this stream.
