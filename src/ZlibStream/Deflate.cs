@@ -1453,9 +1453,11 @@ namespace SixLabors
             return best_len <= this.Lookahead ? best_len : this.Lookahead;
         }
 
-        internal ZlibCompressionState DeflateInit(ZStream strm, ZlibCompression level, int bits) => this.DeflateInit2(strm, level, ZDEFLATED, bits, DEFMEMLEVEL, ZlibCompressionStrategy.ZDEFAULTSTRATEGY);
+        internal ZlibCompressionState DeflateInit(ZStream strm, ZlibCompression level, int bits)
+            => this.DeflateInit2(strm, level, ZDEFLATED, bits, DEFMEMLEVEL, ZlibCompressionStrategy.ZDEFAULTSTRATEGY);
 
-        internal ZlibCompressionState DeflateInit(ZStream strm, ZlibCompression level) => this.DeflateInit(strm, level, MAXWBITS);
+        internal ZlibCompressionState DeflateInit(ZStream strm, ZlibCompression level)
+            => this.DeflateInit(strm, level, MAXWBITS);
 
         internal ZlibCompressionState DeflateInit2(ZStream strm, ZlibCompression level, int method, int windowBits, int memLevel, ZlibCompressionStrategy strategy)
         {

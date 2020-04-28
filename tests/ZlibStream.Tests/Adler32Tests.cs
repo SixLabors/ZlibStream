@@ -1,3 +1,6 @@
+// Copyright (c) Six Labors and contributors.
+// See LICENSE for more details.
+
 using System;
 using SixLabors;
 using Xunit;

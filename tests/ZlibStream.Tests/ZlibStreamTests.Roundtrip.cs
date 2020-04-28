@@ -1,3 +1,6 @@
+// Copyright (c) Six Labors and contributors.
+// See LICENSE for more details.
+
 using System;
 using System.IO;
 using ICSharpCode.SharpZipLib.Zip.Compression.Streams;
@@ -8,15 +11,21 @@ namespace ZlibStream.Tests
 {
     public partial class ZlibStreamTests
     {
-        [Fact]
-        public void EncodeDecode()
+        [Theory]
+        [InlineData(ZlibCompression.ZBESTCOMPRESSION)]
+        [InlineData(ZlibCompression.ZBESTSPEED)]
+        [InlineData(ZlibCompression.ZDEFAULTCOMPRESSION)]
+        [InlineData(ZlibCompression.ZNOCOMPRESSION)]
+        public void EncodeDecode(ZlibCompression compression)
         {
-            var expected = GetBuffer(4096 * 4);
-            var reference = new byte[4096 * 4];
-            var actual = new byte[4096 * 4];
+            const int count = 4096 * 4;
+            var expected = GetBuffer(count);
+            var reference = new byte[count];
+            var actual = new byte[count];
+
             using (var compressed = new MemoryStream())
             {
-                using (var deflate = new ZOutputStream(compressed, ZlibCompression.ZDEFAULTCOMPRESSION))
+                using (var deflate = new ZOutputStream(compressed, compression))
                 {
                     deflate.Write(expected);
                 }
@@ -43,18 +52,9 @@ namespace ZlibStream.Tests
                 byte r = reference[i];
                 byte a = actual[i];
 
-                if (e != r)
-                {
-                    throw new Exception();
-                }
-
-                if (e != a)
-                {
-                    throw new Exception();
-                }
+                Assert.Equal(e, r);
+                Assert.Equal(e, a);
             }
-
-            Assert.Equal(expected, actual);
         }
 
         private static byte[] GetBuffer(int length)

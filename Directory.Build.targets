@@ -1,22 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
 <Project>
-  <Target Name="AddInternalsVisibleTo" BeforeTargets="CoreCompile">
-    <!-- Add default suffix if there is no InternalsVisibleTo or InternalsVisibleToSuffix defined -->
-    <ItemGroup Condition="@(InternalsVisibleToSuffix->Count()) == 0 AND @(InternalsVisibleTo->Count()) == 0">
-      <InternalsVisibleToSuffix Include=".Tests" />
-    </ItemGroup>
 
-    <!-- Handle InternalsVisibleTo -->
-    <ItemGroup Condition="'@(InternalsVisibleTo->Count())' &gt; 0">
-      <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
-        <_Parameter1>%(InternalsVisibleTo.Identity)</_Parameter1>
-      </AssemblyAttribute>
-    </ItemGroup>
+  <!--
+    Directory.Build.targets is automatically picked up and imported by
+    Microsoft.Common.targets. This file needs to exist, even if empty so that
+    files in the parent directory tree, with the same name, are not imported
+    instead. The import fairly late and most other props/targets will have been
+    imported beforehand. We also don't need to add ourselves to
+    MSBuildAllProjects, as that is done by the file that imports us.
+  -->
 
-    <!-- Handle InternalsVisibleToSuffix -->
-    <ItemGroup Condition="@(InternalsVisibleToSuffix->Count()) &gt; 0">
-      <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
-        <_Parameter1>$(AssemblyName)%(InternalsVisibleToSuffix.Identity)</_Parameter1>
-      </AssemblyAttribute>
-    </ItemGroup>
-  </Target>
+  <!-- Settings that append the existing setting value -->
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);$(OS)</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Package versions for package references across all projects -->
+  <ItemGroup>
+    <!--Global Dependencies-->
+    <PackageReference Update="Microsoft.Net.Compilers.Toolset" PrivateAssets="All" Version="3.3.1" />
+    <PackageReference Update="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="All" Version="1.0.0" />
+    <PackageReference Update="StyleCop.Analyzers" PrivateAssets="All" Version="1.1.118" />
+    
+    <!--Src Dependencies-->
+    <PackageReference Update="System.Buffers" Version="4.5.0" />
+    <PackageReference Update="System.Runtime.CompilerServices.Unsafe" Version="4.7" />
+  </ItemGroup>
+
 </Project>

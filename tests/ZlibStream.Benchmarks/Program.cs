@@ -1,11 +1,14 @@
+// Copyright (c) Six Labors and contributors.
+// See LICENSE for more details.
+
 using System.Reflection;
 using BenchmarkDotNet.Running;
 
 namespace ZlibStream.Benchmarks
 {
-    class Program
+    public class Program
     {
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             new BenchmarkSwitcher(typeof(Program).GetTypeInfo().Assembly).Run(args);
         }

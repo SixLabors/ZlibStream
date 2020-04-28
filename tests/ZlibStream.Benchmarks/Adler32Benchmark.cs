@@ -12,7 +12,6 @@ namespace ZlibStream.Benchmarks
         [Params(1024, 2048, 4096)]
         public int Count { get; set; }
 
-
         [GlobalSetup]
         public void SetUp()
         {

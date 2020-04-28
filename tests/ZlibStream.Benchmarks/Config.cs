@@ -1,3 +1,6 @@
+// Copyright (c) Six Labors and contributors.
+// See LICENSE for more details.
+
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Environments;
 using BenchmarkDotNet.Jobs;

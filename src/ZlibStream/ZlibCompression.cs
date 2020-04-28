@@ -1,4 +1,4 @@
-﻿// Copyright (c) Six Labors and contributors.
+// Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
 namespace SixLabors
@@ -16,15 +16,15 @@ namespace SixLabors
         /// <summary>
         /// No compression.
         /// </summary>
-        ZNOCOMPRESSION,
+        ZNOCOMPRESSION = 0,
 
         /// <summary>
-        /// best speed compression level.
+        /// Best speed compression level.
         /// </summary>
-        ZBESTSPEED,
+        ZBESTSPEED = 1,
 
         /// <summary>
-        /// the best compression level.
+        /// Best compression level.
         /// </summary>
         ZBESTCOMPRESSION = 9,
     }
