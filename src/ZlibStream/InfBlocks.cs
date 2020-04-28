@@ -323,7 +323,7 @@ namespace SixLabors.ZlibStream
                             t = m;
                         }
 
-                        Array.Copy(z.INextIn, p, this.Window, q, t);
+                        Buffer.BlockCopy(z.INextIn, p, this.Window, q, t);
                         p += t; n -= t;
                         q += t; m -= t;
                         if ((this.left -= t) != 0)
@@ -677,7 +677,7 @@ namespace SixLabors.ZlibStream
 
         internal void Set_dictionary(byte[] d, int start, int n)
         {
-            Array.Copy(d, start, this.Window, 0, n);
+            Buffer.BlockCopy(d, start, this.Window, 0, n);
             this.Read = this.Write = n;
         }
 
@@ -719,7 +719,7 @@ namespace SixLabors.ZlibStream
             }
 
             // copy as far as end of window
-            Array.Copy(this.Window, q, z.INextOut, p, n);
+            Buffer.BlockCopy(this.Window, q, z.INextOut, p, n);
             p += n;
             q += n;
 
@@ -756,7 +756,7 @@ namespace SixLabors.ZlibStream
                 }
 
                 // copy
-                Array.Copy(this.Window, q, z.INextOut, p, n);
+                Buffer.BlockCopy(this.Window, q, z.INextOut, p, n);
                 p += n;
                 q += n;
             }

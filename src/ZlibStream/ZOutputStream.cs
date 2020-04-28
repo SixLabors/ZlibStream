@@ -152,7 +152,7 @@ namespace SixLabors.ZlibStream
 
             ZlibCompressionState err;
             var b = new byte[b1.Length];
-            Array.Copy(b1, 0, b, 0, b1.Length);
+            Buffer.BlockCopy(b1, 0, b, 0, b1.Length);
             this.Z.INextIn = b;
             this.Z.NextInIndex = off;
             this.Z.AvailIn = len;

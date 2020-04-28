@@ -309,7 +309,7 @@ namespace SixLabors.ZlibStream
                             r[1] = (byte)l; // bits to dump before this table
                             j = ZlibUtilities.URShift(i, w - l);
                             r[2] = q - u[h - 1] - j; // offset to this table
-                            Array.Copy(r, 0, hp, (u[h - 1] + j) * 3, 3); // connect to last table
+                            Buffer.BlockCopy(r, 0, hp, (u[h - 1] + j) * 3, 3); // connect to last table
                         }
                         else
                         {
@@ -338,7 +338,7 @@ namespace SixLabors.ZlibStream
                     f = 1 << (k - w);
                     for (j = ZlibUtilities.URShift(i, w); j < z; j += f)
                     {
-                        Array.Copy(r, 0, hp, (q + j) * 3, 3);
+                        Buffer.BlockCopy(r, 0, hp, (q + j) * 3, 3);
                     }
 
                     // backwards increment the k-bit code i

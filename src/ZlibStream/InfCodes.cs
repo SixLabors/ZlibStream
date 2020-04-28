@@ -210,7 +210,7 @@ namespace SixLabors.ZlibStream
                                     }
                                     else
                                     {
-                                        Array.Copy(s.Window, r, s.Window, q, 2);
+                                        Buffer.BlockCopy(s.Window, r, s.Window, q, 2);
                                         q += 2;
                                         r += 2;
                                         c -= 2;
@@ -240,7 +240,7 @@ namespace SixLabors.ZlibStream
                                         }
                                         else
                                         {
-                                            Array.Copy(s.Window, r, s.Window, q, e);
+                                            Buffer.BlockCopy(s.Window, r, s.Window, q, e);
                                             q += e;
                                             r += e;
                                             e = 0;
@@ -261,7 +261,7 @@ namespace SixLabors.ZlibStream
                                 }
                                 else
                                 {
-                                    Array.Copy(s.Window, r, s.Window, q, c);
+                                    Buffer.BlockCopy(s.Window, r, s.Window, q, c);
                                     q += c;
                                     r += c;
                                     c = 0;

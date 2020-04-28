@@ -248,7 +248,7 @@ namespace SixLabors.ZlibStream
                 // System.Console.Out.WriteLine("avail_out=" + avail_out);
             }
 
-            Array.Copy(this.Dstate.PendingBuf, this.Dstate.PendingOut, this.INextOut, this.NextOutIndex, len);
+            Buffer.BlockCopy(this.Dstate.PendingBuf, this.Dstate.PendingOut, this.INextOut, this.NextOutIndex, len);
 
             this.NextOutIndex += len;
             this.Dstate.PendingOut += len;
@@ -287,7 +287,7 @@ namespace SixLabors.ZlibStream
                 this.Adler = Adler32.Calculate(this.Adler, this.INextIn, this.NextInIndex, len);
             }
 
-            Array.Copy(this.INextIn, this.NextInIndex, buf, start, len);
+            Buffer.BlockCopy(this.INextIn, this.NextInIndex, buf, start, len);
             this.NextInIndex += len;
             this.TotalIn += len;
             return len;

@@ -4,6 +4,7 @@
 namespace SixLabors.ZlibStream
 {
     using System;
+    using System.Runtime.CompilerServices;
 
     /// <summary>
     /// Class for compressing data through zlib.
@@ -99,6 +100,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         internal Deflate()
         {
+            // TODO: Array Pooling.
             this.DynLtree = new short[HEAPSIZE * 2];
             this.DynDtree = new short[((2 * DCODES) + 1) * 2]; // distance tree
             this.BlTree = new short[((2 * BLCODES) + 1) * 2]; // Huffman tree for bit lengths
@@ -278,6 +280,7 @@ namespace SixLabors.ZlibStream
         // are always zero.
         internal int BiValid { get; private set; }
 
+        [MethodImpl(InliningOptions.ShortMethod)]
         internal static bool Smaller(short[] tree, int n, int m, byte[] depth)
             => tree[n * 2] < tree[m * 2] || (tree[n * 2] == tree[m * 2] && depth[n] <= depth[m]);
 
@@ -591,7 +594,7 @@ namespace SixLabors.ZlibStream
         // IN assertion: there is enough room in pending_buf.
         internal void Put_byte(byte[] p, int start, int len)
         {
-            Array.Copy(p, start, this.PendingBuf, this.Pending, len);
+            Buffer.BlockCopy(p, start, this.PendingBuf, this.Pending, len);
             this.Pending += len;
         }
 
@@ -609,7 +612,8 @@ namespace SixLabors.ZlibStream
             this.Put_byte((byte)b);
         }
 
-        internal void Send_code(int c, short[] tree) => this.Send_bits(tree[c * 2] & 0xffff, tree[(c * 2) + 1] & 0xffff);
+        internal void Send_code(int c, short[] tree)
+            => this.Send_bits(tree[c * 2] & 0xffff, tree[(c * 2) + 1] & 0xffff);
 
         internal void Send_bits(int value_Renamed, int length)
         {
@@ -1043,7 +1047,7 @@ namespace SixLabors.ZlibStream
                 }
                 else if (this.Strstart >= this.WSize + this.WSize - MINLOOKAHEAD)
                 {
-                    Array.Copy(this.Window, this.WSize, this.Window, 0, this.WSize);
+                    Buffer.BlockCopy(this.Window, this.WSize, this.Window, 0, this.WSize);
                     this.MatchStart -= this.WSize;
                     this.Strstart -= this.WSize; // we now have strstart >= MAX_DIST
                     this.BlockStart -= this.WSize;
@@ -1630,7 +1634,7 @@ namespace SixLabors.ZlibStream
                 index = dictLength - length; // use the tail of the dictionary
             }
 
-            Array.Copy(dictionary, index, this.Window, 0, length);
+            Buffer.BlockCopy(dictionary, index, this.Window, 0, length);
             this.Strstart = length;
             this.BlockStart = length;
 
