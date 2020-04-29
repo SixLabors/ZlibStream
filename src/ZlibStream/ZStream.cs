@@ -225,43 +225,6 @@ namespace SixLabors.ZlibStream
             this.Msg = null;
         }
 
-        // Flush as much pending output as possible. All deflate() output goes
-        // through this function so some applications may wish to modify it
-        // to avoid allocating a large strm->next_out buffer and copying into it.
-        // (See also read_buf()).
-        internal void Flush_pending()
-        {
-            var len = this.Dstate.Pending;
-
-            if (len > this.AvailOut)
-            {
-                len = this.AvailOut;
-            }
-
-            if (len == 0)
-            {
-                return;
-            }
-
-            if (this.Dstate.PendingBuf.Length <= this.Dstate.PendingOut || this.INextOut.Length <= this.NextOutIndex || this.Dstate.PendingBuf.Length < (this.Dstate.PendingOut + len) || this.INextOut.Length < (this.NextOutIndex + len))
-            {
-                // System.Console.Out.WriteLine(dstate.pending_buf.Length + ", " + dstate.pending_out + ", " + next_out.Length + ", " + next_out_index + ", " + len);
-                // System.Console.Out.WriteLine("avail_out=" + avail_out);
-            }
-
-            Buffer.BlockCopy(this.Dstate.PendingBuf, this.Dstate.PendingOut, this.INextOut, this.NextOutIndex, len);
-
-            this.NextOutIndex += len;
-            this.Dstate.PendingOut += len;
-            this.TotalOut += len;
-            this.AvailOut -= len;
-            this.Dstate.Pending -= len;
-            if (this.Dstate.Pending == 0)
-            {
-                this.Dstate.PendingOut = 0;
-            }
-        }
-
         // Read a new buffer from the current input stream, update the adler32
         // and total number of bytes read.  All deflate() input goes through
         // this function so some applications may wish to modify it to avoid

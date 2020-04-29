@@ -11,7 +11,7 @@ namespace SixLabors.ZlibStream
     /// <summary>
     /// Class for compressing data through zlib.
     /// </summary>
-    internal sealed class Deflate
+    internal sealed unsafe class Deflate
     {
         private const int MAXMEMLEVEL = 9;
         private const int MAXWBITS = 15; // 32K LZ77 window
@@ -97,44 +97,26 @@ namespace SixLabors.ZlibStream
             string.Empty,
         };
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="Deflate"/> class.
-        /// </summary>
-        internal Deflate()
-        {
-            // TODO: Array Pooling.
-            this.DynLtree = ArrayPool<short>.Shared.Rent(HEAPSIZE * 2);
-            this.DynDtree = ArrayPool<short>.Shared.Rent(((2 * DCODES) + 1) * 2); // distance tree
-            this.BlTree = ArrayPool<short>.Shared.Rent(((2 * BLCODES) + 1) * 2); // Huffman tree for bit lengths
-        }
+        private ZStream strm; // pointer back to this zlib stream
 
-        internal ZStream Strm { get; private set; } // pointer back to this zlib stream
+        private int status; // as the name implies
 
-        internal int Status { get; private set; } // as the name implies
+        private int pendingBufferSize; // size of pending_buf
+        private byte[] pendingBuffer; // output still pending
+        private MemoryHandle pendingHandle;
+        private byte* pendingPointer;
 
-        internal byte[] PendingBuf { get; private set; } // output still pending
+        private byte dataType; // UNKNOWN, BINARY or ASCII
 
-        internal int PendingBufSize { get; private set; } // size of pending_buf
+        private byte method; // STORED (for zip only) or DEFLATED
 
-        internal int PendingOut { get; set; } // next pending byte to output to the stream
+        private ZlibFlushStrategy lastFlush; // value of flush param for previous deflate call
 
-        internal int Pending { get; set; } // nb of bytes in the pending buffer
+        private int wSize; // LZ77 window size (32K by default)
 
-        internal int Noheader { get; private set; } // suppress zlib header and adler32
+        private int wBits; // log2(w_size)  (8..16)
 
-        internal byte DataType { get; private set; } // UNKNOWN, BINARY or ASCII
-
-        internal byte Method { get; private set; } // STORED (for zip only) or DEFLATED
-
-        internal ZlibFlushStrategy LastFlush { get; private set; } // value of flush param for previous deflate call
-
-        internal int WSize { get; private set; } // LZ77 window size (32K by default)
-
-        internal int WBits { get; private set; } // log2(w_size)  (8..16)
-
-        internal int WMask { get; private set; } // w_size - 1
-
-        internal byte[] Window { get; private set; }
+        private int wMask; // w_size - 1
 
         // Sliding window. Input bytes are read into the second half of the window,
         // and move to the first half later to keep a dictionary of at least wSize
@@ -143,102 +125,124 @@ namespace SixLabors.ZlibStream
         // performed with a length multiple of the block size. Also, it limits
         // the window size to 64K, which is quite useful on MSDOS.
         // To do: use the user input buffer as sliding window.
-        internal int WindowSize { get; private set; }
+        private int windowSize;
+
+        private byte[] windowBuffer;
+        private MemoryHandle windowHandle;
+        private byte* windowPointer;
 
         // Actual size of window: 2*wSize, except when the user input buffer
         // is directly used as sliding window.
-        internal short[] Prev { get; private set; }
+        private short[] prevBuffer;
+        private MemoryHandle prevHandle;
+        private short* prevPointer;
 
         // Link to older string with same hash index. To limit the size of this
         // array to 64K, this link is maintained only for the last 32K strings.
         // An index in this array is thus a window index modulo 32K.
-        internal short[] Head { get; private set; } // Heads of the hash chains or NIL.
+        private short[] headBuffer; // Heads of the hash chains or NIL.
+        private MemoryHandle headHandle;
+        private short* headPointer;
 
-        internal int InsH { get; private set; } // hash index of string to be inserted
+        private int insH; // hash index of string to be inserted
 
-        internal int HashSize { get; private set; } // number of elements in hash table
+        private int hashSize; // number of elements in hash table
 
-        internal int HashBits { get; private set; } // log2(hash_size)
+        private int hashBits; // log2(hash_size)
 
-        internal int HashMask { get; private set; } // hash_size-1
+        private int hashMask; // hash_size-1
 
         // Number of bits by which ins_h must be shifted at each input
         // step. It must be such that after MIN_MATCH steps, the oldest
         // byte no longer takes part in the hash key, that is:
         // hash_shift * MIN_MATCH >= hash_bits
-        internal int HashShift { get; private set; }
+        private int hashShift;
 
         // Window position at the beginning of the current output block. Gets
         // negative when the window is moved backwards.
-        internal int BlockStart { get; private set; }
+        private int blockStart;
 
-        internal int MatchLength { get; private set; } // length of best match
+        private int matchLength; // length of best match
 
-        internal int PrevMatch { get; private set; } // previous match
+        private int prevMatch; // previous match
 
-        internal int MatchAvailable { get; private set; } // set if previous match exists
+        private int matchAvailable; // set if previous match exists
 
-        internal int Strstart { get; private set; } // start of string to insert
+        private int strStart; // start of string to insert
 
-        internal int MatchStart { get; private set; } // start of matching string
+        private int matchStart; // start of matching string
 
-        internal int Lookahead { get; private set; } // number of valid bytes ahead in window
+        private int lookahead; // number of valid bytes ahead in window
 
         // Length of the best match at previous step. Matches not greater than this
         // are discarded. This is used in the lazy match evaluation.
-        internal int PrevLength { get; private set; }
+        private int prevLength;
 
         // To speed up deflation, hash chains are never searched beyond this
         // length.  A higher limit improves compression ratio but degrades the speed.
-        internal int MaxChainLength { get; private set; }
+        private int maxChainLength;
 
         // Attempt to find a better match only when the current match is strictly
         // smaller than this value. This mechanism is used only for compression
         // levels >= 4.
-        internal int MaxLazyMatch { get; private set; }
+        private int maxLazyMatch;
 
         // Insert new strings in the hash table only if the match length is not
         // greater than this length. This saves time but degrades compression.
         // max_insert_length is used only for compression levels <= 3.
-        internal ZlibCompressionLevel Level { get; private set; } // compression level (1..9)
+        private ZlibCompressionLevel level; // compression level (1..9)
 
-        internal ZlibCompressionStrategy Strategy { get; private set; } // favor or force Huffman coding
+        private ZlibCompressionStrategy strategy; // favor or force Huffman coding
 
         // Use a faster search when the previous match is longer than this
-        internal int GoodMatch { get; private set; }
+        private int goodMatch;
 
         // Stop searching when current match exceeds this
-        internal int NiceMatch { get; private set; }
-
-        internal short[] DynLtree { get; private set; } // literal and length tree
-
-        internal short[] DynDtree { get; private set; } // distance tree
-
-        internal short[] BlTree { get; private set; } // Huffman tree for bit lengths
-
-        internal Tree LDesc { get; private set; } = new Tree(); // desc for literal tree
-
-        internal Tree DDesc { get; private set; } = new Tree(); // desc for distance tree
-
-        internal Tree BlDesc { get; private set; } = new Tree(); // desc for bit length tree
+        private int niceMatch;
 
         // number of codes at each bit length for an optimal tree
-        internal short[] BlCount { get; private set; } = new short[MAXBITS + 1];
+        private readonly short[] blCountBuffer;
+        private MemoryHandle blCountHandle;
 
         // heap used to build the Huffman trees
-        internal int[] Heap { get; private set; } = new int[(2 * LCODES) + 1];
-
-        internal int HeapLen { get; set; } // number of elements in the heap
-
-        internal int HeapMax { get; set; } // element of largest frequency
-
-        // The sons of heap[n] are heap[2*n] and heap[2*n+1]. heap[0] is not used.
-        // The same heap array is used to build all trees.
+        private readonly int[] heapBuffer;
+        private MemoryHandle heapHandle;
 
         // Depth of each subtree used as tie breaker for trees of equal frequency
-        internal byte[] Depth { get; private set; } = new byte[(2 * LCODES) + 1];
+        private readonly byte[] depthBuffer;
+        private MemoryHandle depthHandle;
 
-        internal int LBuf { get; private set; } // index for literals or lengths */
+        private readonly short[] dynLtreeBuffer; // literal and length tree
+        private MemoryHandle dynLtreeHandle;
+        private readonly short* dynLtreePointer;
+
+        private readonly short[] dynDtreeBuffer; // distance tree
+        private MemoryHandle dynDtreeHandle;
+        private readonly short* dynDtreePointer;
+
+        private short[] blTreeBuffer; // Huffman tree for bit lengths
+        private MemoryHandle bltreeHandle;
+        private readonly short* blTreePointer;
+
+        private Tree lDesc = new Tree(); // desc for literal tree
+
+        private Tree dDesc = new Tree(); // desc for distance tree
+
+        private Tree blDesc = new Tree(); // desc for bit length tree
+
+        private int matches; // number of string matches in current block
+
+        private int lastEobLen;  // bit length of EOB code for last block
+
+        // Output buffer. bits are inserted starting at the bottom (least
+        // significant bits).
+        private short biBuf;
+
+        // Number of valid bits in bi_buf.  All bits above the last valid bit
+        // are always zero.
+        private int biValid;
+
+        private int lBuf; // index for literals or lengths */
 
         // Size of match buffer for literals/lengths.  There are 4 reasons for
         // limiting lit_bufsize to 64K:
@@ -257,100 +261,148 @@ namespace SixLabors.ZlibStream
         //     fast adaptation but have of course the overhead of transmitting
         //     trees more frequently.
         //   - I can't count above 4
-        internal int LitBufsize { get; private set; }
+        private int litBufsize;
 
-        internal int LastLit { get; private set; } // running index in l_buf
+        private int lastLit; // running index in l_buf
 
         // Buffer for distances. To simplify the code, d_buf and l_buf have
         // the same number of elements. To use different lengths, an extra flag
         // array would be necessary.
-        internal int DBuf { get; private set; } // index of pendig_buf
+        private int dBuf; // index of pendig_buf
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Deflate"/> class.
+        /// </summary>
+        internal Deflate()
+        {
+            this.blCountBuffer = ArrayPool<short>.Shared.Rent(MAXBITS + 1);
+            this.blCountHandle = new Memory<short>(this.blCountBuffer).Pin();
+            this.BlCountPointer = (short*)this.blCountHandle.Pointer;
+
+            this.heapBuffer = ArrayPool<int>.Shared.Rent((2 * LCODES) + 1);
+            this.heapHandle = new Memory<int>(this.heapBuffer).Pin();
+            this.HeapPointer = (int*)this.heapHandle.Pointer;
+
+            this.depthBuffer = ArrayPool<byte>.Shared.Rent((2 * LCODES) + 1);
+            this.depthHandle = new Memory<byte>(this.depthBuffer).Pin();
+            this.DepthPointer = (byte*)this.depthHandle.Pointer;
+
+            this.dynLtreeBuffer = ArrayPool<short>.Shared.Rent(HEAPSIZE * 2); // literal and length tree
+            this.dynLtreeHandle = new Memory<short>(this.dynLtreeBuffer).Pin();
+            this.dynLtreePointer = (short*)this.dynLtreeHandle.Pointer;
+
+            this.dynDtreeBuffer = ArrayPool<short>.Shared.Rent(((2 * DCODES) + 1) * 2); // Distance tree
+            this.dynDtreeHandle = new Memory<short>(this.dynDtreeBuffer).Pin();
+            this.dynDtreePointer = (short*)this.dynDtreeHandle.Pointer;
+
+            this.blTreeBuffer = ArrayPool<short>.Shared.Rent(((2 * BLCODES) + 1) * 2); // Huffman tree for bit lengths
+            this.bltreeHandle = new Memory<short>(this.blTreeBuffer).Pin();
+            this.blTreePointer = (short*)this.bltreeHandle.Pointer;
+        }
+
+        internal int Pending { get; set; } // nb of bytes in the pending buffer
+
+        internal int Noheader { get; set; } // suppress zlib header and adler32
+
+        // number of codes at each bit length for an optimal tree
+        internal short* BlCountPointer { get; private set; }
+
+        // heap used to build the Huffman trees
+        // The sons of heap[n] are heap[2*n] and heap[2*n+1]. heap[0] is not used.
+        // The same heap array is used to build all trees.
+        internal int* HeapPointer { get; private set; }
+
+        internal int HeapLen { get; set; } // number of elements in the heap
+
+        internal int HeapMax { get; set; } // element of largest frequency
+
+        // Depth of each subtree used as tie breaker for trees of equal frequency
+        internal byte* DepthPointer { get; private set; }
+
+        internal int PendingOut { get; set; } // next pending byte to output to the stream
 
         internal int OptLen { get; set; } // bit length of current block with optimal trees
 
         internal int StaticLen { get; set; } // bit length of current block with static trees
 
-        internal int Matches { get; private set; } // number of string matches in current block
-
-        internal int LastEobLen { get; private set; } // bit length of EOB code for last block
-
-        // Output buffer. bits are inserted starting at the bottom (least
-        // significant bits).
-        internal short BiBuf { get; private set; }
-
-        // Number of valid bits in bi_buf.  All bits above the last valid bit
-        // are always zero.
-        internal int BiValid { get; private set; }
-
         [MethodImpl(InliningOptions.ShortMethod)]
-        internal static bool Smaller(short[] tree, int n, int m, byte[] depth)
-            => tree[n * 2] < tree[m * 2] || (tree[n * 2] == tree[m * 2] && depth[n] <= depth[m]);
-
-        internal void Lm_init()
+        private static bool Smaller(short[] tree, int n, int m, byte* depth)
         {
-            this.WindowSize = 2 * this.WSize;
+            int n2 = 2 * n;
+            int m2 = 2 * m;
+            return tree[n2] < tree[m2] || (tree[n2] == tree[m2] && depth[n] <= depth[m]);
+        }
 
-            this.Head[this.HashSize - 1] = 0;
-            for (var i = 0; i < this.HashSize - 1; i++)
+        private void Lm_init()
+        {
+            this.windowSize = 2 * this.wSize;
+            short* head = this.headPointer;
+
+            head[this.hashSize - 1] = 0;
+            for (var i = 0; i < this.hashSize - 1; i++)
             {
-                this.Head[i] = 0;
+                head[i] = 0;
             }
 
             // Set the default configuration parameters:
-            this.MaxLazyMatch = ConfigTable[(int)this.Level].MaxLazy;
-            this.GoodMatch = ConfigTable[(int)this.Level].GoodLength;
-            this.NiceMatch = ConfigTable[(int)this.Level].NiceLength;
-            this.MaxChainLength = ConfigTable[(int)this.Level].MaxChain;
+            this.maxLazyMatch = ConfigTable[(int)this.level].MaxLazy;
+            this.goodMatch = ConfigTable[(int)this.level].GoodLength;
+            this.niceMatch = ConfigTable[(int)this.level].NiceLength;
+            this.maxChainLength = ConfigTable[(int)this.level].MaxChain;
 
-            this.Strstart = 0;
-            this.BlockStart = 0;
-            this.Lookahead = 0;
-            this.MatchLength = this.PrevLength = MINMATCH - 1;
-            this.MatchAvailable = 0;
-            this.InsH = 0;
+            this.strStart = 0;
+            this.blockStart = 0;
+            this.lookahead = 0;
+            this.matchLength = this.prevLength = MINMATCH - 1;
+            this.matchAvailable = 0;
+            this.insH = 0;
         }
 
         // Initialize the tree data structures for a new zlib stream.
-        internal void Tr_init()
+        private void Tr_init()
         {
-            this.LDesc.DynTree = this.DynLtree;
-            this.LDesc.StatDesc = StaticTree.StaticLDesc;
+            this.lDesc.DynTree = this.dynLtreeBuffer;
+            this.lDesc.StatDesc = StaticTree.StaticLDesc;
 
-            this.DDesc.DynTree = this.DynDtree;
-            this.DDesc.StatDesc = StaticTree.StaticDDesc;
+            this.dDesc.DynTree = this.dynDtreeBuffer;
+            this.dDesc.StatDesc = StaticTree.StaticDDesc;
 
-            this.BlDesc.DynTree = this.BlTree;
-            this.BlDesc.StatDesc = StaticTree.StaticBlDesc;
+            this.blDesc.DynTree = this.blTreeBuffer;
+            this.blDesc.StatDesc = StaticTree.StaticBlDesc;
 
-            this.BiBuf = 0;
-            this.BiValid = 0;
-            this.LastEobLen = 8; // enough lookahead for inflate
+            this.biBuf = 0;
+            this.biValid = 0;
+            this.lastEobLen = 8; // enough lookahead for inflate
 
             // Initialize the first block of the first file:
             this.Init_block();
         }
 
-        internal void Init_block()
+        private void Init_block()
         {
             // Initialize the trees.
+            short* dynLtree = this.dynLtreePointer;
+            short* dynDtree = this.dynDtreePointer;
+            short* blTree = this.blTreePointer;
+
             for (var i = 0; i < LCODES; i++)
             {
-                this.DynLtree[i * 2] = 0;
+                dynLtree[i * 2] = 0;
             }
 
             for (var i = 0; i < DCODES; i++)
             {
-                this.DynDtree[i * 2] = 0;
+                dynDtree[i * 2] = 0;
             }
 
             for (var i = 0; i < BLCODES; i++)
             {
-                this.BlTree[i * 2] = 0;
+                blTree[i * 2] = 0;
             }
 
-            this.DynLtree[ENDBLOCK * 2] = 1;
+            dynLtree[ENDBLOCK * 2] = 1;
             this.OptLen = this.StaticLen = 0;
-            this.LastLit = this.Matches = 0;
+            this.lastLit = this.matches = 0;
         }
 
         /// <summary>
@@ -361,33 +413,36 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="tree">The tree to restore.</param>
         /// <param name="k">The node to move down.</param>
-        internal void Pqdownheap(short[] tree, int k)
+        public void Pqdownheap(short[] tree, int k)
         {
-            var v = this.Heap[k];
-            var j = k << 1; // left son of k
-            while (j <= this.HeapLen)
+            int* heap = this.HeapPointer;
+            byte* depth = this.DepthPointer;
+            int v = heap[k];
+            int heapLen = this.HeapLen;
+            int j = k << 1; // left son of k
+            while (j <= heapLen)
             {
                 // Set j to the smallest of the two sons:
-                if (j < this.HeapLen && Smaller(tree, this.Heap[j + 1], this.Heap[j], this.Depth))
+                if (j < heapLen && Smaller(tree, heap[j + 1], heap[j], depth))
                 {
                     j++;
                 }
 
                 // Exit if v is smaller than both sons
-                if (Smaller(tree, v, this.Heap[j], this.Depth))
+                if (Smaller(tree, v, heap[j], depth))
                 {
                     break;
                 }
 
                 // Exchange v with the smallest son
-                this.Heap[k] = this.Heap[j];
+                heap[k] = heap[j];
                 k = j;
 
                 // And continue down the tree, setting j to the left son of k
                 j <<= 1;
             }
 
-            this.Heap[k] = v;
+            heap[k] = v;
         }
 
         /// <summary>
@@ -396,7 +451,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="tree">The tree to be scanned.</param>
         /// <param name="max_code">And its largest code of non zero frequency</param>
-        internal void Scan_tree(short[] tree, int max_code)
+        private void Scan_tree(short* tree, int max_code)
         {
             int n; // iterates over all tree elements
             var prevlen = -1; // last emitted length
@@ -405,6 +460,7 @@ namespace SixLabors.ZlibStream
             var count = 0; // repeat count of the current code
             var max_count = 7; // max repeat count
             var min_count = 4; // min repeat count
+            short* blTree = this.blTreePointer;
 
             if (nextlen == 0)
             {
@@ -424,24 +480,24 @@ namespace SixLabors.ZlibStream
                 }
                 else if (count < min_count)
                 {
-                    this.BlTree[curlen * 2] = (short)(this.BlTree[curlen * 2] + count);
+                    blTree[curlen * 2] = (short)(blTree[curlen * 2] + count);
                 }
                 else if (curlen != 0)
                 {
                     if (curlen != prevlen)
                     {
-                        this.BlTree[curlen * 2]++;
+                        blTree[curlen * 2]++;
                     }
 
-                    this.BlTree[REP36 * 2]++;
+                    blTree[REP36 * 2]++;
                 }
                 else if (count <= 10)
                 {
-                    this.BlTree[REPZ310 * 2]++;
+                    blTree[REPZ310 * 2]++;
                 }
                 else
                 {
-                    this.BlTree[REPZ11138 * 2]++;
+                    blTree[REPZ11138 * 2]++;
                 }
 
                 count = 0;
@@ -466,16 +522,16 @@ namespace SixLabors.ZlibStream
 
         // Construct the Huffman tree for the bit lengths and return the index in
         // bl_order of the last bit length code to send.
-        internal int Build_bl_tree()
+        private int Build_bl_tree()
         {
             int max_blindex; // index of last bit length code of non zero freq
 
             // Determine the bit length frequencies for literal and distance trees
-            this.Scan_tree(this.DynLtree, this.LDesc.MaxCode);
-            this.Scan_tree(this.DynDtree, this.DDesc.MaxCode);
+            this.Scan_tree(this.dynLtreePointer, this.lDesc.MaxCode);
+            this.Scan_tree(this.dynDtreePointer, this.dDesc.MaxCode);
 
             // Build the bit length tree:
-            this.BlDesc.Build_tree(this);
+            this.blDesc.Build_tree(this);
 
             // opt_len now includes the length of the tree representations, except
             // the lengths of the bit lengths codes and the 5+5+4 bits for the counts.
@@ -483,9 +539,10 @@ namespace SixLabors.ZlibStream
             // Determine the number of bit length codes to send. The pkzip format
             // requires that at least 4 bit length codes be sent. (appnote.txt says
             // 3 but the actual value used is 4.)
+            short* blTree = this.blTreePointer;
             for (max_blindex = BLCODES - 1; max_blindex >= 3; max_blindex--)
             {
-                if (this.BlTree[(Tree.BlOrder[max_blindex] * 2) + 1] != 0)
+                if (blTree[(Tree.BlOrder[max_blindex] * 2) + 1] != 0)
                 {
                     break;
                 }
@@ -500,26 +557,27 @@ namespace SixLabors.ZlibStream
         // Send the header for a block using dynamic Huffman trees: the counts, the
         // lengths of the bit length codes, the literal tree and the distance tree.
         // IN assertion: lcodes >= 257, dcodes >= 1, blcodes >= 4.
-        internal void Send_all_trees(int lcodes, int dcodes, int blcodes)
+        private void Send_all_trees(int lcodes, int dcodes, int blcodes)
         {
             int rank; // index in bl_order
-
+            short* blTree = this.blTreePointer;
             this.Send_bits(lcodes - 257, 5); // not +255 as stated in appnote.txt
             this.Send_bits(dcodes - 1, 5);
             this.Send_bits(blcodes - 4, 4); // not -3 as stated in appnote.txt
             for (rank = 0; rank < blcodes; rank++)
             {
-                this.Send_bits(this.BlTree[(Tree.BlOrder[rank] * 2) + 1], 3);
+                this.Send_bits(blTree[(Tree.BlOrder[rank] * 2) + 1], 3);
             }
 
-            this.Send_tree(this.DynLtree, lcodes - 1); // literal tree
-            this.Send_tree(this.DynDtree, dcodes - 1); // distance tree
+            this.Send_tree(this.dynLtreePointer, lcodes - 1); // literal tree
+            this.Send_tree(this.dynDtreePointer, dcodes - 1); // distance tree
         }
 
         // Send a literal or distance tree in compressed form, using the codes in
         // bl_tree.
-        internal void Send_tree(short[] tree, int max_code)
+        private void Send_tree(short* tree, int max_code)
         {
+            short* blTree = this.blTreePointer;
             int n; // iterates over all tree elements
             var prevlen = -1; // last emitted length
             int curlen; // length of current code
@@ -546,7 +604,7 @@ namespace SixLabors.ZlibStream
                 {
                     do
                     {
-                        this.Send_code(curlen, this.BlTree);
+                        this.Send_code(curlen, blTree);
                     }
                     while (--count != 0);
                 }
@@ -554,21 +612,21 @@ namespace SixLabors.ZlibStream
                 {
                     if (curlen != prevlen)
                     {
-                        this.Send_code(curlen, this.BlTree);
+                        this.Send_code(curlen, blTree);
                         count--;
                     }
 
-                    this.Send_code(REP36, this.BlTree);
+                    this.Send_code(REP36, blTree);
                     this.Send_bits(count - 3, 2);
                 }
                 else if (count <= 10)
                 {
-                    this.Send_code(REPZ310, this.BlTree);
+                    this.Send_code(REPZ310, blTree);
                     this.Send_bits(count - 3, 3);
                 }
                 else
                 {
-                    this.Send_code(REPZ11138, this.BlTree);
+                    this.Send_code(REPZ11138, blTree);
                     this.Send_bits(count - 11, 7);
                 }
 
@@ -594,47 +652,57 @@ namespace SixLabors.ZlibStream
 
         // Output a byte on the stream.
         // IN assertion: there is enough room in pending_buf.
-        internal void Put_byte(byte[] p, int start, int len)
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void Put_byte(byte[] p, int start, int len)
         {
-            Buffer.BlockCopy(p, start, this.PendingBuf, this.Pending, len);
+            Buffer.BlockCopy(p, start, this.pendingBuffer, this.Pending, len);
             this.Pending += len;
         }
 
-        internal void Put_byte(byte c) => this.PendingBuf[this.Pending++] = c;
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void Put_byte(byte c) => this.pendingPointer[this.Pending++] = c;
 
-        internal void Put_short(int w)
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void Put_short(int w)
         {
             this.Put_byte((byte)w);
             this.Put_byte((byte)ZlibUtilities.URShift(w, 8));
         }
 
-        internal void PutShortMSB(int b)
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void PutShortMSB(int b)
         {
             this.Put_byte((byte)(b >> 8));
             this.Put_byte((byte)b);
         }
 
-        internal void Send_code(int c, short[] tree)
-            => this.Send_bits(tree[c * 2] & 0xffff, tree[(c * 2) + 1] & 0xffff);
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void Send_code(int c, short* tree)
+            => this.Send_bits(tree[c * 2] & 0xFFFF, tree[(c * 2) + 1] & 0xFFFF);
 
-        internal void Send_bits(int value_Renamed, int length)
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void Send_code(int c, short[] tree)
+            => this.Send_bits(tree[c * 2] & 0xFFFF, tree[(c * 2) + 1] & 0xFFFF);
+
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void Send_bits(int value_Renamed, int length)
         {
             var len = length;
-            if (this.BiValid > BufSize - len)
+            if (this.biValid > BufSize - len)
             {
                 var val = value_Renamed;
 
                 // bi_buf |= (val << bi_valid);
-                this.BiBuf = (short)((ushort)this.BiBuf | (ushort)((val << this.BiValid) & 0xffff));
-                this.Put_short(this.BiBuf);
-                this.BiBuf = (short)ZlibUtilities.URShift(val, BufSize - this.BiValid);
-                this.BiValid += len - BufSize;
+                this.biBuf = (short)((ushort)this.biBuf | (ushort)((val << this.biValid) & 0xFFFF));
+                this.Put_short(this.biBuf);
+                this.biBuf = (short)ZlibUtilities.URShift(val, BufSize - this.biValid);
+                this.biValid += len - BufSize;
             }
             else
             {
                 // bi_buf |= (value) << bi_valid;
-                this.BiBuf = (short)((ushort)this.BiBuf | (ushort)((value_Renamed << this.BiValid) & 0xffff));
-                this.BiValid += len;
+                this.biBuf = (short)((ushort)this.biBuf | (ushort)((value_Renamed << this.biValid) & 0xFFFF));
+                this.biValid += len;
             }
         }
 
@@ -647,7 +715,7 @@ namespace SixLabors.ZlibStream
         // of one. (There are no problems if the previous block is stored or fixed.)
         // To simplify the code, we assume the worst case of last real code encoded
         // on one bit only.
-        internal void Tr_align()
+        private void Tr_align()
         {
             this.Send_bits(STATICTREES << 1, 3);
             this.Send_code(ENDBLOCK, StaticTree.StaticLtree);
@@ -658,60 +726,62 @@ namespace SixLabors.ZlibStream
             // (10 - bi_valid) bits. The lookahead for the last real code (before
             // the EOB of the previous block) was thus at least one plus the length
             // of the EOB plus what we have just sent of the empty static block.
-            if (1 + this.LastEobLen + 10 - this.BiValid < 9)
+            if (1 + this.lastEobLen + 10 - this.biValid < 9)
             {
                 this.Send_bits(STATICTREES << 1, 3);
                 this.Send_code(ENDBLOCK, StaticTree.StaticLtree);
                 this.Bi_flush();
             }
 
-            this.LastEobLen = 7;
+            this.lastEobLen = 7;
         }
 
         // Save the match info and tally the frequency counts. Return true if
         // the current block must be flushed.
-        internal bool Tr_tally(int dist, int lc)
+        private bool Tr_tally(int dist, int lc)
         {
-            this.PendingBuf[this.DBuf + (this.LastLit * 2)] = (byte)ZlibUtilities.URShift(dist, 8);
-            this.PendingBuf[this.DBuf + (this.LastLit * 2) + 1] = (byte)dist;
-
-            this.PendingBuf[this.LBuf + this.LastLit] = (byte)lc;
-            this.LastLit++;
+            byte* pending = this.pendingPointer;
+            pending[this.dBuf + (this.lastLit * 2)] = (byte)ZlibUtilities.URShift(dist, 8);
+            pending[this.dBuf + (this.lastLit * 2) + 1] = (byte)dist;
+            pending[this.lBuf + this.lastLit] = (byte)lc;
+            this.lastLit++;
+            short* dynLtree = this.dynLtreePointer;
+            short* dynDtree = this.dynDtreePointer;
 
             if (dist == 0)
             {
                 // lc is the unmatched char
-                this.DynLtree[lc * 2]++;
+                dynLtree[lc * 2]++;
             }
             else
             {
-                this.Matches++;
+                this.matches++;
 
                 // Here, lc is the match length - MIN_MATCH
                 dist--; // dist = match distance - 1
-                this.DynLtree[(Tree.LengthCode[lc] + LITERALS + 1) * 2]++;
-                this.DynDtree[Tree.D_code(dist) * 2]++;
+                dynLtree[(Tree.LengthCode[lc] + LITERALS + 1) * 2]++;
+                dynDtree[Tree.D_code(dist) * 2]++;
             }
 
-            if ((this.LastLit & 0x1fff) == 0 && this.Level > (ZlibCompressionLevel)2)
+            if ((this.lastLit & 0x1fff) == 0 && this.level > (ZlibCompressionLevel)2)
             {
                 // Compute an upper bound for the compressed length
-                var out_length = this.LastLit * 8;
-                var in_length = this.Strstart - this.BlockStart;
+                var out_length = this.lastLit * 8;
+                var in_length = this.strStart - this.blockStart;
                 int dcode;
                 for (dcode = 0; dcode < DCODES; dcode++)
                 {
-                    out_length = (int)(out_length + (this.DynDtree[dcode * 2] * (5L + Tree.ExtraDbits[dcode])));
+                    out_length = (int)(out_length + (dynDtree[dcode * 2] * (5L + Tree.ExtraDbits[dcode])));
                 }
 
                 out_length = ZlibUtilities.URShift(out_length, 3);
-                if ((this.Matches < (this.LastLit / 2)) && out_length < in_length / 2)
+                if ((this.matches < (this.lastLit / 2)) && out_length < in_length / 2)
                 {
                     return true;
                 }
             }
 
-            return this.LastLit == this.LitBufsize - 1;
+            return this.lastLit == this.litBufsize - 1;
 
             // We avoid equality with lit_bufsize because of wraparound at 64K
             // on 16 bit machines and because stored blocks are restricted to
@@ -719,7 +789,7 @@ namespace SixLabors.ZlibStream
         }
 
         // Send the block data compressed using the given Huffman trees
-        internal void Compress_block(short[] ltree, short[] dtree)
+        private void Compress_block(short* ltree, short* dtree)
         {
             int dist; // distance of matched string
             int lc; // match length or unmatched char (if dist == 0)
@@ -727,12 +797,14 @@ namespace SixLabors.ZlibStream
             int code; // the code to send
             int extra; // number of extra bits to send
 
-            if (this.LastLit != 0)
+            if (this.lastLit != 0)
             {
+                byte* pending = this.pendingPointer;
+
                 do
                 {
-                    dist = ((this.PendingBuf[this.DBuf + (lx * 2)] << 8) & 0xff00) | (this.PendingBuf[this.DBuf + (lx * 2) + 1] & 0xff);
-                    lc = this.PendingBuf[this.LBuf + lx] & 0xff;
+                    dist = ((pending[this.dBuf + (lx * 2)] << 8) & 0xFF00) | pending[this.dBuf + (lx * 2) + 1];
+                    lc = pending[this.lBuf + lx];
                     lx++;
 
                     if (dist == 0)
@@ -766,82 +838,84 @@ namespace SixLabors.ZlibStream
 
                     // Check that the overlay between pending_buf and d_buf+l_buf is ok:
                 }
-                while (lx < this.LastLit);
+                while (lx < this.lastLit);
             }
 
             this.Send_code(ENDBLOCK, ltree);
-            this.LastEobLen = ltree[(ENDBLOCK * 2) + 1];
+            this.lastEobLen = ltree[(ENDBLOCK * 2) + 1];
         }
 
         // Set the data type to ASCII or BINARY, using a crude approximation:
         // binary if more than 20% of the bytes are <= 6 or >= 128, ascii otherwise.
         // IN assertion: the fields freq of dyn_ltree are set and the total of all
         // frequencies does not exceed 64K (to fit in an int on 16 bit machines).
-        internal void Set_data_type()
+        private void Set_data_type()
         {
-            var n = 0;
-            var ascii_freq = 0;
-            var bin_freq = 0;
+            int n = 0;
+            int ascii_freq = 0;
+            int bin_freq = 0;
+            short* dynLtree = this.dynLtreePointer;
+
             while (n < 7)
             {
-                bin_freq += this.DynLtree[n * 2];
+                bin_freq += dynLtree[n * 2];
                 n++;
             }
 
             while (n < 128)
             {
-                ascii_freq += this.DynLtree[n * 2];
+                ascii_freq += dynLtree[n * 2];
                 n++;
             }
 
             while (n < LITERALS)
             {
-                bin_freq += this.DynLtree[n * 2];
+                bin_freq += dynLtree[n * 2];
                 n++;
             }
 
-            this.DataType = (byte)(bin_freq > ZlibUtilities.URShift(ascii_freq, 2) ? ZBINARY : ZASCII);
+            this.dataType = (byte)(bin_freq > ZlibUtilities.URShift(ascii_freq, 2) ? ZBINARY : ZASCII);
         }
 
         // Flush the bit buffer, keeping at most 7 bits in it.
-        internal void Bi_flush()
+        private void Bi_flush()
         {
-            if (this.BiValid == 16)
+            if (this.biValid == 16)
             {
-                this.Put_short(this.BiBuf);
-                this.BiBuf = 0;
-                this.BiValid = 0;
+                this.Put_short(this.biBuf);
+                this.biBuf = 0;
+                this.biValid = 0;
             }
-            else if (this.BiValid >= 8)
+            else if (this.biValid >= 8)
             {
-                this.Put_byte((byte)this.BiBuf);
-                this.BiBuf = (short)ZlibUtilities.URShift(this.BiBuf, 8);
-                this.BiValid -= 8;
+                this.Put_byte((byte)this.biBuf);
+                this.biBuf = (short)ZlibUtilities.URShift(this.biBuf, 8);
+                this.biValid -= 8;
             }
         }
 
         // Flush the bit buffer and align the output on a byte boundary
-        internal void Bi_windup()
+        private void Bi_windup()
         {
-            if (this.BiValid > 8)
+            if (this.biValid > 8)
             {
-                this.Put_short(this.BiBuf);
+                this.Put_short(this.biBuf);
             }
-            else if (this.BiValid > 0)
+            else if (this.biValid > 0)
             {
-                this.Put_byte((byte)this.BiBuf);
+                this.Put_byte((byte)this.biBuf);
             }
 
-            this.BiBuf = 0;
-            this.BiValid = 0;
+            this.biBuf = 0;
+            this.biValid = 0;
         }
 
         // Copy a stored block, storing first the length and its
         // one's complement if requested.
-        internal void Copy_block(int buf, int len, bool header)
+        private void Copy_block(int buf, int len, bool header)
         {
             this.Bi_windup(); // align on byte boundary
-            this.LastEobLen = 8; // enough lookahead for inflate
+            this.lastEobLen = 8; // enough lookahead for inflate
 
             if (header)
             {
@@ -853,14 +927,14 @@ namespace SixLabors.ZlibStream
             //    put_byte(window[buf+index]);
             //    index++;
             //  }
-            this.Put_byte(this.Window, buf, len);
+            this.Put_byte(this.windowBuffer, buf, len);
         }
 
-        internal void Flush_block_only(bool eof)
+        private void Flush_block_only(bool eof)
         {
-            this.Tr_flush_block(this.BlockStart >= 0 ? this.BlockStart : -1, this.Strstart - this.BlockStart, eof);
-            this.BlockStart = this.Strstart;
-            this.Strm.Flush_pending();
+            this.Tr_flush_block(this.blockStart >= 0 ? this.blockStart : -1, this.strStart - this.blockStart, eof);
+            this.blockStart = this.strStart;
+            this.Flush_pending(this.strm);
         }
 
         // Copy without compression as much as possible from the input stream, return
@@ -870,49 +944,49 @@ namespace SixLabors.ZlibStream
         // only for the level=0 compression option.
         // NOTE: this function should be optimized to avoid extra copying from
         // window to pending_buf.
-        internal int Deflate_stored(ZlibFlushStrategy flush)
+        private int Deflate_stored(ZlibFlushStrategy flush)
         {
-            // Stored blocks are limited to 0xffff bytes, pending_buf is limited
+            // Stored blocks are limited to 0xFFFF bytes, pending_buf is limited
             // to pending_buf_size, and each stored block has a 5 byte header:
-            var max_block_size = 0xffff;
+            var max_block_size = 0xFFFF;
             int max_start;
 
-            if (max_block_size > this.PendingBufSize - 5)
+            if (max_block_size > this.pendingBufferSize - 5)
             {
-                max_block_size = this.PendingBufSize - 5;
+                max_block_size = this.pendingBufferSize - 5;
             }
 
             // Copy as much as possible from input to output:
             while (true)
             {
                 // Fill the window as much as possible:
-                if (this.Lookahead <= 1)
+                if (this.lookahead <= 1)
                 {
                     this.Fill_window();
-                    if (this.Lookahead == 0 && flush == ZlibFlushStrategy.ZNOFLUSH)
+                    if (this.lookahead == 0 && flush == ZlibFlushStrategy.ZNOFLUSH)
                     {
                         return NeedMore;
                     }
 
-                    if (this.Lookahead == 0)
+                    if (this.lookahead == 0)
                     {
                         break; // flush the current block
                     }
                 }
 
-                this.Strstart += this.Lookahead;
-                this.Lookahead = 0;
+                this.strStart += this.lookahead;
+                this.lookahead = 0;
 
                 // Emit a stored block if pending_buf will be full:
-                max_start = this.BlockStart + max_block_size;
-                if (this.Strstart == 0 || this.Strstart >= max_start)
+                max_start = this.blockStart + max_block_size;
+                if (this.strStart == 0 || this.strStart >= max_start)
                 {
                     // strstart == 0 is possible when wraparound on 16-bit machine
-                    this.Lookahead = this.Strstart - max_start;
-                    this.Strstart = max_start;
+                    this.lookahead = this.strStart - max_start;
+                    this.strStart = max_start;
 
                     this.Flush_block_only(false);
-                    if (this.Strm.AvailOut == 0)
+                    if (this.strm.AvailOut == 0)
                     {
                         return NeedMore;
                     }
@@ -920,10 +994,10 @@ namespace SixLabors.ZlibStream
 
                 // Flush if we may have to slide, otherwise block_start may become
                 // negative and the data will be gone:
-                if (this.Strstart - this.BlockStart >= this.WSize - MINLOOKAHEAD)
+                if (this.strStart - this.blockStart >= this.wSize - MINLOOKAHEAD)
                 {
                     this.Flush_block_only(false);
-                    if (this.Strm.AvailOut == 0)
+                    if (this.strm.AvailOut == 0)
                     {
                         return NeedMore;
                     }
@@ -931,11 +1005,11 @@ namespace SixLabors.ZlibStream
             }
 
             this.Flush_block_only(flush == ZlibFlushStrategy.ZFINISH);
-            return this.Strm.AvailOut == 0 ? (flush == ZlibFlushStrategy.ZFINISH) ? FinishStarted : NeedMore : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
+            return this.strm.AvailOut == 0 ? (flush == ZlibFlushStrategy.ZFINISH) ? FinishStarted : NeedMore : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
         }
 
         // Send a stored block
-        internal void Tr_stored_block(int buf, int stored_len, bool eof)
+        private void Tr_stored_block(int buf, int stored_len, bool eof)
         {
             this.Send_bits((STOREDBLOCK << 1) + (eof ? 1 : 0), 3); // send block type
             this.Copy_block(buf, stored_len, true); // with header
@@ -943,24 +1017,24 @@ namespace SixLabors.ZlibStream
 
         // Determine the best encoding for the current block: dynamic trees, static
         // trees or store, and output the encoded block to the zip file.
-        internal void Tr_flush_block(int buf, int stored_len, bool eof)
+        private void Tr_flush_block(int buf, int stored_len, bool eof)
         {
             int opt_lenb, static_lenb; // opt_len and static_len in bytes
             var max_blindex = 0; // index of last bit length code of non zero freq
 
             // Build the Huffman trees unless a stored block is forced
-            if (this.Level > 0)
+            if (this.level > 0)
             {
                 // Check if the file is ascii or binary
-                if (this.DataType == ZUNKNOWN)
+                if (this.dataType == ZUNKNOWN)
                 {
                     this.Set_data_type();
                 }
 
                 // Construct the literal and distance trees
-                this.LDesc.Build_tree(this);
+                this.lDesc.Build_tree(this);
 
-                this.DDesc.Build_tree(this);
+                this.dDesc.Build_tree(this);
 
                 // At this point, opt_len and static_len are the total bit lengths of
                 // the compressed block data, excluding the tree representations.
@@ -996,13 +1070,20 @@ namespace SixLabors.ZlibStream
             else if (static_lenb == opt_lenb)
             {
                 this.Send_bits((STATICTREES << 1) + (eof ? 1 : 0), 3);
-                this.Compress_block(StaticTree.StaticLtree, StaticTree.StaticDtree);
+
+                fixed (short* ltree = &StaticTree.StaticLtree[0])
+                {
+                    fixed (short* dtree = &StaticTree.StaticDtree[0])
+                    {
+                        this.Compress_block(ltree, dtree);
+                    }
+                }
             }
             else
             {
                 this.Send_bits((DYNTREES << 1) + (eof ? 1 : 0), 3);
-                this.Send_all_trees(this.LDesc.MaxCode + 1, this.DDesc.MaxCode + 1, max_blindex + 1);
-                this.Compress_block(this.DynLtree, this.DynDtree);
+                this.Send_all_trees(this.lDesc.MaxCode + 1, this.dDesc.MaxCode + 1, max_blindex + 1);
+                this.Compress_block(this.dynLtreePointer, this.dynDtreePointer);
             }
 
             // The above check is made mod 2^32, for files larger than 512 MB
@@ -1023,20 +1104,25 @@ namespace SixLabors.ZlibStream
         //    At least one byte has been read, or avail_in == 0; reads are
         //    performed for at least two bytes (required for the zip translate_eol
         //    option -- not supported here).
-        internal void Fill_window()
+        [MethodImpl(InliningOptions.HotPath)]
+        private void Fill_window()
         {
             int n, m;
             int p;
             int more; // Amount of free space at the end of the window.
 
+            byte* window = this.windowPointer;
+            short* head = this.headPointer;
+            short* prev = this.prevPointer;
+
             do
             {
-                more = this.WindowSize - this.Lookahead - this.Strstart;
+                more = this.windowSize - this.lookahead - this.strStart;
 
                 // Deal with !@#$% 64K limit:
-                if (more == 0 && this.Strstart == 0 && this.Lookahead == 0)
+                if (more == 0 && this.strStart == 0 && this.lookahead == 0)
                 {
-                    more = this.WSize;
+                    more = this.wSize;
                 }
                 else if (more == -1)
                 {
@@ -1047,45 +1133,42 @@ namespace SixLabors.ZlibStream
                     // If the window is almost full and there is insufficient lookahead,
                     // move the upper half to the lower one to make room in the upper half.
                 }
-                else if (this.Strstart >= this.WSize + this.WSize - MINLOOKAHEAD)
+                else if (this.strStart >= this.wSize + this.wSize - MINLOOKAHEAD)
                 {
-                    Buffer.BlockCopy(this.Window, this.WSize, this.Window, 0, this.WSize);
-                    this.MatchStart -= this.WSize;
-                    this.Strstart -= this.WSize; // we now have strstart >= MAX_DIST
-                    this.BlockStart -= this.WSize;
+                    Buffer.BlockCopy(this.windowBuffer, this.wSize, this.windowBuffer, 0, this.wSize);
+                    this.matchStart -= this.wSize;
+                    this.strStart -= this.wSize; // we now have strstart >= MAX_DIST
+                    this.blockStart -= this.wSize;
 
                     // Slide the hash table (could be avoided with 32 bit values
                     // at the expense of memory usage). We slide even when level == 0
                     // to keep the hash table consistent if we switch back to level > 0
                     // later. (Using level 0 permanently is not an optimal usage of
                     // zlib, so we don't care about this pathological case.)
-                    n = this.HashSize;
+                    n = this.hashSize;
                     p = n;
                     do
                     {
-                        m = this.Head[--p] & 0xffff;
-                        this.Head[p] = (short)(m >= this.WSize ? (m - this.WSize) : 0);
-
-                        // head[p] = (m >= w_size?(short) (m - w_size):0);
+                        m = head[--p] & 0xFFFF;
+                        head[p] = (short)(m >= this.wSize ? (m - this.wSize) : 0);
                     }
                     while (--n != 0);
 
-                    n = this.WSize;
+                    n = this.wSize;
                     p = n;
                     do
                     {
-                        m = this.Prev[--p] & 0xffff;
-                        this.Prev[p] = (short)(m >= this.WSize ? (m - this.WSize) : 0);
+                        m = prev[--p] & 0xFFFF;
+                        prev[p] = (short)(m >= this.wSize ? (m - this.wSize) : 0);
 
-                        // prev[p] = (m >= w_size?(short) (m - w_size):0);
                         // If n is not on any hash chain, prev[n] is garbage but
                         // its value will never be used.
                     }
                     while (--n != 0);
-                    more += this.WSize;
+                    more += this.wSize;
                 }
 
-                if (this.Strm.AvailIn == 0)
+                if (this.strm.AvailIn == 0)
                 {
                     return;
                 }
@@ -1100,20 +1183,20 @@ namespace SixLabors.ZlibStream
                 //   strstart + s->lookahead <= input_size => more >= MIN_LOOKAHEAD.
                 // Otherwise, window_size == 2*WSIZE so more >= 2.
                 // If there was sliding, more >= WSIZE. So in all cases, more >= 2.
-                n = this.Strm.Read_buf(this.Window, this.Strstart + this.Lookahead, more);
-                this.Lookahead += n;
+                n = this.strm.Read_buf(this.windowBuffer, this.strStart + this.lookahead, more);
+                this.lookahead += n;
 
                 // Initialize the hash value now that we have some input:
-                if (this.Lookahead >= MINMATCH)
+                if (this.lookahead >= MINMATCH)
                 {
-                    this.InsH = this.Window[this.Strstart] & 0xff;
-                    this.InsH = ((this.InsH << this.HashShift) ^ (this.Window[this.Strstart + 1] & 0xff)) & this.HashMask;
+                    this.insH = window[this.strStart];
+                    this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + 1]) & this.hashMask;
                 }
 
                 // If the whole input has less than MIN_MATCH bytes, ins_h is garbage,
                 // but this is not important since only literal bytes will be emitted.
             }
-            while (this.Lookahead < MINLOOKAHEAD && this.Strm.AvailIn != 0);
+            while (this.lookahead < MINLOOKAHEAD && this.strm.AvailIn != 0);
         }
 
         // Compress as much as possible from the input stream, return the current
@@ -1127,21 +1210,25 @@ namespace SixLabors.ZlibStream
             var hash_head = 0; // head of the hash chain
             bool bflush; // set if current block must be flushed
 
+            byte* window = this.windowPointer;
+            short* head = this.headPointer;
+            short* prev = this.prevPointer;
+
             while (true)
             {
                 // Make sure that we always have enough lookahead, except
                 // at the end of the input file. We need MAX_MATCH bytes
                 // for the next match, plus MIN_MATCH bytes to insert the
                 // string following the next match.
-                if (this.Lookahead < MINLOOKAHEAD)
+                if (this.lookahead < MINLOOKAHEAD)
                 {
                     this.Fill_window();
-                    if (this.Lookahead < MINLOOKAHEAD && flush == ZlibFlushStrategy.ZNOFLUSH)
+                    if (this.lookahead < MINLOOKAHEAD && flush == ZlibFlushStrategy.ZNOFLUSH)
                     {
                         return NeedMore;
                     }
 
-                    if (this.Lookahead == 0)
+                    if (this.lookahead == 0)
                     {
                         break; // flush the current block
                     }
@@ -1149,67 +1236,67 @@ namespace SixLabors.ZlibStream
 
                 // Insert the string window[strstart .. strstart+2] in the
                 // dictionary, and set hash_head to the head of the hash chain:
-                if (this.Lookahead >= MINMATCH)
+                if (this.lookahead >= MINMATCH)
                 {
-                    this.InsH = ((this.InsH << this.HashShift) ^ (this.Window[this.Strstart + (MINMATCH - 1)] & 0xff)) & this.HashMask;
+                    this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
 
                     // prev[strstart&w_mask]=hash_head=head[ins_h];
-                    hash_head = this.Head[this.InsH] & 0xffff;
-                    this.Prev[this.Strstart & this.WMask] = this.Head[this.InsH];
-                    this.Head[this.InsH] = (short)this.Strstart;
+                    hash_head = head[this.insH] & 0xFFFF;
+                    prev[this.strStart & this.wMask] = head[this.insH];
+                    head[this.insH] = (short)this.strStart;
                 }
 
                 // Find the longest match, discarding those <= prev_length.
                 // At this point we have always match_length < MIN_MATCH
-                if (hash_head != 0L && ((this.Strstart - hash_head) & 0xffff) <= this.WSize - MINLOOKAHEAD)
+                if (hash_head != 0L && ((this.strStart - hash_head) & 0xFFFF) <= this.wSize - MINLOOKAHEAD)
                 {
                     // To simplify the code, we prevent matches with the string
                     // of window index 0 (in particular we have to avoid a match
                     // of the string with itself at the start of the input file).
-                    if (this.Strategy != ZlibCompressionStrategy.ZHUFFMANONLY)
+                    if (this.strategy != ZlibCompressionStrategy.ZHUFFMANONLY)
                     {
-                        this.MatchLength = this.Longest_match(hash_head);
+                        this.matchLength = this.Longest_match(hash_head);
                     }
 
                     // longest_match() sets match_start
                 }
 
-                if (this.MatchLength >= MINMATCH)
+                if (this.matchLength >= MINMATCH)
                 {
                     // check_match(strstart, match_start, match_length);
-                    bflush = this.Tr_tally(this.Strstart - this.MatchStart, this.MatchLength - MINMATCH);
+                    bflush = this.Tr_tally(this.strStart - this.matchStart, this.matchLength - MINMATCH);
 
-                    this.Lookahead -= this.MatchLength;
+                    this.lookahead -= this.matchLength;
 
                     // Insert new strings in the hash table only if the match length
                     // is not too large. This saves time but degrades compression.
-                    if (this.MatchLength <= this.MaxLazyMatch && this.Lookahead >= MINMATCH)
+                    if (this.matchLength <= this.maxLazyMatch && this.lookahead >= MINMATCH)
                     {
-                        this.MatchLength--; // string at strstart already in hash table
+                        this.matchLength--; // string at strstart already in hash table
                         do
                         {
-                            this.Strstart++;
+                            this.strStart++;
 
-                            this.InsH = ((this.InsH << this.HashShift) ^ (this.Window[this.Strstart + (MINMATCH - 1)] & 0xff)) & this.HashMask;
+                            this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
 
                             // prev[strstart&w_mask]=hash_head=head[ins_h];
-                            hash_head = this.Head[this.InsH] & 0xffff;
-                            this.Prev[this.Strstart & this.WMask] = this.Head[this.InsH];
-                            this.Head[this.InsH] = (short)this.Strstart;
+                            hash_head = head[this.insH] & 0xFFFF;
+                            prev[this.strStart & this.wMask] = head[this.insH];
+                            head[this.insH] = (short)this.strStart;
 
                             // strstart never exceeds WSIZE-MAX_MATCH, so there are
                             // always MIN_MATCH bytes ahead.
                         }
-                        while (--this.MatchLength != 0);
-                        this.Strstart++;
+                        while (--this.matchLength != 0);
+                        this.strStart++;
                     }
                     else
                     {
-                        this.Strstart += this.MatchLength;
-                        this.MatchLength = 0;
-                        this.InsH = this.Window[this.Strstart] & 0xff;
+                        this.strStart += this.matchLength;
+                        this.matchLength = 0;
+                        this.insH = this.windowPointer[this.strStart] & 0xff;
 
-                        this.InsH = ((this.InsH << this.HashShift) ^ (this.Window[this.Strstart + 1] & 0xff)) & this.HashMask;
+                        this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + 1]) & this.hashMask;
 
                         // If lookahead < MIN_MATCH, ins_h is garbage, but it does not
                         // matter since it will be recomputed at next deflate call.
@@ -1218,15 +1305,15 @@ namespace SixLabors.ZlibStream
                 else
                 {
                     // No match, output a literal byte
-                    bflush = this.Tr_tally(0, this.Window[this.Strstart] & 0xff);
-                    this.Lookahead--;
-                    this.Strstart++;
+                    bflush = this.Tr_tally(0, window[this.strStart]);
+                    this.lookahead--;
+                    this.strStart++;
                 }
 
                 if (bflush)
                 {
                     this.Flush_block_only(false);
-                    if (this.Strm.AvailOut == 0)
+                    if (this.strm.AvailOut == 0)
                     {
                         return NeedMore;
                     }
@@ -1234,17 +1321,24 @@ namespace SixLabors.ZlibStream
             }
 
             this.Flush_block_only(flush == ZlibFlushStrategy.ZFINISH);
-            return this.Strm.AvailOut == 0 ? flush == ZlibFlushStrategy.ZFINISH ? FinishStarted : NeedMore : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
+            return this.strm.AvailOut == 0
+                ? flush == ZlibFlushStrategy.ZFINISH ? FinishStarted : NeedMore
+                : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
         }
 
         // Same as above, but achieves better compression. We use a lazy
         // evaluation for matches: a match is finally adopted only if there is
         // no better match at the next window position.
+        [MethodImpl(InliningOptions.HotPath)]
         internal int Deflate_slow(ZlibFlushStrategy flush)
         {
             // short hash_head = 0;    // head of hash chain
             var hash_head = 0; // head of hash chain
             bool bflush; // set if current block must be flushed
+
+            byte* window = this.windowPointer;
+            short* head = this.headPointer;
+            short* prev = this.prevPointer;
 
             // Process the input block.
             while (true)
@@ -1253,15 +1347,15 @@ namespace SixLabors.ZlibStream
                 // at the end of the input file. We need MAX_MATCH bytes
                 // for the next match, plus MIN_MATCH bytes to insert the
                 // string following the next match.
-                if (this.Lookahead < MINLOOKAHEAD)
+                if (this.lookahead < MINLOOKAHEAD)
                 {
                     this.Fill_window();
-                    if (this.Lookahead < MINLOOKAHEAD && flush == ZlibFlushStrategy.ZNOFLUSH)
+                    if (this.lookahead < MINLOOKAHEAD && flush == ZlibFlushStrategy.ZNOFLUSH)
                     {
                         return NeedMore;
                     }
 
-                    if (this.Lookahead == 0)
+                    if (this.lookahead == 0)
                     {
                         break; // flush the current block
                     }
@@ -1269,98 +1363,100 @@ namespace SixLabors.ZlibStream
 
                 // Insert the string window[strstart .. strstart+2] in the
                 // dictionary, and set hash_head to the head of the hash chain:
-                if (this.Lookahead >= MINMATCH)
+                if (this.lookahead >= MINMATCH)
                 {
-                    this.InsH = ((this.InsH << this.HashShift) ^ (this.Window[this.Strstart + (MINMATCH - 1)] & 0xff)) & this.HashMask;
+                    this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
 
                     // prev[strstart&w_mask]=hash_head=head[ins_h];
-                    hash_head = this.Head[this.InsH] & 0xffff;
-                    this.Prev[this.Strstart & this.WMask] = this.Head[this.InsH];
-                    this.Head[this.InsH] = (short)this.Strstart;
+                    hash_head = head[this.insH] & 0xFFFF;
+                    prev[this.strStart & this.wMask] = head[this.insH];
+                    head[this.insH] = (short)this.strStart;
                 }
 
                 // Find the longest match, discarding those <= prev_length.
-                this.PrevLength = this.MatchLength;
-                this.PrevMatch = this.MatchStart;
-                this.MatchLength = MINMATCH - 1;
+                this.prevLength = this.matchLength;
+                this.prevMatch = this.matchStart;
+                this.matchLength = MINMATCH - 1;
 
-                if (hash_head != 0 && this.PrevLength < this.MaxLazyMatch && ((this.Strstart - hash_head) & 0xffff) <= this.WSize - MINLOOKAHEAD)
+                if (hash_head != 0 && this.prevLength < this.maxLazyMatch
+                    && ((this.strStart - hash_head) & 0xFFFF) <= this.wSize - MINLOOKAHEAD)
                 {
                     // To simplify the code, we prevent matches with the string
                     // of window index 0 (in particular we have to avoid a match
                     // of the string with itself at the start of the input file).
-                    if (this.Strategy != ZlibCompressionStrategy.ZHUFFMANONLY)
+                    if (this.strategy != ZlibCompressionStrategy.ZHUFFMANONLY)
                     {
-                        this.MatchLength = this.Longest_match(hash_head);
+                        this.matchLength = this.Longest_match(hash_head);
                     }
 
                     // longest_match() sets match_start
-                    if (this.MatchLength <= 5 && (this.Strategy == ZlibCompressionStrategy.ZFILTERED || (this.MatchLength == MINMATCH && this.Strstart - this.MatchStart > 4096)))
+                    if (this.matchLength <= 5 && (this.strategy == ZlibCompressionStrategy.ZFILTERED
+                        || (this.matchLength == MINMATCH && this.strStart - this.matchStart > 4096)))
                     {
                         // If prev_match is also MIN_MATCH, match_start is garbage
                         // but we will ignore the current match anyway.
-                        this.MatchLength = MINMATCH - 1;
+                        this.matchLength = MINMATCH - 1;
                     }
                 }
 
                 // If there was a match at the previous step and the current
                 // match is not better, output the previous match:
-                if (this.PrevLength >= MINMATCH && this.MatchLength <= this.PrevLength)
+                if (this.prevLength >= MINMATCH && this.matchLength <= this.prevLength)
                 {
-                    var max_insert = this.Strstart + this.Lookahead - MINMATCH;
+                    var max_insert = this.strStart + this.lookahead - MINMATCH;
 
                     // Do not insert strings in hash table beyond this.
 
                     // check_match(strstart-1, prev_match, prev_length);
-                    bflush = this.Tr_tally(this.Strstart - 1 - this.PrevMatch, this.PrevLength - MINMATCH);
+                    bflush = this.Tr_tally(this.strStart - 1 - this.prevMatch, this.prevLength - MINMATCH);
 
                     // Insert in hash table all strings up to the end of the match.
                     // strstart-1 and strstart are already inserted. If there is not
                     // enough lookahead, the last two strings are not inserted in
                     // the hash table.
-                    this.Lookahead -= this.PrevLength - 1;
-                    this.PrevLength -= 2;
+                    this.lookahead -= this.prevLength - 1;
+                    this.prevLength -= 2;
                     do
                     {
-                        if (++this.Strstart <= max_insert)
+                        if (++this.strStart <= max_insert)
                         {
-                            this.InsH = ((this.InsH << this.HashShift) ^ (this.Window[this.Strstart + (MINMATCH - 1)] & 0xff)) & this.HashMask;
+                            this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
 
                             // prev[strstart&w_mask]=hash_head=head[ins_h];
-                            hash_head = this.Head[this.InsH] & 0xffff;
-                            this.Prev[this.Strstart & this.WMask] = this.Head[this.InsH];
-                            this.Head[this.InsH] = (short)this.Strstart;
+                            hash_head = head[this.insH] & 0xFFFF;
+                            prev[this.strStart & this.wMask] = head[this.insH];
+                            head[this.insH] = (short)this.strStart;
                         }
                     }
-                    while (--this.PrevLength != 0);
-                    this.MatchAvailable = 0;
-                    this.MatchLength = MINMATCH - 1;
-                    this.Strstart++;
+                    while (--this.prevLength != 0);
+                    this.matchAvailable = 0;
+                    this.matchLength = MINMATCH - 1;
+                    this.strStart++;
 
                     if (bflush)
                     {
                         this.Flush_block_only(false);
-                        if (this.Strm.AvailOut == 0)
+                        if (this.strm.AvailOut == 0)
                         {
                             return NeedMore;
                         }
                     }
                 }
-                else if (this.MatchAvailable != 0)
+                else if (this.matchAvailable != 0)
                 {
                     // If there was no match at the previous position, output a
                     // single literal. If there was a match but the current match
                     // is longer, truncate the previous match to a single literal.
-                    bflush = this.Tr_tally(0, this.Window[this.Strstart - 1] & 0xff);
+                    bflush = this.Tr_tally(0, window[this.strStart - 1]);
 
                     if (bflush)
                     {
                         this.Flush_block_only(false);
                     }
 
-                    this.Strstart++;
-                    this.Lookahead--;
-                    if (this.Strm.AvailOut == 0)
+                    this.strStart++;
+                    this.lookahead--;
+                    if (this.strm.AvailOut == 0)
                     {
                         return NeedMore;
                     }
@@ -1369,61 +1465,63 @@ namespace SixLabors.ZlibStream
                 {
                     // There is no previous match to compare with, wait for
                     // the next step to decide.
-                    this.MatchAvailable = 1;
-                    this.Strstart++;
-                    this.Lookahead--;
+                    this.matchAvailable = 1;
+                    this.strStart++;
+                    this.lookahead--;
                 }
             }
 
-            if (this.MatchAvailable != 0)
+            if (this.matchAvailable != 0)
             {
-                bflush = this.Tr_tally(0, this.Window[this.Strstart - 1] & 0xff);
-                this.MatchAvailable = 0;
+                _ = this.Tr_tally(0, window[this.strStart - 1]);
+                this.matchAvailable = 0;
             }
 
             this.Flush_block_only(flush == ZlibFlushStrategy.ZFINISH);
 
-            return this.Strm.AvailOut == 0 ? flush == ZlibFlushStrategy.ZFINISH ? FinishStarted : NeedMore : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
+            return this.strm.AvailOut == 0
+                ? flush == ZlibFlushStrategy.ZFINISH ? FinishStarted : NeedMore
+                : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
         }
 
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
         internal int Longest_match(int cur_match)
         {
-            ref byte windowRef = ref MemoryMarshal.GetReference<byte>(this.Window);
+            byte* window = this.windowPointer;
 
-            var chain_length = this.MaxChainLength; // max hash chain length
-            var scan = this.Strstart; // current string
+            var chain_length = this.maxChainLength; // max hash chain length
+            var scan = this.strStart; // current string
             int match; // matched string
             int len; // length of current match
-            var best_len = this.PrevLength; // best match length so far
-            var limit = this.Strstart > (this.WSize - MINLOOKAHEAD) ? this.Strstart - (this.WSize - MINLOOKAHEAD) : 0;
-            var nice_match = this.NiceMatch;
+            var best_len = this.prevLength; // best match length so far
+            var limit = this.strStart > (this.wSize - MINLOOKAHEAD) ? this.strStart - (this.wSize - MINLOOKAHEAD) : 0;
+            var nice_match = this.niceMatch;
 
             // Stop when cur_match becomes <= limit. To simplify the code,
             // we prevent matches with the string of window index 0.
-            var wmask = this.WMask;
+            var wmask = this.wMask;
 
-            var strend = this.Strstart + MAXMATCH;
-            var scan_end1 = Unsafe.Add(ref windowRef, scan + best_len - 1);
-            var scan_end = Unsafe.Add(ref windowRef, scan + best_len);
+            var strend = this.strStart + MAXMATCH;
+            var scan_end1 = window[scan + best_len - 1];
+            var scan_end = window[scan + best_len];
 
             // The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
             // It is easy to get rid of this optimization if necessary.
 
             // Do not waste too much time if we already have a good match:
-            if (this.PrevLength >= this.GoodMatch)
+            if (this.prevLength >= this.goodMatch)
             {
                 chain_length >>= 2;
             }
 
             // Do not look for matches beyond the end of the input. This is necessary
             // to make deflate deterministic.
-            if (nice_match > this.Lookahead)
+            if (nice_match > this.lookahead)
             {
-                nice_match = this.Lookahead;
+                nice_match = this.lookahead;
             }
 
-            ref short prevRef = ref MemoryMarshal.GetReference<short>(this.Prev);
+            short* prev = this.prevPointer;
 
             do
             {
@@ -1431,10 +1529,10 @@ namespace SixLabors.ZlibStream
 
                 // Skip to next match if the match length cannot increase
                 // or if the match length is less than 2:
-                if (Unsafe.Add(ref windowRef, match + best_len) != scan_end
-                    || Unsafe.Add(ref windowRef, match + best_len - 1) != scan_end1
-                    || Unsafe.Add(ref windowRef, match) != Unsafe.Add(ref windowRef, scan)
-                    || Unsafe.Add(ref windowRef, ++match) != Unsafe.Add(ref windowRef, scan + 1))
+                if (window[match + best_len] != scan_end
+                    || window[match + best_len - 1] != scan_end1
+                    || window[match] != window[scan]
+                    || window[++match] != window[scan + 1])
                 {
                     continue;
                 }
@@ -1452,14 +1550,14 @@ namespace SixLabors.ZlibStream
                 do
                 {
                 }
-                while (Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
-                && Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
-                && Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
-                && Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
-                && Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
-                && Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
-                && Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
-                && Unsafe.Add(ref windowRef, ++scan) == Unsafe.Add(ref windowRef, ++match)
+                while (window[++scan] == window[++match]
+                && window[++scan] == window[++match]
+                && window[++scan] == window[++match]
+                && window[++scan] == window[++match]
+                && window[++scan] == window[++match]
+                && window[++scan] == window[++match]
+                && window[++scan] == window[++match]
+                && window[++scan] == window[++match]
                 && scan < strend);
 
                 len = MAXMATCH - (strend - scan);
@@ -1467,20 +1565,20 @@ namespace SixLabors.ZlibStream
 
                 if (len > best_len)
                 {
-                    this.MatchStart = cur_match;
+                    this.matchStart = cur_match;
                     best_len = len;
                     if (len >= nice_match)
                     {
                         break;
                     }
 
-                    scan_end1 = Unsafe.Add(ref windowRef, scan + best_len - 1);
-                    scan_end = Unsafe.Add(ref windowRef, scan + best_len);
+                    scan_end1 = window[scan + best_len - 1];
+                    scan_end = window[scan + best_len];
                 }
             }
-            while ((cur_match = Unsafe.Add(ref prevRef, cur_match & wmask) & 0xFFFF) > limit && --chain_length != 0);
+            while ((cur_match = prev[cur_match & wmask] & 0xFFFF) > limit && --chain_length != 0);
 
-            return best_len <= this.Lookahead ? best_len : this.Lookahead;
+            return best_len <= this.lookahead ? best_len : this.lookahead;
         }
 
         internal ZlibCompressionState DeflateInit(ZStream strm, ZlibCompressionLevel level, int bits)
@@ -1522,34 +1620,44 @@ namespace SixLabors.ZlibStream
             strm.Dstate = this;
 
             this.Noheader = noheader;
-            this.WBits = windowBits;
-            this.WSize = 1 << this.WBits;
-            this.WMask = this.WSize - 1;
+            this.wBits = windowBits;
+            this.wSize = 1 << this.wBits;
+            this.wMask = this.wSize - 1;
 
-            this.HashBits = memLevel + 7;
-            this.HashSize = 1 << this.HashBits;
-            this.HashMask = this.HashSize - 1;
-            this.HashShift = (this.HashBits + MINMATCH - 1) / MINMATCH;
+            this.hashBits = memLevel + 7;
+            this.hashSize = 1 << this.hashBits;
+            this.hashMask = this.hashSize - 1;
+            this.hashShift = (this.hashBits + MINMATCH - 1) / MINMATCH;
 
-            this.Window = ArrayPool<byte>.Shared.Rent(this.WSize * 2);
-            this.Prev = ArrayPool<short>.Shared.Rent(this.WSize);
-            this.Head = ArrayPool<short>.Shared.Rent(this.HashSize);
+            this.windowBuffer = ArrayPool<byte>.Shared.Rent(this.wSize * 2);
+            this.windowHandle = new Memory<byte>(this.windowBuffer).Pin();
+            this.windowPointer = (byte*)this.windowHandle.Pointer;
 
-            this.LitBufsize = 1 << (memLevel + 6); // 16K elements by default
+            this.prevBuffer = ArrayPool<short>.Shared.Rent(this.wSize);
+            this.prevHandle = new Memory<short>(this.prevBuffer).Pin();
+            this.prevPointer = (short*)this.prevHandle.Pointer;
+
+            this.headBuffer = ArrayPool<short>.Shared.Rent(this.hashSize);
+            this.headHandle = new Memory<short>(this.headBuffer).Pin();
+            this.headPointer = (short*)this.headHandle.Pointer;
+
+            this.litBufsize = 1 << (memLevel + 6); // 16K elements by default
 
             // We overlay pending_buf and d_buf+l_buf. This works since the average
             // output size for (length,distance) codes is <= 24 bits.
-            this.PendingBuf = ArrayPool<byte>.Shared.Rent(this.LitBufsize * 4);
-            this.PendingBufSize = this.LitBufsize * 4;
+            this.pendingBufferSize = this.litBufsize * 4;
+            this.pendingBuffer = ArrayPool<byte>.Shared.Rent(this.pendingBufferSize);
+            this.pendingHandle = new Memory<byte>(this.pendingBuffer).Pin();
+            this.pendingPointer = (byte*)this.pendingHandle.Pointer;
 
-            this.DBuf = this.LitBufsize;
-            this.LBuf = (1 + 2) * this.LitBufsize;
+            this.dBuf = this.litBufsize;
+            this.lBuf = (1 + 2) * this.litBufsize;
 
-            this.Level = level;
+            this.level = level;
 
             // System.out.println("level="+level);
-            this.Strategy = strategy;
-            this.Method = (byte)method;
+            this.strategy = strategy;
+            this.method = (byte)method;
 
             return this.DeflateReset(strm);
         }
@@ -1568,10 +1676,10 @@ namespace SixLabors.ZlibStream
                 this.Noheader = 0; // was set to -1 by deflate(..., Z_FINISH);
             }
 
-            this.Status = (this.Noheader != 0) ? BUSYSTATE : INITSTATE;
+            this.status = (this.Noheader != 0) ? BUSYSTATE : INITSTATE;
             strm.Adler = Adler32.Calculate(0, null, 0, 0);
 
-            this.LastFlush = ZlibFlushStrategy.ZNOFLUSH;
+            this.lastFlush = ZlibFlushStrategy.ZNOFLUSH;
 
             this.Tr_init();
             this.Lm_init();
@@ -1580,24 +1688,45 @@ namespace SixLabors.ZlibStream
 
         internal ZlibCompressionState DeflateEnd()
         {
-            if (this.Status != INITSTATE && this.Status != BUSYSTATE && this.Status != FINISHSTATE)
+            if (this.status != INITSTATE && this.status != BUSYSTATE && this.status != FINISHSTATE)
             {
                 return ZlibCompressionState.ZSTREAMERROR;
             }
 
             // Deallocate in reverse order of allocations:
-            ArrayPool<byte>.Shared.Return(this.PendingBuf);
-            ArrayPool<short>.Shared.Return(this.Head);
-            ArrayPool<short>.Shared.Return(this.Prev);
-            ArrayPool<byte>.Shared.Return(this.Window);
+            this.pendingHandle.Dispose();
+            ArrayPool<byte>.Shared.Return(this.pendingBuffer);
 
-            ArrayPool<short>.Shared.Return(this.BlTree);
-            ArrayPool<short>.Shared.Return(this.DynDtree);
-            ArrayPool<short>.Shared.Return(this.DynLtree);
+            this.headHandle.Dispose();
+            ArrayPool<short>.Shared.Return(this.headBuffer);
+
+            this.prevHandle.Dispose();
+            ArrayPool<short>.Shared.Return(this.prevBuffer);
+
+            this.windowHandle.Dispose();
+            ArrayPool<byte>.Shared.Return(this.windowBuffer);
+
+            this.bltreeHandle.Dispose();
+            ArrayPool<short>.Shared.Return(this.blTreeBuffer);
+
+            this.dynDtreeHandle.Dispose();
+            ArrayPool<short>.Shared.Return(this.dynDtreeBuffer);
+
+            this.dynLtreeHandle.Dispose();
+            ArrayPool<short>.Shared.Return(this.dynLtreeBuffer);
+
+            this.depthHandle.Dispose();
+            ArrayPool<byte>.Shared.Return(this.depthBuffer);
+
+            this.heapHandle.Dispose();
+            ArrayPool<int>.Shared.Return(this.heapBuffer);
+
+            this.blCountHandle.Dispose();
+            ArrayPool<short>.Shared.Return(this.blCountBuffer);
 
             // free
             // dstate=null;
-            return this.Status == BUSYSTATE ? ZlibCompressionState.ZDATAERROR : ZlibCompressionState.ZOK;
+            return this.status == BUSYSTATE ? ZlibCompressionState.ZDATAERROR : ZlibCompressionState.ZOK;
         }
 
         internal ZlibCompressionState DeflateParams(ZStream strm, ZlibCompressionLevel level, ZlibCompressionStrategy strategy)
@@ -1617,22 +1746,22 @@ namespace SixLabors.ZlibStream
                 return ZlibCompressionState.ZSTREAMERROR;
             }
 
-            if (ConfigTable[(int)this.Level].Func != ConfigTable[(int)level].Func && strm.TotalIn != 0)
+            if (ConfigTable[(int)this.level].Func != ConfigTable[(int)level].Func && strm.TotalIn != 0)
             {
                 // Flush the last buffer:
                 err = strm.Deflate(ZlibFlushStrategy.ZPARTIALFLUSH);
             }
 
-            if (this.Level != level)
+            if (this.level != level)
             {
-                this.Level = level;
-                this.MaxLazyMatch = ConfigTable[(int)this.Level].MaxLazy;
-                this.GoodMatch = ConfigTable[(int)this.Level].GoodLength;
-                this.NiceMatch = ConfigTable[(int)this.Level].NiceLength;
-                this.MaxChainLength = ConfigTable[(int)this.Level].MaxChain;
+                this.level = level;
+                this.maxLazyMatch = ConfigTable[(int)this.level].MaxLazy;
+                this.goodMatch = ConfigTable[(int)this.level].GoodLength;
+                this.niceMatch = ConfigTable[(int)this.level].NiceLength;
+                this.maxChainLength = ConfigTable[(int)this.level].MaxChain;
             }
 
-            this.Strategy = strategy;
+            this.strategy = strategy;
             return err;
         }
 
@@ -1641,7 +1770,7 @@ namespace SixLabors.ZlibStream
             var length = dictLength;
             var index = 0;
 
-            if (dictionary == null || this.Status != INITSTATE)
+            if (dictionary == null || this.status != INITSTATE)
             {
                 return ZlibCompressionState.ZSTREAMERROR;
             }
@@ -1653,27 +1782,30 @@ namespace SixLabors.ZlibStream
                 return ZlibCompressionState.ZOK;
             }
 
-            if (length > this.WSize - MINLOOKAHEAD)
+            if (length > this.wSize - MINLOOKAHEAD)
             {
-                length = this.WSize - MINLOOKAHEAD;
+                length = this.wSize - MINLOOKAHEAD;
                 index = dictLength - length; // use the tail of the dictionary
             }
 
-            Buffer.BlockCopy(dictionary, index, this.Window, 0, length);
-            this.Strstart = length;
-            this.BlockStart = length;
+            Buffer.BlockCopy(dictionary, index, this.windowBuffer, 0, length);
+            this.strStart = length;
+            this.blockStart = length;
 
             // Insert all strings in the hash table (except for the last two bytes).
             // s->lookahead stays null, so s->ins_h will be recomputed at the next
             // call of fill_window.
-            this.InsH = this.Window[0] & 0xff;
-            this.InsH = ((this.InsH << this.HashShift) ^ (this.Window[1] & 0xff)) & this.HashMask;
+            byte* window = this.windowPointer;
+            this.insH = window[0];
+            this.insH = ((this.insH << this.hashShift) ^ window[1]) & this.hashMask;
 
+            short* head = this.headPointer;
+            short* prev = this.prevPointer;
             for (var n = 0; n <= length - MINMATCH; n++)
             {
-                this.InsH = ((this.InsH << this.HashShift) ^ (this.Window[n + (MINMATCH - 1)] & 0xff)) & this.HashMask;
-                this.Prev[n & this.WMask] = this.Head[this.InsH];
-                this.Head[this.InsH] = (short)n;
+                this.insH = ((this.insH << this.hashShift) ^ window[n + (MINMATCH - 1)]) & this.hashMask;
+                prev[n & this.wMask] = head[this.insH];
+                head[this.insH] = (short)n;
             }
 
             return ZlibCompressionState.ZOK;
@@ -1688,7 +1820,9 @@ namespace SixLabors.ZlibStream
                 return ZlibCompressionState.ZSTREAMERROR;
             }
 
-            if (strm.INextOut == null || (strm.INextIn == null && strm.AvailIn != 0) || (this.Status == FINISHSTATE && flush != ZlibFlushStrategy.ZFINISH))
+            if (strm.INextOut == null
+                || (strm.INextIn == null && strm.AvailIn != 0)
+                || (this.status == FINISHSTATE && flush != ZlibFlushStrategy.ZFINISH))
             {
                 strm.Msg = ZErrmsg[ZlibCompressionState.ZNEEDDICT - ZlibCompressionState.ZSTREAMERROR];
                 return ZlibCompressionState.ZSTREAMERROR;
@@ -1700,15 +1834,15 @@ namespace SixLabors.ZlibStream
                 return ZlibCompressionState.ZBUFERROR;
             }
 
-            this.Strm = strm; // just in case
-            old_flush = this.LastFlush;
-            this.LastFlush = flush;
+            this.strm = strm; // just in case
+            old_flush = this.lastFlush;
+            this.lastFlush = flush;
 
             // Write the zlib header
-            if (this.Status == INITSTATE)
+            if (this.status == INITSTATE)
             {
-                var header = (ZDEFLATED + ((this.WBits - 8) << 4)) << 8;
-                var level_flags = (((int)this.Level - 1) & 0xff) >> 1;
+                var header = (ZDEFLATED + ((this.wBits - 8) << 4)) << 8;
+                var level_flags = (((int)this.level - 1) & 0xff) >> 1;
 
                 if (level_flags > 3)
                 {
@@ -1716,21 +1850,21 @@ namespace SixLabors.ZlibStream
                 }
 
                 header |= level_flags << 6;
-                if (this.Strstart != 0)
+                if (this.strStart != 0)
                 {
                     header |= PRESETDICT;
                 }
 
                 header += 31 - (header % 31);
 
-                this.Status = BUSYSTATE;
+                this.status = BUSYSTATE;
                 this.PutShortMSB(header);
 
                 // Save the adler32 of the preset dictionary:
-                if (this.Strstart != 0)
+                if (this.strStart != 0)
                 {
                     this.PutShortMSB((int)ZlibUtilities.URShift(strm.Adler, 16));
-                    this.PutShortMSB((int)(strm.Adler & 0xffff));
+                    this.PutShortMSB((int)(strm.Adler & 0xFFFF));
                 }
 
                 strm.Adler = Adler32.Calculate(0, null, 0, 0);
@@ -1739,7 +1873,7 @@ namespace SixLabors.ZlibStream
             // Flush as much pending output as possible
             if (this.Pending != 0)
             {
-                strm.Flush_pending();
+                this.Flush_pending(strm);
                 if (strm.AvailOut == 0)
                 {
                     // System.out.println("  avail_out==0");
@@ -1748,7 +1882,7 @@ namespace SixLabors.ZlibStream
                     // avail_in equal to zero. There won't be anything to do,
                     // but this is not an error situation so make sure we
                     // return OK instead of BUF_ERROR at next call of deflate:
-                    this.LastFlush = (ZlibFlushStrategy)(-1);
+                    this.lastFlush = (ZlibFlushStrategy)(-1);
                     return ZlibCompressionState.ZOK;
                 }
 
@@ -1763,17 +1897,19 @@ namespace SixLabors.ZlibStream
             }
 
             // User must not provide more input after the first FINISH:
-            if (this.Status == FINISHSTATE && strm.AvailIn != 0)
+            if (this.status == FINISHSTATE && strm.AvailIn != 0)
             {
                 strm.Msg = ZErrmsg[ZlibCompressionState.ZNEEDDICT - ZlibCompressionState.ZBUFERROR];
                 return ZlibCompressionState.ZBUFERROR;
             }
 
             // Start a new block or continue the current one.
-            if (strm.AvailIn != 0 || this.Lookahead != 0 || (flush != ZlibFlushStrategy.ZNOFLUSH && this.Status != FINISHSTATE))
+            if (strm.AvailIn != 0
+                || this.lookahead != 0
+                || (flush != ZlibFlushStrategy.ZNOFLUSH && this.status != FINISHSTATE))
             {
                 var bstate = -1;
-                switch (ConfigTable[(int)this.Level].Func)
+                switch (ConfigTable[(int)this.level].Func)
                 {
                     case STORED:
                         bstate = this.Deflate_stored(flush);
@@ -1793,14 +1929,14 @@ namespace SixLabors.ZlibStream
 
                 if (bstate == FinishStarted || bstate == FinishDone)
                 {
-                    this.Status = FINISHSTATE;
+                    this.status = FINISHSTATE;
                 }
 
                 if (bstate == NeedMore || bstate == FinishStarted)
                 {
                     if (strm.AvailOut == 0)
                     {
-                        this.LastFlush = (ZlibFlushStrategy)(-1); // avoid BUF_ERROR next call, see above
+                        this.lastFlush = (ZlibFlushStrategy)(-1); // avoid BUF_ERROR next call, see above
                     }
 
                     return ZlibCompressionState.ZOK;
@@ -1829,18 +1965,19 @@ namespace SixLabors.ZlibStream
                         if (flush == ZlibFlushStrategy.ZFULLFLUSH)
                         {
                             // state.head[s.hash_size-1]=0;
-                            for (var i = 0; i < this.HashSize; i++)
+                            short* head = this.headPointer;
+                            for (var i = 0; i < this.hashSize; i++)
                             {
                                 // forget history
-                                this.Head[i] = 0;
+                                head[i] = 0;
                             }
                         }
                     }
 
-                    strm.Flush_pending();
+                    this.Flush_pending(strm);
                     if (strm.AvailOut == 0)
                     {
-                        this.LastFlush = (ZlibFlushStrategy)(-1); // avoid BUF_ERROR at next call, see above
+                        this.lastFlush = (ZlibFlushStrategy)(-1); // avoid BUF_ERROR at next call, see above
                         return ZlibCompressionState.ZOK;
                     }
                 }
@@ -1858,13 +1995,44 @@ namespace SixLabors.ZlibStream
 
             // Write the zlib trailer (adler32)
             this.PutShortMSB((int)ZlibUtilities.URShift(strm.Adler, 16));
-            this.PutShortMSB((int)(strm.Adler & 0xffff));
-            strm.Flush_pending();
+            this.PutShortMSB((int)(strm.Adler & 0xFFFF));
+            this.Flush_pending(strm);
 
             // If avail_out is zero, the application will call deflate again
             // to flush the rest.
             this.Noheader = -1; // write the trailer only once!
             return this.Pending != 0 ? ZlibCompressionState.ZOK : ZlibCompressionState.ZSTREAMEND;
+        }
+
+        // Flush as much pending output as possible. All deflate() output goes
+        // through this function so some applications may wish to modify it
+        // to avoid allocating a large strm->next_out buffer and copying into it.
+        // (See also read_buf()).
+        internal void Flush_pending(ZStream strm)
+        {
+            var len = this.Pending;
+
+            if (len > strm.AvailOut)
+            {
+                len = strm.AvailOut;
+            }
+
+            if (len == 0)
+            {
+                return;
+            }
+
+            Buffer.BlockCopy(this.pendingBuffer, this.PendingOut, strm.INextOut, strm.NextOutIndex, len);
+
+            strm.NextOutIndex += len;
+            this.PendingOut += len;
+            strm.TotalOut += len;
+            strm.AvailOut -= len;
+            this.Pending -= len;
+            if (this.Pending == 0)
+            {
+                this.PendingOut = 0;
+            }
         }
 
         private class Config

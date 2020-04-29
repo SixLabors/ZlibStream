@@ -1,9 +1,12 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
+using System;
+using System.Runtime.CompilerServices;
+
 namespace SixLabors.ZlibStream
 {
-    internal sealed class Tree
+    internal sealed unsafe class Tree
     {
         // Bit length codes must not exceed MAX_BL_BITS bits
         internal const int MAXBLBITS = 7;
@@ -135,7 +138,9 @@ namespace SixLabors.ZlibStream
         // Mapping from a distance to a distance code. dist is the distance - 1 and
         // must not have side effects. _dist_code[256] and _dist_code[257] are never
         // used.
-        internal static int D_code(int dist) => dist < 256 ? DistCode[dist] : DistCode[256 + ZlibUtilities.URShift(dist, 7)];
+        [MethodImpl(InliningOptions.ShortMethod)]
+        internal static int D_code(int dist)
+            => dist < 256 ? DistCode[dist] : DistCode[256 + ZlibUtilities.URShift(dist, 7)];
 
         // Generate the codes for a given tree and bit counts (which need not be
         // optimal).
@@ -143,9 +148,10 @@ namespace SixLabors.ZlibStream
         // the given tree and the field len is set for all tree elements.
         // OUT assertion: the field code is set for all tree elements of non
         //     zero code length.
-        internal static void Gen_codes(short[] tree, int max_code, short[] bl_count)
+        internal static void Gen_codes(short[] tree, int max_code, short* bl_count)
         {
-            var next_code = new short[MAXBITS + 1]; // next code value for each bit length
+            Span<short> next_code = stackalloc short[MAXBITS + 1]; // next code value for each bit length
+
             short code = 0; // running code value
             int bits; // bit index
             int n; // code index
@@ -201,30 +207,32 @@ namespace SixLabors.ZlibStream
         //     not null.
         internal void Gen_bitlen(Deflate s)
         {
-            var tree = this.DynTree;
-            var stree = this.StatDesc.StaticTreeValue;
-            var extra = this.StatDesc.ExtraBits;
-            var base_Renamed = this.StatDesc.ExtraBase;
-            var max_length = this.StatDesc.MaxLength;
+            short[] tree = this.DynTree;
+            short[] stree = this.StatDesc.StaticTreeValue;
+            int[] extra = this.StatDesc.ExtraBits;
+            int base_Renamed = this.StatDesc.ExtraBase;
+            int max_length = this.StatDesc.MaxLength;
             int h; // heap index
             int n, m; // iterate over the tree elements
             int bits; // bit length
             int xbits; // extra bits
             short f; // frequency
-            var overflow = 0; // number of elements with bit length too large
+            int overflow = 0; // number of elements with bit length too large
+            short* blCount = s.BlCountPointer;
+            int* heap = s.HeapPointer;
 
             for (bits = 0; bits <= MAXBITS; bits++)
             {
-                s.BlCount[bits] = 0;
+                blCount[bits] = 0;
             }
 
             // In a first pass, compute the optimal bit lengths (which may
             // overflow in the case of the bit length tree).
-            tree[(s.Heap[s.HeapMax] * 2) + 1] = 0; // root of the heap
+            tree[(heap[s.HeapMax] * 2) + 1] = 0; // root of the heap
 
             for (h = s.HeapMax + 1; h < HEAPSIZE; h++)
             {
-                n = s.Heap[h];
+                n = heap[h];
                 bits = tree[(tree[(n * 2) + 1] * 2) + 1] + 1;
                 if (bits > max_length)
                 {
@@ -240,7 +248,7 @@ namespace SixLabors.ZlibStream
                     continue; // not a leaf node
                 }
 
-                s.BlCount[bits]++;
+                blCount[bits]++;
                 xbits = 0;
                 if (n >= base_Renamed)
                 {
@@ -265,14 +273,14 @@ namespace SixLabors.ZlibStream
             do
             {
                 bits = max_length - 1;
-                while (s.BlCount[bits] == 0)
+                while (blCount[bits] == 0)
                 {
                     bits--;
                 }
 
-                s.BlCount[bits]--; // move one leaf down the tree
-                s.BlCount[bits + 1] = (short)(s.BlCount[bits + 1] + 2); // move one overflow item as its brother
-                s.BlCount[max_length]--;
+                blCount[bits]--; // move one leaf down the tree
+                blCount[bits + 1] = (short)(blCount[bits + 1] + 2); // move one overflow item as its brother
+                blCount[max_length]--;
 
                 // The brother of the overflow item also moves one step up,
                 // but this does not affect bl_count[max_length]
@@ -282,10 +290,10 @@ namespace SixLabors.ZlibStream
 
             for (bits = max_length; bits != 0; bits--)
             {
-                n = s.BlCount[bits];
+                n = blCount[bits];
                 while (n != 0)
                 {
-                    m = s.Heap[--h];
+                    m = heap[--h];
                     if (m > this.MaxCode)
                     {
                         continue;
@@ -316,6 +324,9 @@ namespace SixLabors.ZlibStream
             int n, m; // iterate over heap elements
             var max_code = -1; // largest code with non zero frequency
             int node; // new node being created
+            short* blCount = s.BlCountPointer;
+            int* heap = s.HeapPointer;
+            byte* depth = s.DepthPointer;
 
             // Construct the initial heap, with least frequent element in
             // heap[1]. The sons of heap[n] are heap[2*n] and heap[2*n+1].
@@ -327,8 +338,8 @@ namespace SixLabors.ZlibStream
             {
                 if (tree[n * 2] != 0)
                 {
-                    s.Heap[++s.HeapLen] = max_code = n;
-                    s.Depth[n] = 0;
+                    heap[++s.HeapLen] = max_code = n;
+                    depth[n] = 0;
                 }
                 else
                 {
@@ -342,9 +353,9 @@ namespace SixLabors.ZlibStream
             // two codes of non zero frequency.
             while (s.HeapLen < 2)
             {
-                node = s.Heap[++s.HeapLen] = max_code < 2 ? ++max_code : 0;
+                node = heap[++s.HeapLen] = max_code < 2 ? ++max_code : 0;
                 tree[node * 2] = 1;
-                s.Depth[node] = 0;
+                depth[node] = 0;
                 s.OptLen--;
                 if (stree != null)
                 {
@@ -369,33 +380,33 @@ namespace SixLabors.ZlibStream
             do
             {
                 // n = node of least frequency
-                n = s.Heap[1];
-                s.Heap[1] = s.Heap[s.HeapLen--];
+                n = heap[1];
+                heap[1] = heap[s.HeapLen--];
                 s.Pqdownheap(tree, 1);
-                m = s.Heap[1]; // m = node of next least frequency
+                m = heap[1]; // m = node of next least frequency
 
-                s.Heap[--s.HeapMax] = n; // keep the nodes sorted by frequency
-                s.Heap[--s.HeapMax] = m;
+                heap[--s.HeapMax] = n; // keep the nodes sorted by frequency
+                heap[--s.HeapMax] = m;
 
                 // Create a new node father of n and m
                 tree[node * 2] = (short)(tree[n * 2] + tree[m * 2]);
-                s.Depth[node] = (byte)(System.Math.Max(s.Depth[n], s.Depth[m]) + 1);
+                depth[node] = (byte)(Math.Max(depth[n], depth[m]) + 1);
                 tree[(n * 2) + 1] = tree[(m * 2) + 1] = (short)node;
 
                 // and insert the new node in the heap
-                s.Heap[1] = node++;
+                heap[1] = node++;
                 s.Pqdownheap(tree, 1);
             }
             while (s.HeapLen >= 2);
 
-            s.Heap[--s.HeapMax] = s.Heap[1];
+            heap[--s.HeapMax] = heap[1];
 
             // At this point, the fields freq and dad are set. We can now
             // generate the bit lengths.
             this.Gen_bitlen(s);
 
             // The field len is now set, we can generate the bit codes
-            Gen_codes(tree, max_code, s.BlCount);
+            Gen_codes(tree, max_code, blCount);
         }
     }
 }

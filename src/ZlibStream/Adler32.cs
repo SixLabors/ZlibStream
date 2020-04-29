@@ -35,6 +35,7 @@ namespace SixLabors.ZlibStream
 
                 // TODO: Vectorize. Scalar loop unrolling only give so much.
                 // https://software.intel.com/en-us/articles/fast-computation-of-adler32-checksums
+                // https://github.com/chromium/chromium/blob/master/third_party/zlib/adler32_simd.c
                 while (k >= 16)
                 {
                     s1 += Unsafe.Add(ref bufferRef, index++);

@@ -24,7 +24,7 @@ namespace ZlibStream.Tests
         [InlineData(ZlibCompressionLevel.ZDEFAULTCOMPRESSION)]
         public void EncodeDecode(ZlibCompressionLevel compression)
         {
-            const int count = 4096 * 4;
+            const int count = 2 * 4096 * 4;
             var expected = GetBuffer(count);
             var reference = new byte[count];
             var actual = new byte[count];
@@ -60,6 +60,20 @@ namespace ZlibStream.Tests
 
                 Assert.Equal(e, r);
                 Assert.Equal(e, a);
+            }
+        }
+
+        // Used for profiling with Rider.
+        [Fact]
+        public void DeflateProfileTest()
+        {
+            const int count = 1000 * 1000 * 4;
+            var expected = GetBuffer(count);
+
+            using (var compressed = new MemoryStream())
+            using (var deflate = new ZlibOutputStream(compressed, ZlibCompressionLevel.Level6))
+            {
+                deflate.Write(expected, 0, expected.Length);
             }
         }
 
