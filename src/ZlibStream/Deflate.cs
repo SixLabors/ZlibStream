@@ -1,13 +1,12 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
+using System;
+using System.Buffers;
+using System.Runtime.CompilerServices;
+
 namespace SixLabors.ZlibStream
 {
-    using System;
-    using System.Buffers;
-    using System.Runtime.CompilerServices;
-    using System.Runtime.InteropServices;
-
     /// <summary>
     /// Class for compressing data through zlib.
     /// </summary>
@@ -326,7 +325,7 @@ namespace SixLabors.ZlibStream
         internal int StaticLen { get; set; } // bit length of current block with static trees
 
         [MethodImpl(InliningOptions.ShortMethod)]
-        private static bool Smaller(short[] tree, int n, int m, byte* depth)
+        private static bool Smaller(short* tree, int n, int m, byte* depth)
         {
             int n2 = 2 * n;
             int m2 = 2 * m;
@@ -413,7 +412,8 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="tree">The tree to restore.</param>
         /// <param name="k">The node to move down.</param>
-        public void Pqdownheap(short[] tree, int k)
+        [MethodImpl(InliningOptions.ShortMethod)]
+        public void Pqdownheap(short* tree, int k)
         {
             int* heap = this.HeapPointer;
             byte* depth = this.DepthPointer;
@@ -1071,9 +1071,9 @@ namespace SixLabors.ZlibStream
             {
                 this.Send_bits((STATICTREES << 1) + (eof ? 1 : 0), 3);
 
-                fixed (short* ltree = &StaticTree.StaticLtree[0])
+                fixed (short* ltree = StaticTree.StaticLtree)
                 {
-                    fixed (short* dtree = &StaticTree.StaticDtree[0])
+                    fixed (short* dtree = StaticTree.StaticDtree)
                     {
                         this.Compress_block(ltree, dtree);
                     }
@@ -1923,6 +1923,7 @@ namespace SixLabors.ZlibStream
                         bstate = this.Deflate_slow(flush);
                         break;
 
+                    // TODO: Add Huffman and RLE
                     default:
                         break;
                 }
@@ -2035,9 +2036,22 @@ namespace SixLabors.ZlibStream
             }
         }
 
-        private class Config
+        private struct Config
         {
-            internal Config(int good_length, int max_lazy, int nice_length, int max_chain, int func)
+            // reduce lazy search above this match length
+            public int GoodLength;
+
+            // do not perform lazy search above this match length
+            public int MaxLazy;
+
+            // quit search above this match length
+            public int NiceLength;
+
+            public int MaxChain;
+
+            public int Func;
+
+            public Config(int good_length, int max_lazy, int nice_length, int max_chain, int func)
             {
                 this.GoodLength = good_length;
                 this.MaxLazy = max_lazy;
@@ -2045,19 +2059,6 @@ namespace SixLabors.ZlibStream
                 this.MaxChain = max_chain;
                 this.Func = func;
             }
-
-            // reduce lazy search above this match length
-            internal int GoodLength { get; set; }
-
-            // do not perform lazy search above this match length
-            internal int MaxLazy { get; set; }
-
-            // quit search above this match length
-            internal int NiceLength { get; set; }
-
-            internal int MaxChain { get; set; }
-
-            internal int Func { get; set; }
         }
     }
 }

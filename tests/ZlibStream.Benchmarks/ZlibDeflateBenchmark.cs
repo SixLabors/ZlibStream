@@ -68,7 +68,6 @@ namespace ZlibStream.Benchmarks
         // // TODO: Upgrade when Dispose() fix is merged.
         //    return this.data.Length;
         // }
-        //
         private static byte[] GetBuffer(int length)
         {
             var data = new byte[length];

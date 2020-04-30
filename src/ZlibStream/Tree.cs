@@ -2,6 +2,7 @@
 // See LICENSE for more details.
 
 using System;
+using System.Buffers;
 using System.Runtime.CompilerServices;
 
 namespace SixLabors.ZlibStream
@@ -148,9 +149,10 @@ namespace SixLabors.ZlibStream
         // the given tree and the field len is set for all tree elements.
         // OUT assertion: the field code is set for all tree elements of non
         //     zero code length.
-        internal static void Gen_codes(short[] tree, int max_code, short* bl_count)
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private static void Gen_codes(short* tree, int max_code, short* bl_count)
         {
-            Span<short> next_code = stackalloc short[MAXBITS + 1]; // next code value for each bit length
+            short* next_code = stackalloc short[MAXBITS + 1]; // next code value for each bit length
 
             short code = 0; // running code value
             int bits; // bit index
@@ -184,7 +186,8 @@ namespace SixLabors.ZlibStream
         // Reverse the first len bits of a code, using straightforward code (a faster
         // method would use a table)
         // IN assertion: 1 <= len <= 15
-        internal static int Bi_reverse(int code, int len)
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private static int Bi_reverse(int code, int len)
         {
             var res = 0;
             do
@@ -205,107 +208,112 @@ namespace SixLabors.ZlibStream
         //     array bl_count contains the frequencies for each bit length.
         //     The length opt_len is updated; static_len is also updated if stree is
         //     not null.
-        internal void Gen_bitlen(Deflate s)
+        private void Gen_bitlen(Deflate s)
         {
-            short[] tree = this.DynTree;
-            short[] stree = this.StatDesc.StaticTreeValue;
-            int[] extra = this.StatDesc.ExtraBits;
-            int base_Renamed = this.StatDesc.ExtraBase;
-            int max_length = this.StatDesc.MaxLength;
-            int h; // heap index
-            int n, m; // iterate over the tree elements
-            int bits; // bit length
-            int xbits; // extra bits
-            short f; // frequency
-            int overflow = 0; // number of elements with bit length too large
-            short* blCount = s.BlCountPointer;
-            int* heap = s.HeapPointer;
-
-            for (bits = 0; bits <= MAXBITS; bits++)
+            using (MemoryHandle treeHandle = this.DynTree.AsMemory().Pin())
+            using (MemoryHandle streeHandle = this.StatDesc.StaticTreeValue.AsMemory().Pin())
+            using (MemoryHandle extraHandle = this.StatDesc.ExtraBits.AsMemory().Pin())
             {
-                blCount[bits] = 0;
-            }
+                short* tree = (short*)treeHandle.Pointer;
+                short* stree = (short*)streeHandle.Pointer;
+                int* extra = (int*)extraHandle.Pointer;
+                int base_Renamed = this.StatDesc.ExtraBase;
+                int max_length = this.StatDesc.MaxLength;
+                int h; // heap index
+                int n, m; // iterate over the tree elements
+                int bits; // bit length
+                int xbits; // extra bits
+                short f; // frequency
+                int overflow = 0; // number of elements with bit length too large
+                short* blCount = s.BlCountPointer;
+                int* heap = s.HeapPointer;
 
-            // In a first pass, compute the optimal bit lengths (which may
-            // overflow in the case of the bit length tree).
-            tree[(heap[s.HeapMax] * 2) + 1] = 0; // root of the heap
-
-            for (h = s.HeapMax + 1; h < HEAPSIZE; h++)
-            {
-                n = heap[h];
-                bits = tree[(tree[(n * 2) + 1] * 2) + 1] + 1;
-                if (bits > max_length)
+                for (bits = 0; bits <= MAXBITS; bits++)
                 {
-                    bits = max_length;
-                    overflow++;
+                    blCount[bits] = 0;
                 }
 
-                tree[(n * 2) + 1] = (short)bits;
+                // In a first pass, compute the optimal bit lengths (which may
+                // overflow in the case of the bit length tree).
+                tree[(heap[s.HeapMax] * 2) + 1] = 0; // root of the heap
 
-                // We overwrite tree[n*2+1] which is no longer needed
-                if (n > this.MaxCode)
+                for (h = s.HeapMax + 1; h < HEAPSIZE; h++)
                 {
-                    continue; // not a leaf node
-                }
-
-                blCount[bits]++;
-                xbits = 0;
-                if (n >= base_Renamed)
-                {
-                    xbits = extra[n - base_Renamed];
-                }
-
-                f = tree[n * 2];
-                s.OptLen += f * (bits + xbits);
-                if (stree != null)
-                {
-                    s.StaticLen += f * (stree[(n * 2) + 1] + xbits);
-                }
-            }
-
-            if (overflow == 0)
-            {
-                return;
-            }
-
-            // This happens for example on obj2 and pic of the Calgary corpus
-            // Find the first bit length which could increase:
-            do
-            {
-                bits = max_length - 1;
-                while (blCount[bits] == 0)
-                {
-                    bits--;
-                }
-
-                blCount[bits]--; // move one leaf down the tree
-                blCount[bits + 1] = (short)(blCount[bits + 1] + 2); // move one overflow item as its brother
-                blCount[max_length]--;
-
-                // The brother of the overflow item also moves one step up,
-                // but this does not affect bl_count[max_length]
-                overflow -= 2;
-            }
-            while (overflow > 0);
-
-            for (bits = max_length; bits != 0; bits--)
-            {
-                n = blCount[bits];
-                while (n != 0)
-                {
-                    m = heap[--h];
-                    if (m > this.MaxCode)
+                    n = heap[h];
+                    bits = tree[(tree[(n * 2) + 1] * 2) + 1] + 1;
+                    if (bits > max_length)
                     {
-                        continue;
+                        bits = max_length;
+                        overflow++;
                     }
 
-                    if (tree[(m * 2) + 1] != bits)
+                    tree[(n * 2) + 1] = (short)bits;
+
+                    // We overwrite tree[n*2+1] which is no longer needed
+                    if (n > this.MaxCode)
                     {
-                        s.OptLen = (int)(s.OptLen + ((bits - (long)tree[(m * 2) + 1]) * tree[m * 2]));
-                        tree[(m * 2) + 1] = (short)bits;
+                        continue; // not a leaf node
                     }
 
-                    n--;
+                    blCount[bits]++;
+                    xbits = 0;
+                    if (n >= base_Renamed)
+                    {
+                        xbits = extra[n - base_Renamed];
+                    }
+
+                    f = tree[n * 2];
+                    s.OptLen += f * (bits + xbits);
+                    if (stree != null)
+                    {
+                        s.StaticLen += f * (stree[(n * 2) + 1] + xbits);
+                    }
+                }
+
+                if (overflow == 0)
+                {
+                    return;
+                }
+
+                // This happens for example on obj2 and pic of the Calgary corpus
+                // Find the first bit length which could increase:
+                do
+                {
+                    bits = max_length - 1;
+                    while (blCount[bits] == 0)
+                    {
+                        bits--;
+                    }
+
+                    blCount[bits]--; // move one leaf down the tree
+                    blCount[bits + 1] = (short)(blCount[bits + 1] + 2); // move one overflow item as its brother
+                    blCount[max_length]--;
+
+                    // The brother of the overflow item also moves one step up,
+                    // but this does not affect bl_count[max_length]
+                    overflow -= 2;
+                }
+                while (overflow > 0);
+
+                for (bits = max_length; bits != 0; bits--)
+                {
+                    n = blCount[bits];
+                    while (n != 0)
+                    {
+                        m = heap[--h];
+                        if (m > this.MaxCode)
+                        {
+                            continue;
+                        }
+
+                        if (tree[(m * 2) + 1] != bits)
+                        {
+                            s.OptLen = (int)(s.OptLen + ((bits - (long)tree[(m * 2) + 1]) * tree[m * 2]));
+                            tree[(m * 2) + 1] = (short)bits;
+                        }
+
+                        n--;
+                    }
                 }
             }
         }
@@ -318,95 +326,99 @@ namespace SixLabors.ZlibStream
         //     also updated if stree is not null. The field max_code is set.
         internal void Build_tree(Deflate s)
         {
-            var tree = this.DynTree;
-            var stree = this.StatDesc.StaticTreeValue;
-            var elems = this.StatDesc.Elems;
-            int n, m; // iterate over heap elements
-            var max_code = -1; // largest code with non zero frequency
-            int node; // new node being created
-            short* blCount = s.BlCountPointer;
-            int* heap = s.HeapPointer;
-            byte* depth = s.DepthPointer;
-
-            // Construct the initial heap, with least frequent element in
-            // heap[1]. The sons of heap[n] are heap[2*n] and heap[2*n+1].
-            // heap[0] is not used.
-            s.HeapLen = 0;
-            s.HeapMax = HEAPSIZE;
-
-            for (n = 0; n < elems; n++)
+            using (MemoryHandle treeHandle = this.DynTree.AsMemory().Pin())
+            using (MemoryHandle streeHandle = this.StatDesc.StaticTreeValue.AsMemory().Pin())
             {
-                if (tree[n * 2] != 0)
-                {
-                    heap[++s.HeapLen] = max_code = n;
-                    depth[n] = 0;
-                }
-                else
-                {
-                    tree[(n * 2) + 1] = 0;
-                }
-            }
+                short* tree = (short*)treeHandle.Pointer;
+                short* stree = (short*)streeHandle.Pointer;
+                int elems = this.StatDesc.Elems;
+                int n, m; // iterate over heap elements
+                var max_code = -1; // largest code with non zero frequency
+                int node; // new node being created
+                short* blCount = s.BlCountPointer;
+                int* heap = s.HeapPointer;
+                byte* depth = s.DepthPointer;
 
-            // The pkzip format requires that at least one distance code exists,
-            // and that at least one bit should be sent even if there is only one
-            // possible code. So to avoid special checks later on we force at least
-            // two codes of non zero frequency.
-            while (s.HeapLen < 2)
-            {
-                node = heap[++s.HeapLen] = max_code < 2 ? ++max_code : 0;
-                tree[node * 2] = 1;
-                depth[node] = 0;
-                s.OptLen--;
-                if (stree != null)
+                // Construct the initial heap, with least frequent element in
+                // heap[1]. The sons of heap[n] are heap[2*n] and heap[2*n+1].
+                // heap[0] is not used.
+                s.HeapLen = 0;
+                s.HeapMax = HEAPSIZE;
+
+                for (n = 0; n < elems; n++)
                 {
-                    s.StaticLen -= stree[(node * 2) + 1];
+                    if (tree[n * 2] != 0)
+                    {
+                        heap[++s.HeapLen] = max_code = n;
+                        depth[n] = 0;
+                    }
+                    else
+                    {
+                        tree[(n * 2) + 1] = 0;
+                    }
                 }
 
-                // node is 0 or 1 so it does not have extra bits
+                // The pkzip format requires that at least one distance code exists,
+                // and that at least one bit should be sent even if there is only one
+                // possible code. So to avoid special checks later on we force at least
+                // two codes of non zero frequency.
+                while (s.HeapLen < 2)
+                {
+                    node = heap[++s.HeapLen] = max_code < 2 ? ++max_code : 0;
+                    tree[node * 2] = 1;
+                    depth[node] = 0;
+                    s.OptLen--;
+                    if (stree != null)
+                    {
+                        s.StaticLen -= stree[(node * 2) + 1];
+                    }
+
+                    // node is 0 or 1 so it does not have extra bits
+                }
+
+                this.MaxCode = max_code;
+
+                // The elements heap[heap_len/2+1 .. heap_len] are leaves of the tree,
+                // establish sub-heaps of increasing lengths:
+                for (n = s.HeapLen / 2; n >= 1; n--)
+                {
+                    s.Pqdownheap(tree, n);
+                }
+
+                // Construct the Huffman tree by repeatedly combining the least two
+                // frequent nodes.
+                node = elems; // next internal node of the tree
+                do
+                {
+                    // n = node of least frequency
+                    n = heap[1];
+                    heap[1] = heap[s.HeapLen--];
+                    s.Pqdownheap(tree, 1);
+                    m = heap[1]; // m = node of next least frequency
+
+                    heap[--s.HeapMax] = n; // keep the nodes sorted by frequency
+                    heap[--s.HeapMax] = m;
+
+                    // Create a new node father of n and m
+                    tree[node * 2] = (short)(tree[n * 2] + tree[m * 2]);
+                    depth[node] = (byte)(Math.Max(depth[n], depth[m]) + 1);
+                    tree[(n * 2) + 1] = tree[(m * 2) + 1] = (short)node;
+
+                    // and insert the new node in the heap
+                    heap[1] = node++;
+                    s.Pqdownheap(tree, 1);
+                }
+                while (s.HeapLen >= 2);
+
+                heap[--s.HeapMax] = heap[1];
+
+                // At this point, the fields freq and dad are set. We can now
+                // generate the bit lengths.
+                this.Gen_bitlen(s);
+
+                // The field len is now set, we can generate the bit codes
+                Gen_codes(tree, max_code, blCount);
             }
-
-            this.MaxCode = max_code;
-
-            // The elements heap[heap_len/2+1 .. heap_len] are leaves of the tree,
-            // establish sub-heaps of increasing lengths:
-            for (n = s.HeapLen / 2; n >= 1; n--)
-            {
-                s.Pqdownheap(tree, n);
-            }
-
-            // Construct the Huffman tree by repeatedly combining the least two
-            // frequent nodes.
-            node = elems; // next internal node of the tree
-            do
-            {
-                // n = node of least frequency
-                n = heap[1];
-                heap[1] = heap[s.HeapLen--];
-                s.Pqdownheap(tree, 1);
-                m = heap[1]; // m = node of next least frequency
-
-                heap[--s.HeapMax] = n; // keep the nodes sorted by frequency
-                heap[--s.HeapMax] = m;
-
-                // Create a new node father of n and m
-                tree[node * 2] = (short)(tree[n * 2] + tree[m * 2]);
-                depth[node] = (byte)(Math.Max(depth[n], depth[m]) + 1);
-                tree[(n * 2) + 1] = tree[(m * 2) + 1] = (short)node;
-
-                // and insert the new node in the heap
-                heap[1] = node++;
-                s.Pqdownheap(tree, 1);
-            }
-            while (s.HeapLen >= 2);
-
-            heap[--s.HeapMax] = heap[1];
-
-            // At this point, the fields freq and dad are set. We can now
-            // generate the bit lengths.
-            this.Gen_bitlen(s);
-
-            // The field len is now set, we can generate the bit codes
-            Gen_codes(tree, max_code, blCount);
         }
     }
 }

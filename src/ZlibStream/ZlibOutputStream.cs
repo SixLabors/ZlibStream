@@ -14,8 +14,7 @@ namespace SixLabors.ZlibStream
     /// </summary>
     public sealed class ZlibOutputStream : Stream
     {
-        // TODO: Zlib appears to allow configuring this value.
-        private const int BufferSize = 4096;
+        private const int BufferSize = 512;
         private byte[] chunkBuffer;
         private readonly byte[] byteBuffer = new byte[1];
         private readonly bool compress;
