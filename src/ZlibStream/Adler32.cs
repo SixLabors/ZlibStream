@@ -14,23 +14,23 @@ namespace SixLabors.ZlibStream
     internal static unsafe class Adler32
     {
         // Largest prime smaller than 65536
-        private const int BASE = 65521;
+        private const uint BASE = 65521;
 
         // NMAX is the largest n such that 255n(n+1)/2 + (n+1)(BASE-1) <= 2^32-1
-        private const int NMAX = 5552;
+        private const uint NMAX = 5552;
 
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
-        public static long Calculate(long adler, byte[] buffer, int index, int length)
+        public static uint Calculate(uint adler, byte[] buffer, int index, int length)
         {
 #if SUPPORTS_RUNTIME_INTRINSICS
             if (Sse41.IsSupported && length >= 64)
             {
-                return CalculateSse(adler, buffer, index, length);
+                return CalculateSse(adler, buffer, index, (uint)length);
             }
 
-            return CalculateScalar(adler, buffer, index, length);
+            return CalculateScalar(adler, buffer, index, (uint)length);
 #else
-            return CalculateScalar(adler, buffer, index, length);
+            return CalculateScalar(adler, buffer, index, (uint)length);
 #endif
         }
 
@@ -39,22 +39,21 @@ namespace SixLabors.ZlibStream
         // https://github.com/chromium/chromium/blob/master/third_party/zlib/adler32_simd.c
 #if SUPPORTS_RUNTIME_INTRINSICS
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
-        public static long CalculateSse(long adler, byte[] buffer, int index, int length)
+        public static uint CalculateSse(uint adler, byte[] buffer, int index, uint length)
         {
             if (buffer is null)
             {
-                return 1L;
+                return 1U;
             }
 
-            long s1 = adler & 0xFFFF;
-            long s2 = (adler >> 16) & 0xFFFF;
+            uint s1 = adler & 0xFFFF;
+            uint s2 = (adler >> 16) & 0xFFFF;
 
             // Process the data in blocks.
             const int BLOCK_SIZE = 1 << 5;
 
-            uint len = (uint)length;
-            uint blocks = len / BLOCK_SIZE;
-            len -= blocks * BLOCK_SIZE;
+            uint blocks = length / BLOCK_SIZE;
+            length -= blocks * BLOCK_SIZE;
 
             fixed (byte* bufferPtr = &buffer[index])
             {
@@ -79,8 +78,9 @@ namespace SixLabors.ZlibStream
 
                     // Process n blocks of data. At most NMAX data bytes can be
                     // processed before s2 must be reduced modulo BASE.
-                    Vector128<int> v_ps = Sse2.ConvertToVector128Int32(Vector128.Create(0, 0, 0, s1 * n));
-                    Vector128<int> v_s2 = Sse2.ConvertToVector128Int32(Vector128.Create(0, 0, 0, s2));
+                    // These overloads of Create do not use _mm_setr_epi8 on x86 so must be reversed.
+                    Vector128<int> v_ps = Vector128.CreateScalar(s1 * n).AsInt32();
+                    Vector128<int> v_s2 = Vector128.Create(s2, 0, 0, 0).AsInt32();
                     var v_s1 = Vector128.Create(0, 0, 0, 0);
 
                     do
@@ -115,12 +115,12 @@ namespace SixLabors.ZlibStream
                     v_s1 = Sse2.Add(v_s1, Sse2.Shuffle(v_s1, S2301));
                     v_s1 = Sse2.Add(v_s1, Sse2.Shuffle(v_s1, S1032));
 
-                    s1 += Sse2.ConvertToInt32(v_s1);
+                    s1 += (uint)Sse2.ConvertToInt32(v_s1);
 
                     v_s2 = Sse2.Add(v_s2, Sse2.Shuffle(v_s2, S2301));
                     v_s2 = Sse2.Add(v_s2, Sse2.Shuffle(v_s2, S1032));
 
-                    s2 = Sse2.ConvertToInt32(v_s2);
+                    s2 = (uint)Sse2.ConvertToInt32(v_s2);
 
                     // Reduce.
                     s1 %= BASE;
@@ -130,9 +130,9 @@ namespace SixLabors.ZlibStream
 
             ref byte bufferRef = ref MemoryMarshal.GetReference<byte>(buffer);
 
-            if (len > 0)
+            if (length > 0)
             {
-                if (len >= 16)
+                if (length >= 16)
                 {
                     s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
@@ -166,10 +166,10 @@ namespace SixLabors.ZlibStream
                     s2 += s1;
                     s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    len -= 16;
+                    length -= 16;
                 }
 
-                while (len-- > 0)
+                while (length-- > 0)
                 {
                     s2 += s1 += Unsafe.Add(ref bufferRef, index++);
                 }
@@ -187,16 +187,16 @@ namespace SixLabors.ZlibStream
 #endif
 
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
-        public static long CalculateScalar(long adler, byte[] buffer, int index, int length)
+        public static uint CalculateScalar(uint adler, byte[] buffer, int index, uint length)
         {
             if (buffer is null)
             {
-                return 1L;
+                return 1U;
             }
 
-            var s1 = adler & 0xFFFF;
-            var s2 = (adler >> 16) & 0xFFFF;
-            int k;
+            uint s1 = adler & 0xFFFF;
+            uint s2 = (adler >> 16) & 0xFFFF;
+            uint k;
 
             ref byte bufferRef = ref MemoryMarshal.GetReference<byte>(buffer);
 

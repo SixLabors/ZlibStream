@@ -68,7 +68,7 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Gets or sets the Stream Data's Adler32 checksum.
         /// </summary>
-        public long Adler { get; set; }
+        public uint Adler { get; set; }
 
         /// <summary>
         /// Gets or sets the current Deflate instance for this class.

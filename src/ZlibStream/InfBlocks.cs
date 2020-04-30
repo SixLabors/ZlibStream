@@ -45,7 +45,7 @@ namespace SixLabors.ZlibStream
         private InfCodes codes; // if CODES, current state
         private int last; // true if this block is the last block
         private int[] hufts; // single malloc for tree space
-        private long check; // check on output
+        private uint check; // check on output
 
         /// <summary>
         /// Initializes a new instance of the <see cref="InfBlocks"/> class.
@@ -99,7 +99,7 @@ namespace SixLabors.ZlibStream
 
             if (this.checkfn != null)
             {
-                z.Adler = this.check = Adler32.Calculate(0L, null, 0, 0);
+                z.Adler = this.check = Adler32.Calculate(0, null, 0, 0);
             }
         }
 
@@ -161,63 +161,63 @@ namespace SixLabors.ZlibStream
                         switch (ZlibUtilities.URShift(t, 1))
                         {
                             case 0: // stored
-                                {
-                                    b = ZlibUtilities.URShift(b, 3);
-                                    k -= 3;
-                                }
+                            {
+                                b = ZlibUtilities.URShift(b, 3);
+                                k -= 3;
+                            }
 
-                                t = k & 7; // go to byte boundary
-                                {
-                                    b = ZlibUtilities.URShift(b, t);
-                                    k -= t;
-                                }
+                            t = k & 7; // go to byte boundary
+                            {
+                                b = ZlibUtilities.URShift(b, t);
+                                k -= t;
+                            }
 
-                                this.mode = LENS; // get length of stored block
-                                break;
+                            this.mode = LENS; // get length of stored block
+                            break;
 
                             case 1: // fixed
-                                {
-                                    var bl = new int[1];
-                                    var bd = new int[1];
-                                    var tl = new int[1][];
-                                    var td = new int[1][];
+                            {
+                                var bl = new int[1];
+                                var bd = new int[1];
+                                var tl = new int[1][];
+                                var td = new int[1][];
 
-                                    _ = InfTree.Inflate_trees_fixed(bl, bd, tl, td);
-                                    this.codes = new InfCodes(bl[0], bd[0], tl[0], td[0]);
-                                }
+                                _ = InfTree.Inflate_trees_fixed(bl, bd, tl, td);
+                                this.codes = new InfCodes(bl[0], bd[0], tl[0], td[0]);
+                            }
 
-                                {
-                                    b = ZlibUtilities.URShift(b, 3);
-                                    k -= 3;
-                                }
+                            {
+                                b = ZlibUtilities.URShift(b, 3);
+                                k -= 3;
+                            }
 
-                                this.mode = CODES;
-                                break;
+                            this.mode = CODES;
+                            break;
 
                             case 2: // dynamic
-                                {
-                                    b = ZlibUtilities.URShift(b, 3);
-                                    k -= 3;
-                                }
+                            {
+                                b = ZlibUtilities.URShift(b, 3);
+                                k -= 3;
+                            }
 
-                                this.mode = TABLE;
-                                break;
+                            this.mode = TABLE;
+                            break;
 
                             case 3: // illegal
-                                {
-                                    b = ZlibUtilities.URShift(b, 3);
-                                    k -= 3;
-                                }
-
-                                this.mode = BAD;
-                                z.Msg = "invalid block type";
-                                r = ZlibCompressionState.ZDATAERROR;
-
-                                this.Bitb = b; this.Bitk = k;
-                                z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
-                                this.Write = q;
-                                return this.Inflate_flush(z, r);
+                            {
+                                b = ZlibUtilities.URShift(b, 3);
+                                k -= 3;
                             }
+
+                            this.mode = BAD;
+                            z.Msg = "invalid block type";
+                            r = ZlibCompressionState.ZDATAERROR;
+
+                            this.Bitb = b; this.Bitk = k;
+                            z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                            this.Write = q;
+                            return this.Inflate_flush(z, r);
+                        }
 
                         break;
 

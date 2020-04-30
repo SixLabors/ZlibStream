@@ -196,7 +196,7 @@ namespace SixLabors.ZlibStream
 
                         z.AvailIn--; z.TotalIn++;
                         z.Istate.Need += z.INextIn[z.NextInIndex++] & 0xffL;
-                        z.Adler = z.Istate.Need;
+                        z.Adler = (uint)z.Istate.Need;
                         z.Istate.Mode = DICT0;
                         return ZlibCompressionState.ZNEEDDICT;
 
@@ -323,7 +323,7 @@ namespace SixLabors.ZlibStream
                 return ZlibCompressionState.ZSTREAMERROR;
             }
 
-            if (Adler32.Calculate(1L, dictionary, 0, dictLength) != z.Adler)
+            if (Adler32.Calculate(1, dictionary, 0, dictLength) != z.Adler)
             {
                 return ZlibCompressionState.ZDATAERROR;
             }
