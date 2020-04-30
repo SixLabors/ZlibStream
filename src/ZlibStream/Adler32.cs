@@ -4,9 +4,14 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+#if SUPPORTS_RUNTIME_INTRINSICS
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
+#endif
+
 namespace SixLabors.ZlibStream
 {
-    internal static class Adler32
+    internal static unsafe class Adler32
     {
         // Largest prime smaller than 65536
         private const int BASE = 65521;
@@ -16,6 +21,172 @@ namespace SixLabors.ZlibStream
 
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
         public static long Calculate(long adler, byte[] buffer, int index, int length)
+        {
+#if SUPPORTS_RUNTIME_INTRINSICS
+            if (Sse41.IsSupported && length >= 64)
+            {
+                return CalculateSse(adler, buffer, index, length);
+            }
+
+            return CalculateScalar(adler, buffer, index, length);
+#else
+            return CalculateScalar(adler, buffer, index, length);
+#endif
+        }
+
+        // TODO: Get vectorized solution working. The solution below is based on link.
+        // It currently fails tests.
+        // https://github.com/chromium/chromium/blob/master/third_party/zlib/adler32_simd.c
+#if SUPPORTS_RUNTIME_INTRINSICS
+        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        public static long CalculateSse(long adler, byte[] buffer, int index, int length)
+        {
+            if (buffer is null)
+            {
+                return 1L;
+            }
+
+            long s1 = adler & 0xFFFF;
+            long s2 = (adler >> 16) & 0xFFFF;
+
+            // Process the data in blocks.
+            const int BLOCK_SIZE = 1 << 5;
+
+            int blocks = length / BLOCK_SIZE;
+            length -= blocks * BLOCK_SIZE;
+
+            fixed (byte* bufferPtr = &buffer[index])
+            {
+                index += blocks * BLOCK_SIZE;
+                var localBufferPtr = bufferPtr;
+
+                // No _mm_setr_epi8 so create in reverse order.
+                var tap1 = Vector128.Create(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
+                var tap2 = Vector128.Create(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+                Vector128<byte> zero = Vector128<byte>.Zero;
+                var ones = Vector128.Create((short)1);
+
+                while (blocks > 0)
+                {
+                    var n = NMAX / BLOCK_SIZE;  /* The NMAX constraint. */
+                    if (n > blocks)
+                    {
+                        n = blocks;
+                    }
+
+                    blocks -= n;
+
+                    // Process n blocks of data. At most NMAX data bytes can be
+                    // processed before s2 must be reduced modulo BASE.
+                    var v_ps = Vector128.Create(0, 0, 0, (int)s1 * n);
+                    var v_s2 = Vector128.Create(0, 0, 0, (int)s2);
+                    var v_s1 = Vector128.Create(0, 0, 0, 0);
+
+                    do
+                    {
+                        // Load 32 input bytes.
+                        Vector128<byte> bytes1 = Sse3.LoadDquVector128(localBufferPtr);
+                        Vector128<byte> bytes2 = Sse3.LoadDquVector128(localBufferPtr + 16);
+
+                        // Add previous block byte sum to v_ps.
+                        v_ps = Sse2.Add(v_ps, v_s1);
+
+                        // Horizontally add the bytes for s1, multiply-adds the
+                        // bytes by [ 32, 31, 30, ... ] for s2.
+                        v_s1 = Sse2.Add(v_s1, Sse41.ConvertToVector128Int32(Sse2.SumAbsoluteDifferences(bytes1, zero)));
+                        Vector128<short> mad1 = Ssse3.MultiplyAddAdjacent(bytes1, tap1);
+                        v_s2 = Sse2.Add(v_s2, Sse2.MultiplyAddAdjacent(mad1, ones));
+
+                        v_s1 = Sse2.Add(v_s1, Sse41.ConvertToVector128Int32(Sse2.SumAbsoluteDifferences(bytes2, zero)));
+                        Vector128<short> mad2 = Ssse3.MultiplyAddAdjacent(bytes2, tap2);
+                        v_s2 = Sse2.Add(v_s2, Sse2.MultiplyAddAdjacent(mad2, ones));
+
+                        localBufferPtr += BLOCK_SIZE;
+                    }
+                    while (--n > 0);
+
+                    v_s2 = Sse2.Add(v_s2, Sse2.ShiftLeftLogical(v_ps, 5));
+
+                    // Sum epi32 ints v_s1(s2) and accumulate in s1(s2).
+                    const byte S2301 = 0b1011_0001;  /* A B C D -> B A D C */
+                    const byte S1032 = 0b0100_1110;  /* A B C D -> C D A B */
+
+                    v_s1 = Sse2.Add(v_s1, Sse2.Shuffle(v_s1, S2301));
+                    v_s1 = Sse2.Add(v_s1, Sse2.Shuffle(v_s1, S1032));
+
+                    s1 += Sse2.ConvertToInt32(v_s1);
+
+                    v_s2 = Sse2.Add(v_s2, Sse2.Shuffle(v_s2, S2301));
+                    v_s2 = Sse2.Add(v_s2, Sse2.Shuffle(v_s2, S1032));
+
+                    s2 = Sse2.ConvertToInt32(v_s2);
+
+                    // Reduce.
+                    s1 %= BASE;
+                    s2 %= BASE;
+                }
+            }
+
+            ref byte bufferRef = ref MemoryMarshal.GetReference<byte>(buffer);
+
+            if (length > 0)
+            {
+                if (length >= 16)
+                {
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    s1 += Unsafe.Add(ref bufferRef, index++);
+                    s2 += s1;
+                    length -= 16;
+                }
+
+                while (length-- > 0)
+                {
+                    s2 += s1 += Unsafe.Add(ref bufferRef, index++);
+                }
+
+                if (s1 >= BASE)
+                {
+                    s1 -= BASE;
+                }
+
+                s2 %= BASE;
+            }
+
+            return s1 | (s2 << 16);
+        }
+#endif
+
+        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        public static long CalculateScalar(long adler, byte[] buffer, int index, int length)
         {
             if (buffer is null)
             {
@@ -33,9 +204,6 @@ namespace SixLabors.ZlibStream
                 k = length < NMAX ? length : NMAX;
                 length -= k;
 
-                // TODO: Vectorize. Scalar loop unrolling only give so much.
-                // https://software.intel.com/en-us/articles/fast-computation-of-adler32-checksums
-                // https://github.com/chromium/chromium/blob/master/third_party/zlib/adler32_simd.c
                 while (k >= 16)
                 {
                     s1 += Unsafe.Add(ref bufferRef, index++);
