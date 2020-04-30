@@ -52,23 +52,24 @@ namespace SixLabors.ZlibStream
             // Process the data in blocks.
             const int BLOCK_SIZE = 1 << 5;
 
-            int blocks = length / BLOCK_SIZE;
-            length -= blocks * BLOCK_SIZE;
+            uint len = (uint)length;
+            uint blocks = len / BLOCK_SIZE;
+            len -= blocks * BLOCK_SIZE;
 
             fixed (byte* bufferPtr = &buffer[index])
             {
-                index += blocks * BLOCK_SIZE;
+                index += (int)blocks * BLOCK_SIZE;
                 var localBufferPtr = bufferPtr;
 
-                // No _mm_setr_epi8 so create in reverse order.
-                var tap1 = Vector128.Create(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
-                var tap2 = Vector128.Create(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+                // _mm_setr_epi8 on x86
+                var tap1 = Vector128.Create(32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17);
+                var tap2 = Vector128.Create(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
                 Vector128<byte> zero = Vector128<byte>.Zero;
                 var ones = Vector128.Create((short)1);
 
                 while (blocks > 0)
                 {
-                    var n = NMAX / BLOCK_SIZE;  /* The NMAX constraint. */
+                    uint n = NMAX / BLOCK_SIZE;  /* The NMAX constraint. */
                     if (n > blocks)
                     {
                         n = blocks;
@@ -78,8 +79,8 @@ namespace SixLabors.ZlibStream
 
                     // Process n blocks of data. At most NMAX data bytes can be
                     // processed before s2 must be reduced modulo BASE.
-                    var v_ps = Vector128.Create(0, 0, 0, (int)s1 * n);
-                    var v_s2 = Vector128.Create(0, 0, 0, (int)s2);
+                    Vector128<int> v_ps = Sse2.ConvertToVector128Int32(Vector128.Create(0, 0, 0, s1 * n));
+                    Vector128<int> v_s2 = Sse2.ConvertToVector128Int32(Vector128.Create(0, 0, 0, s2));
                     var v_s1 = Vector128.Create(0, 0, 0, 0);
 
                     do
@@ -129,9 +130,9 @@ namespace SixLabors.ZlibStream
 
             ref byte bufferRef = ref MemoryMarshal.GetReference<byte>(buffer);
 
-            if (length > 0)
+            if (len > 0)
             {
-                if (length >= 16)
+                if (len >= 16)
                 {
                     s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
@@ -165,10 +166,10 @@ namespace SixLabors.ZlibStream
                     s2 += s1;
                     s1 += Unsafe.Add(ref bufferRef, index++);
                     s2 += s1;
-                    length -= 16;
+                    len -= 16;
                 }
 
-                while (length-- > 0)
+                while (len-- > 0)
                 {
                     s2 += s1 += Unsafe.Add(ref bufferRef, index++);
                 }
