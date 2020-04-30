@@ -23,7 +23,7 @@ namespace SixLabors.ZlibStream
         public static uint Calculate(uint adler, byte[] buffer, int index, int length)
         {
 #if SUPPORTS_RUNTIME_INTRINSICS
-            if (Sse41.IsSupported && length >= 64)
+            if (Sse3.IsSupported && length >= 64)
             {
                 return CalculateSse(adler, buffer, index, (uint)length);
             }
@@ -80,8 +80,8 @@ namespace SixLabors.ZlibStream
                     // processed before s2 must be reduced modulo BASE.
                     // These overloads of Create do not use _mm_setr_epi8 on x86 so must be reversed.
                     Vector128<int> v_ps = Vector128.CreateScalar(s1 * n).AsInt32();
-                    Vector128<int> v_s2 = Vector128.Create(s2, 0, 0, 0).AsInt32();
-                    var v_s1 = Vector128.Create(0, 0, 0, 0);
+                    Vector128<int> v_s2 = Vector128.CreateScalar(s2).AsInt32();
+                    Vector128<int> v_s1 = Vector128<int>.Zero;
 
                     do
                     {
@@ -94,11 +94,11 @@ namespace SixLabors.ZlibStream
 
                         // Horizontally add the bytes for s1, multiply-adds the
                         // bytes by [ 32, 31, 30, ... ] for s2.
-                        v_s1 = Sse2.Add(v_s1, Sse41.ConvertToVector128Int32(Sse2.SumAbsoluteDifferences(bytes1, zero)));
+                        v_s1 = Sse2.Add(v_s1, Sse2.SumAbsoluteDifferences(bytes1, zero).AsInt32());
                         Vector128<short> mad1 = Ssse3.MultiplyAddAdjacent(bytes1, tap1);
                         v_s2 = Sse2.Add(v_s2, Sse2.MultiplyAddAdjacent(mad1, ones));
 
-                        v_s1 = Sse2.Add(v_s1, Sse41.ConvertToVector128Int32(Sse2.SumAbsoluteDifferences(bytes2, zero)));
+                        v_s1 = Sse2.Add(v_s1, Sse2.SumAbsoluteDifferences(bytes2, zero).AsInt32());
                         Vector128<short> mad2 = Ssse3.MultiplyAddAdjacent(bytes2, tap2);
                         v_s2 = Sse2.Add(v_s2, Sse2.MultiplyAddAdjacent(mad2, ones));
 
@@ -115,12 +115,12 @@ namespace SixLabors.ZlibStream
                     v_s1 = Sse2.Add(v_s1, Sse2.Shuffle(v_s1, S2301));
                     v_s1 = Sse2.Add(v_s1, Sse2.Shuffle(v_s1, S1032));
 
-                    s1 += (uint)Sse2.ConvertToInt32(v_s1);
+                    s1 += (uint)v_s1.ToScalar();
 
                     v_s2 = Sse2.Add(v_s2, Sse2.Shuffle(v_s2, S2301));
                     v_s2 = Sse2.Add(v_s2, Sse2.Shuffle(v_s2, S1032));
 
-                    s2 = (uint)Sse2.ConvertToInt32(v_s2);
+                    s2 = (uint)v_s2.ToScalar();
 
                     // Reduce.
                     s1 %= BASE;

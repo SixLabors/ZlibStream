@@ -11,6 +11,7 @@ namespace ZlibStream.Tests
     {
         [Theory]
         [InlineData(1024)]
+        [InlineData(1024 + 15)]
         [InlineData(2034)]
         [InlineData(4096)]
         public void MatchesReference(int length)

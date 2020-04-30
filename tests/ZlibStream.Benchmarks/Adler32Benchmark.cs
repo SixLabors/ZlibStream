@@ -31,9 +31,15 @@ namespace ZlibStream.Benchmarks
         }
 
         [Benchmark]
-        public long SixLaborsUpdate()
+        public long SixLaborsVectorUpdate()
         {
             return Adler32.Calculate(1, this.data, 0, this.data.Length);
+        }
+
+        [Benchmark]
+        public long SixLaborsScalarUpdate()
+        {
+            return Adler32.CalculateScalar(1, this.data, 0, (uint)this.data.Length);
         }
 
         [Benchmark]
