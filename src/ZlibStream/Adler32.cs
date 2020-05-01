@@ -34,8 +34,6 @@ namespace SixLabors.ZlibStream
 #endif
         }
 
-        // TODO: Get vectorized solution working. The solution below is based on link.
-        // It currently fails tests.
         // https://github.com/chromium/chromium/blob/master/third_party/zlib/adler32_simd.c
 #if SUPPORTS_RUNTIME_INTRINSICS
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
@@ -109,8 +107,8 @@ namespace SixLabors.ZlibStream
                     v_s2 = Sse2.Add(v_s2, Sse2.ShiftLeftLogical(v_ps, 5));
 
                     // Sum epi32 ints v_s1(s2) and accumulate in s1(s2).
-                    const byte S2301 = 0b1011_0001;  /* A B C D -> B A D C */
-                    const byte S1032 = 0b0100_1110;  /* A B C D -> C D A B */
+                    const byte S2301 = 0b1011_0001;  // A B C D -> B A D C
+                    const byte S1032 = 0b0100_1110;  // A B C D -> C D A B
 
                     v_s1 = Sse2.Add(v_s1, Sse2.Shuffle(v_s1, S2301));
                     v_s1 = Sse2.Add(v_s1, Sse2.Shuffle(v_s1, S1032));
