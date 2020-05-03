@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using BenchmarkDotNet.Attributes;
+using ICSharpCode.SharpZipLib.Zip.Compression;
 using ICSharpCode.SharpZipLib.Zip.Compression.Streams;
 using SixLabors.ZlibStream;
 
@@ -21,13 +22,17 @@ namespace ZlibStream.Benchmarks
             this.data = GetBuffer(1000 * 1000 * 4);
         }
 
+        [Params(1, 6, 9)]
+        public int Compression { get; set; }
+
         [Benchmark(Baseline = true)]
         public long SharpZipLibDeflate()
         {
             using (var output = new MemoryStream())
             {
                 // Defaults to compression -1, buffer 512.
-                using (var deflate = new DeflaterOutputStream(output))
+                var deflater = new Deflater(this.Compression);
+                using (var deflate = new DeflaterOutputStream(output, deflater))
                 {
                     deflate.IsStreamOwner = false;
                     deflate.Write(this.data, 0, this.data.Length);
@@ -43,7 +48,22 @@ namespace ZlibStream.Benchmarks
             using (var output = new MemoryStream())
             {
                 // Defaults to compression -1, buffer 512.
-                using (var deflate = new ZlibOutputStream(output, ZlibCompressionLevel.ZDEFAULTCOMPRESSION))
+                using (var deflate = new ZlibOutputStream(output, (ZlibCompressionLevel)this.Compression))
+                {
+                    deflate.Write(this.data, 0, this.data.Length);
+                }
+
+                return output.Length;
+            }
+        }
+
+        [Benchmark]
+        public long DotNetDeflate()
+        {
+            using (var output = new MemoryStream())
+            {
+                // Defaults to compression -1, buffer 512.
+                using (var deflate = new DotNetZlibDeflateStream(output, this.Compression))
                 {
                     deflate.Write(this.data, 0, this.data.Length);
                 }

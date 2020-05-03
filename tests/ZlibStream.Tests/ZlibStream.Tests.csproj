@@ -10,7 +10,6 @@
   <ItemGroup>
     <PackageReference Include="SharpZipLib"  />
     <PackageReference Include="zlib.managed"  />
-    <PackageReference Include="zlib.net"  />
   </ItemGroup>
 
 </Project>

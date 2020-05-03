@@ -1206,8 +1206,7 @@ namespace SixLabors.ZlibStream
         // matches. It is used only for the fast compression options.
         internal int Deflate_fast(ZlibFlushStrategy flush)
         {
-            // short hash_head = 0; // head of the hash chain
-            var hash_head = 0; // head of the hash chain
+            int hash_head = 0; // head of the hash chain
             bool bflush; // set if current block must be flushed
 
             byte* window = this.windowPointer;
@@ -1238,17 +1237,16 @@ namespace SixLabors.ZlibStream
                 // dictionary, and set hash_head to the head of the hash chain:
                 if (this.lookahead >= MINMATCH)
                 {
+                    // TODO: Origin code looks like it has a SIMD version.
+                    // insert_string_simd
                     this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
-
-                    // prev[strstart&w_mask]=hash_head=head[ins_h];
-                    hash_head = head[this.insH] & 0xFFFF;
-                    prev[this.strStart & this.wMask] = head[this.insH];
+                    hash_head = (prev[this.strStart & this.wMask] = head[this.insH]) & 0xFFFF;
                     head[this.insH] = (short)this.strStart;
                 }
 
                 // Find the longest match, discarding those <= prev_length.
                 // At this point we have always match_length < MIN_MATCH
-                if (hash_head != 0L && ((this.strStart - hash_head) & 0xFFFF) <= this.wSize - MINLOOKAHEAD)
+                if (hash_head != 0 && ((this.strStart - hash_head) & 0xFFFF) <= this.wSize - MINLOOKAHEAD)
                 {
                     // To simplify the code, we prevent matches with the string
                     // of window index 0 (in particular we have to avoid a match
@@ -1256,9 +1254,9 @@ namespace SixLabors.ZlibStream
                     if (this.strategy != ZlibCompressionStrategy.ZHUFFMANONLY)
                     {
                         this.matchLength = this.Longest_match(hash_head);
-                    }
 
-                    // longest_match() sets match_start
+                        // longest_match() sets match_start
+                    }
                 }
 
                 if (this.matchLength >= MINMATCH)
@@ -1277,12 +1275,10 @@ namespace SixLabors.ZlibStream
                         {
                             this.strStart++;
 
+                            // TODO: Origin code looks like it has a SIMD version.
+                            // insert_string_simd
                             this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
-
-                            // prev[strstart&w_mask]=hash_head=head[ins_h];
-                            hash_head = head[this.insH] & 0xFFFF;
-                            prev[this.strStart & this.wMask] = head[this.insH];
-                            head[this.insH] = (short)this.strStart;
+                            hash_head = (prev[this.strStart & this.wMask] = head[this.insH]) & 0xFFFF;
 
                             // strstart never exceeds WSIZE-MAX_MATCH, so there are
                             // always MIN_MATCH bytes ahead.
@@ -1294,7 +1290,7 @@ namespace SixLabors.ZlibStream
                     {
                         this.strStart += this.matchLength;
                         this.matchLength = 0;
-                        this.insH = this.windowPointer[this.strStart] & 0xff;
+                        this.insH = this.windowPointer[this.strStart];
 
                         this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + 1]) & this.hashMask;
 
@@ -1332,8 +1328,7 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.HotPath)]
         internal int Deflate_slow(ZlibFlushStrategy flush)
         {
-            // short hash_head = 0;    // head of hash chain
-            var hash_head = 0; // head of hash chain
+            int hash_head = 0; // head of hash chain
             bool bflush; // set if current block must be flushed
 
             byte* window = this.windowPointer;
@@ -1365,11 +1360,10 @@ namespace SixLabors.ZlibStream
                 // dictionary, and set hash_head to the head of the hash chain:
                 if (this.lookahead >= MINMATCH)
                 {
+                    // TODO: Origin code looks like it has a SIMD version.
+                    // insert_string_simd
                     this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
-
-                    // prev[strstart&w_mask]=hash_head=head[ins_h];
-                    hash_head = head[this.insH] & 0xFFFF;
-                    prev[this.strStart & this.wMask] = head[this.insH];
+                    hash_head = (prev[this.strStart & this.wMask] = head[this.insH]) & 0xFFFF;
                     head[this.insH] = (short)this.strStart;
                 }
 
@@ -1420,11 +1414,10 @@ namespace SixLabors.ZlibStream
                     {
                         if (++this.strStart <= max_insert)
                         {
+                            // TODO: Origin code looks like it has a SIMD version.
+                            // insert_string_simd
                             this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
-
-                            // prev[strstart&w_mask]=hash_head=head[ins_h];
-                            hash_head = head[this.insH] & 0xFFFF;
-                            prev[this.strStart & this.wMask] = head[this.insH];
+                            hash_head = (prev[this.strStart & this.wMask] = head[this.insH]) & 0xFFFF;
                             head[this.insH] = (short)this.strStart;
                         }
                     }
@@ -1576,7 +1569,8 @@ namespace SixLabors.ZlibStream
                     scan_end = window[scan + best_len];
                 }
             }
-            while ((cur_match = prev[cur_match & wmask] & 0xFFFF) > limit && --chain_length != 0);
+            while ((cur_match = prev[cur_match & wmask] & 0xFFFF) > limit
+                    && --chain_length != 0);
 
             return best_len <= this.lookahead ? best_len : this.lookahead;
         }
