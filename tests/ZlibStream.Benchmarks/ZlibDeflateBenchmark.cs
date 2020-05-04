@@ -74,20 +74,20 @@ namespace ZlibStream.Benchmarks
 
         // TODO: Enable when BMDN stops throwing.
         // [Benchmark(Description = "ZLibManaged")]
-        // public long ZlibManagedDeflate()
-        // {
+        //public long ZlibManagedDeflate()
+        //{
         //    using (var output = new MemoryStream())
         //    {
         //        // Defaults to compression -1, buffer 512.
-        //        using (var deflate = new Elskom.Generic.Libs.ZOutputStream(output, (int)ZlibCompressionLevel.ZDEFAULTCOMPRESSION))
+        //        using (var deflate = new Elskom.Generic.Libs.ZOutputStream(output, this.Compression))
         //        {
         //            deflate.Write(this.data, 0, this.data.Length);
         //        }
+
+        //        return output.Length;
         //    }
-        //
-        // // TODO: Upgrade when Dispose() fix is merged.
-        //    return this.data.Length;
-        // }
+        //}
+
         private static byte[] GetBuffer(int length)
         {
             var data = new byte[length];

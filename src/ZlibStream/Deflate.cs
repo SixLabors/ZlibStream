@@ -685,24 +685,19 @@ namespace SixLabors.ZlibStream
             => this.Send_bits(tree[c * 2] & 0xFFFF, tree[(c * 2) + 1] & 0xFFFF);
 
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void Send_bits(int value_Renamed, int length)
+        private void Send_bits(int value, int length)
         {
-            var len = length;
-            if (this.biValid > BufSize - len)
+            if (this.biValid > BufSize - length)
             {
-                var val = value_Renamed;
-
-                // bi_buf |= (val << bi_valid);
-                this.biBuf = (short)((ushort)this.biBuf | (ushort)((val << this.biValid) & 0xFFFF));
+                this.biBuf |= (short)((value << this.biValid) & 0xFFFF);
                 this.Put_short(this.biBuf);
-                this.biBuf = (short)ZlibUtilities.URShift(val, BufSize - this.biValid);
-                this.biValid += len - BufSize;
+                this.biBuf = (short)ZlibUtilities.URShift(value, BufSize - this.biValid);
+                this.biValid += length - BufSize;
             }
             else
             {
-                // bi_buf |= (value) << bi_valid;
-                this.biBuf = (short)((ushort)this.biBuf | (ushort)((value_Renamed << this.biValid) & 0xFFFF));
-                this.biValid += len;
+                this.biBuf |= (short)((value << this.biValid) & 0xFFFF);
+                this.biValid += length;
             }
         }
 
@@ -766,7 +761,7 @@ namespace SixLabors.ZlibStream
                 dynDtree[Tree.D_code(dist) * 2]++;
             }
 
-            if ((this.lastLit & 0x1fff) == 0 && this.level > ZlibCompressionLevel.Level2)
+            if ((this.lastLit & 0x1FFF) == 0 && this.level > ZlibCompressionLevel.Level2)
             {
                 // Compute an upper bound for the compressed length
                 var out_length = this.lastLit * 8;
@@ -936,6 +931,7 @@ namespace SixLabors.ZlibStream
             this.Put_byte(this.windowBuffer, buf, len);
         }
 
+        [MethodImpl(InliningOptions.ShortMethod)]
         private void Flush_block_only(bool eof)
         {
             this.Tr_flush_block(this.blockStart >= 0 ? this.blockStart : -1, this.strStart - this.blockStart, eof);
@@ -950,17 +946,14 @@ namespace SixLabors.ZlibStream
         // only for the level=0 compression option.
         // NOTE: this function should be optimized to avoid extra copying from
         // window to pending_buf.
+        [MethodImpl(InliningOptions.HotPath)]
         private int Deflate_stored(ZlibFlushStrategy flush)
         {
-            // Stored blocks are limited to 0xFFFF bytes, pending_buf is limited
+            // Smallest worthy block size when not flushing or finishing. By default
+            // this is 32K.This can be as small as 507 bytes for memLevel == 1., pending_buf is limited
             // to pending_buf_size, and each stored block has a 5 byte header:
-            var max_block_size = 0xFFFF;
+            int max_block_size = Math.Min(this.pendingBufferSize - 5, this.wSize);
             int max_start;
-
-            if (max_block_size > this.pendingBufferSize - 5)
-            {
-                max_block_size = this.pendingBufferSize - 5;
-            }
 
             // Copy as much as possible from input to output:
             while (true)
@@ -1011,7 +1004,9 @@ namespace SixLabors.ZlibStream
             }
 
             this.Flush_block_only(flush == ZlibFlushStrategy.ZFINISH);
-            return this.strm.AvailOut == 0 ? (flush == ZlibFlushStrategy.ZFINISH) ? FinishStarted : NeedMore : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
+            return this.strm.AvailOut == 0 ? (flush == ZlibFlushStrategy.ZFINISH)
+                ? FinishStarted
+                : NeedMore : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
         }
 
         // Send a stored block
