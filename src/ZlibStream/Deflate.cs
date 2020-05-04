@@ -715,6 +715,7 @@ namespace SixLabors.ZlibStream
         // of one. (There are no problems if the previous block is stored or fixed.)
         // To simplify the code, we assume the worst case of last real code encoded
         // on one bit only.
+        [MethodImpl(InliningOptions.ShortMethod)]
         private void Tr_align()
         {
             this.Send_bits(STATICTREES << 1, 3);
@@ -738,11 +739,13 @@ namespace SixLabors.ZlibStream
 
         // Save the match info and tally the frequency counts. Return true if
         // the current block must be flushed.
+        [MethodImpl(InliningOptions.ShortMethod)]
         private bool Tr_tally(int dist, int lc)
         {
             byte* pending = this.pendingPointer;
-            pending[this.dBuf + (this.lastLit * 2)] = (byte)ZlibUtilities.URShift(dist, 8);
-            pending[this.dBuf + (this.lastLit * 2) + 1] = (byte)dist;
+            int dbuffindex = this.dBuf + (this.lastLit * 2);
+            pending[dbuffindex++] = (byte)ZlibUtilities.URShift(dist, 8);
+            pending[dbuffindex] = (byte)dist;
             pending[this.lBuf + this.lastLit] = (byte)lc;
             this.lastLit++;
             short* dynLtree = this.dynLtreePointer;
@@ -763,7 +766,7 @@ namespace SixLabors.ZlibStream
                 dynDtree[Tree.D_code(dist) * 2]++;
             }
 
-            if ((this.lastLit & 0x1fff) == 0 && this.level > (ZlibCompressionLevel)2)
+            if ((this.lastLit & 0x1fff) == 0 && this.level > ZlibCompressionLevel.Level2)
             {
                 // Compute an upper bound for the compressed length
                 var out_length = this.lastLit * 8;
@@ -878,6 +881,7 @@ namespace SixLabors.ZlibStream
         }
 
         // Flush the bit buffer, keeping at most 7 bits in it.
+        [MethodImpl(InliningOptions.ShortMethod)]
         private void Bi_flush()
         {
             if (this.biValid == 16)
@@ -895,6 +899,7 @@ namespace SixLabors.ZlibStream
         }
 
         // Flush the bit buffer and align the output on a byte boundary
+        [MethodImpl(InliningOptions.ShortMethod)]
         private void Bi_windup()
         {
             if (this.biValid > 8)
@@ -912,6 +917,7 @@ namespace SixLabors.ZlibStream
 
         // Copy a stored block, storing first the length and its
         // one's complement if requested.
+        [MethodImpl(InliningOptions.ShortMethod)]
         private void Copy_block(int buf, int len, bool header)
         {
             this.Bi_windup(); // align on byte boundary
@@ -1204,6 +1210,7 @@ namespace SixLabors.ZlibStream
         // This function does not perform lazy evaluation of matches and inserts
         // new strings in the dictionary only for unmatched strings or for short
         // matches. It is used only for the fast compression options.
+        [MethodImpl(InliningOptions.HotPath)]
         internal int Deflate_fast(ZlibFlushStrategy flush)
         {
             int hash_head = 0; // head of the hash chain
