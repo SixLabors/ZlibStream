@@ -7,23 +7,25 @@ namespace SixLabors.ZlibStream
     using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
     using System.Linq;
+    using System.Runtime.CompilerServices;
 
     /// <summary>
     /// The zlib stream class.
     /// </summary>
     internal sealed class ZStream
     {
-        [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:Fields should be private", Justification = "Only way this library works with this.")]
-        internal byte[] INextIn;
-        [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:Fields should be private", Justification = "Only way this library works with this.")]
-        internal byte[] INextOut;
         private const int MAXWBITS = 15; // 32K LZ77 window
         private const int DEFWBITS = MAXWBITS;
 
         /// <summary>
-        /// Gets the next input byte.
+        /// Gets or sets the next input bytes.
         /// </summary>
-        public List<byte> NextIn => this.INextIn.ToList();
+        public byte[] INextIn { get; set; }
+
+        /// <summary>
+        /// Gets or sets the next output bytes.
+        /// </summary>
+        public byte[] INextOut { get; set; }
 
         /// <summary>
         /// Gets or sets the next input byte index.
@@ -39,11 +41,6 @@ namespace SixLabors.ZlibStream
         /// Gets or sets the total number of input bytes read so far.
         /// </summary>
         public long TotalIn { get; set; }
-
-        /// <summary>
-        /// Gets the next output byte.
-        /// </summary>
-        public List<byte> NextOut => this.INextOut.ToList();
 
         /// <summary>
         /// Gets or sets the next output byte index.
@@ -83,7 +80,7 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Gets or sets the data type to this instance of this class.
         /// </summary>
-        internal int DataType { get; set; } // best guess about the data type: ascii or binary
+        public int DataType { get; set; } // best guess about the data type: ascii or binary
 
         /// <summary>
         /// Initializes decompression.
@@ -117,6 +114,7 @@ namespace SixLabors.ZlibStream
         /// Ends decompression.
         /// </summary>
         /// <returns>The zlib status state.</returns>
+        [MethodImpl(InliningOptions.ShortMethod)]
         public ZlibCompressionState InflateEnd()
         {
             if (this.Istate == null)
@@ -181,6 +179,7 @@ namespace SixLabors.ZlibStream
         /// Ends compression.
         /// </summary>
         /// <returns>The zlib status state.</returns>
+        [MethodImpl(InliningOptions.ShortMethod)]
         public ZlibCompressionState DeflateEnd()
         {
             if (this.Dstate == null)
@@ -230,9 +229,10 @@ namespace SixLabors.ZlibStream
         // this function so some applications may wish to modify it to avoid
         // allocating a large strm->next_in buffer and copying from it.
         // (See also flush_pending()).
-        internal int Read_buf(byte[] buf, int start, int size)
+        [MethodImpl(InliningOptions.ShortMethod)]
+        public int Read_buf(byte[] buf, int start, int size)
         {
-            var len = this.AvailIn;
+            int len = this.AvailIn;
 
             if (len > size)
             {

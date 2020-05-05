@@ -338,7 +338,7 @@ namespace SixLabors.ZlibStream
             short* head = this.headPointer;
 
             head[this.hashSize - 1] = 0;
-            for (var i = 0; i < this.hashSize - 1; i++)
+            for (int i = 0; i < this.hashSize - 1; i++)
             {
                 head[i] = 0;
             }
@@ -384,17 +384,17 @@ namespace SixLabors.ZlibStream
             short* dynDtree = this.dynDtreePointer;
             short* blTree = this.blTreePointer;
 
-            for (var i = 0; i < LCODES; i++)
+            for (int i = 0; i < LCODES; i++)
             {
                 dynLtree[i * 2] = 0;
             }
 
-            for (var i = 0; i < DCODES; i++)
+            for (int i = 0; i < DCODES; i++)
             {
                 dynDtree[i * 2] = 0;
             }
 
-            for (var i = 0; i < BLCODES; i++)
+            for (int i = 0; i < BLCODES; i++)
             {
                 blTree[i * 2] = 0;
             }
@@ -454,12 +454,12 @@ namespace SixLabors.ZlibStream
         private void Scan_tree(short* tree, int max_code)
         {
             int n; // iterates over all tree elements
-            var prevlen = -1; // last emitted length
+            int prevlen = -1; // last emitted length
             int curlen; // length of current code
             int nextlen = tree[(0 * 2) + 1]; // length of next code
-            var count = 0; // repeat count of the current code
-            var max_count = 7; // max repeat count
-            var min_count = 4; // min repeat count
+            int count = 0; // repeat count of the current code
+            int max_count = 7; // max repeat count
+            int min_count = 4; // min repeat count
             short* blTree = this.blTreePointer;
 
             if (nextlen == 0)
@@ -579,12 +579,12 @@ namespace SixLabors.ZlibStream
         {
             short* blTree = this.blTreePointer;
             int n; // iterates over all tree elements
-            var prevlen = -1; // last emitted length
+            int prevlen = -1; // last emitted length
             int curlen; // length of current code
             int nextlen = tree[(0 * 2) + 1]; // length of next code
-            var count = 0; // repeat count of the current code
-            var max_count = 7; // max repeat count
-            var min_count = 4; // min repeat count
+            int count = 0; // repeat count of the current code
+            int max_count = 7; // max repeat count
+            int min_count = 4; // min repeat count
 
             if (nextlen == 0)
             {
@@ -732,66 +732,61 @@ namespace SixLabors.ZlibStream
             this.lastEobLen = 7;
         }
 
-        // Save the match info and tally the frequency counts. Return true if
-        // the current block must be flushed.
+        /// <summary>
+        /// Save the match info and tally the frequency counts. Return true if
+        /// the current block must be flushed.
+        /// </summary>
+        /// <param name="dist">The distance of matched string.</param>
+        /// <param name="len">The match length-MIN_MATCH.</param>
+        /// <returns>The <see cref="bool"/>.</returns>
         [MethodImpl(InliningOptions.ShortMethod)]
-        private bool Tr_tally(int dist, int lc)
+        private bool Tr_tally_dist(int dist, int len)
         {
             byte* pending = this.pendingPointer;
             int dbuffindex = this.dBuf + (this.lastLit * 2);
+
             pending[dbuffindex++] = (byte)ZlibUtilities.URShift(dist, 8);
             pending[dbuffindex] = (byte)dist;
-            pending[this.lBuf + this.lastLit] = (byte)lc;
-            this.lastLit++;
-            short* dynLtree = this.dynLtreePointer;
-            short* dynDtree = this.dynDtreePointer;
+            pending[this.lBuf + this.lastLit++] = (byte)len;
+            this.matches++;
 
-            if (dist == 0)
-            {
-                // lc is the unmatched char
-                dynLtree[lc * 2]++;
-            }
-            else
-            {
-                this.matches++;
-
-                // Here, lc is the match length - MIN_MATCH
-                dist--; // dist = match distance - 1
-                dynLtree[(Tree.LengthCode[lc] + LITERALS + 1) * 2]++;
-                dynDtree[Tree.D_code(dist) * 2]++;
-            }
-
-            if ((this.lastLit & 0x1FFF) == 0 && this.level > ZlibCompressionLevel.Level2)
-            {
-                // Compute an upper bound for the compressed length
-                var out_length = this.lastLit * 8;
-                var in_length = this.strStart - this.blockStart;
-                int dcode;
-                for (dcode = 0; dcode < DCODES; dcode++)
-                {
-                    out_length = (int)(out_length + (dynDtree[dcode * 2] * (5L + Tree.ExtraDbits[dcode])));
-                }
-
-                out_length = ZlibUtilities.URShift(out_length, 3);
-                if ((this.matches < (this.lastLit / 2)) && out_length < in_length / 2)
-                {
-                    return true;
-                }
-            }
+            // Here, lc is the match length - MIN_MATCH
+            dist--; // dist = match distance - 1
+            this.dynLtreePointer[(Tree.LengthCode[len] + LITERALS + 1) * 2]++;
+            this.dynDtreePointer[Tree.D_code(dist) * 2]++;
 
             return this.lastLit == this.litBufsize - 1;
+        }
 
-            // We avoid equality with lit_bufsize because of wraparound at 64K
-            // on 16 bit machines and because stored blocks are restricted to
-            // 64K-1 bytes.
+        /// <summary>
+        /// Save the match info and tally the frequency counts. Return true if
+        /// the current block must be flushed.
+        /// </summary>
+        /// <param name="c">The unmatched byte.</param>
+        /// <returns>The <see cref="bool"/>.</returns>
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private bool Tr_tally_lit(byte c)
+        {
+            byte* pending = this.pendingPointer;
+            int dbuffindex = this.dBuf + (this.lastLit * 2);
+
+            pending[dbuffindex++] = 0;
+            pending[dbuffindex] = 0;
+            pending[this.lBuf + this.lastLit++] = c;
+
+            // lc is the unmatched char
+            this.dynLtreePointer[c * 2]++;
+
+            return this.lastLit == this.litBufsize - 1;
         }
 
         // Send the block data compressed using the given Huffman trees
+        [MethodImpl(InliningOptions.HotPath)]
         private void Compress_block(short* ltree, short* dtree)
         {
             int dist; // distance of matched string
             int lc; // match length or unmatched char (if dist == 0)
-            var lx = 0; // running index in l_buf
+            int lx = 0; // running index in l_buf
             int code; // the code to send
             int extra; // number of extra bits to send
 
@@ -924,10 +919,6 @@ namespace SixLabors.ZlibStream
                 this.Put_short((short)~len);
             }
 
-            // while(len--!=0) {
-            //    put_byte(window[buf+index]);
-            //    index++;
-            //  }
             this.Put_byte(this.windowBuffer, buf, len);
         }
 
@@ -1010,6 +1001,7 @@ namespace SixLabors.ZlibStream
         }
 
         // Send a stored block
+        [MethodImpl(InliningOptions.ShortMethod)]
         private void Tr_stored_block(int buf, int stored_len, bool eof)
         {
             this.Send_bits((STOREDBLOCK << 1) + (eof ? 1 : 0), 3); // send block type
@@ -1018,10 +1010,11 @@ namespace SixLabors.ZlibStream
 
         // Determine the best encoding for the current block: dynamic trees, static
         // trees or store, and output the encoded block to the zip file.
+        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
         private void Tr_flush_block(int buf, int stored_len, bool eof)
         {
             int opt_lenb, static_lenb; // opt_len and static_len in bytes
-            var max_blindex = 0; // index of last bit length code of non zero freq
+            int max_blindex = 0; // index of last bit length code of non zero freq
 
             // Build the Huffman trees unless a stored block is forced
             if (this.level > 0)
@@ -1264,7 +1257,7 @@ namespace SixLabors.ZlibStream
                 if (this.matchLength >= MINMATCH)
                 {
                     // check_match(strstart, match_start, match_length);
-                    bflush = this.Tr_tally(this.strStart - this.matchStart, this.matchLength - MINMATCH);
+                    bflush = this.Tr_tally_dist(this.strStart - this.matchStart, this.matchLength - MINMATCH);
 
                     this.lookahead -= this.matchLength;
 
@@ -1303,7 +1296,7 @@ namespace SixLabors.ZlibStream
                 else
                 {
                     // No match, output a literal byte
-                    bflush = this.Tr_tally(0, window[this.strStart]);
+                    bflush = this.Tr_tally_lit(window[this.strStart]);
                     this.lookahead--;
                     this.strStart++;
                 }
@@ -1399,12 +1392,12 @@ namespace SixLabors.ZlibStream
                 // match is not better, output the previous match:
                 if (this.prevLength >= MINMATCH && this.matchLength <= this.prevLength)
                 {
-                    var max_insert = this.strStart + this.lookahead - MINMATCH;
+                    int max_insert = this.strStart + this.lookahead - MINMATCH;
 
                     // Do not insert strings in hash table beyond this.
 
                     // check_match(strstart-1, prev_match, prev_length);
-                    bflush = this.Tr_tally(this.strStart - 1 - this.prevMatch, this.prevLength - MINMATCH);
+                    bflush = this.Tr_tally_dist(this.strStart - 1 - this.prevMatch, this.prevLength - MINMATCH);
 
                     // Insert in hash table all strings up to the end of the match.
                     // strstart-1 and strstart are already inserted. If there is not
@@ -1442,7 +1435,7 @@ namespace SixLabors.ZlibStream
                     // If there was no match at the previous position, output a
                     // single literal. If there was a match but the current match
                     // is longer, truncate the previous match to a single literal.
-                    bflush = this.Tr_tally(0, window[this.strStart - 1]);
+                    bflush = this.Tr_tally_lit(window[this.strStart - 1]);
 
                     if (bflush)
                     {
@@ -1468,7 +1461,7 @@ namespace SixLabors.ZlibStream
 
             if (this.matchAvailable != 0)
             {
-                _ = this.Tr_tally(0, window[this.strStart - 1]);
+                _ = this.Tr_tally_lit(window[this.strStart - 1]);
                 this.matchAvailable = 0;
             }
 
@@ -1484,21 +1477,21 @@ namespace SixLabors.ZlibStream
         {
             byte* window = this.windowPointer;
 
-            var chain_length = this.maxChainLength; // max hash chain length
-            var scan = this.strStart; // current string
+            int chain_length = this.maxChainLength; // max hash chain length
+            int scan = this.strStart; // current string
             int match; // matched string
             int len; // length of current match
-            var best_len = this.prevLength; // best match length so far
-            var limit = this.strStart > (this.wSize - MINLOOKAHEAD) ? this.strStart - (this.wSize - MINLOOKAHEAD) : 0;
-            var nice_match = this.niceMatch;
+            int best_len = this.prevLength; // best match length so far
+            int limit = this.strStart > (this.wSize - MINLOOKAHEAD) ? this.strStart - (this.wSize - MINLOOKAHEAD) : 0;
+            int nice_match = this.niceMatch;
 
             // Stop when cur_match becomes <= limit. To simplify the code,
             // we prevent matches with the string of window index 0.
-            var wmask = this.wMask;
+            int wmask = this.wMask;
 
-            var strend = this.strStart + MAXMATCH;
-            var scan_end1 = window[scan + best_len - 1];
-            var scan_end = window[scan + best_len];
+            int strend = this.strStart + MAXMATCH;
+            byte scan_end1 = window[scan + best_len - 1];
+            byte scan_end = window[scan + best_len];
 
             // The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
             // It is easy to get rid of this optimization if necessary.
@@ -1574,7 +1567,7 @@ namespace SixLabors.ZlibStream
             while ((cur_match = prev[cur_match & wmask] & 0xFFFF) > limit
                     && --chain_length != 0);
 
-            return best_len <= this.lookahead ? best_len : this.lookahead;
+            return Math.Min(best_len, this.lookahead);
         }
 
         internal ZlibCompressionState DeflateInit(ZStream strm, ZlibCompressionLevel level, int bits)
@@ -1585,7 +1578,7 @@ namespace SixLabors.ZlibStream
 
         internal ZlibCompressionState DeflateInit2(ZStream strm, ZlibCompressionLevel level, int method, int windowBits, int memLevel, ZlibCompressionStrategy strategy)
         {
-            var noheader = 0;
+            int noheader = 0;
             strm.Msg = null;
 
             if (level == ZlibCompressionLevel.ZDEFAULTCOMPRESSION)
@@ -1763,8 +1756,8 @@ namespace SixLabors.ZlibStream
 
         internal ZlibCompressionState DeflateSetDictionary(ZStream strm, byte[] dictionary, int dictLength)
         {
-            var length = dictLength;
-            var index = 0;
+            int length = dictLength;
+            int index = 0;
 
             if (dictionary == null || this.status != INITSTATE)
             {
@@ -1797,7 +1790,7 @@ namespace SixLabors.ZlibStream
 
             short* head = this.headPointer;
             short* prev = this.prevPointer;
-            for (var n = 0; n <= length - MINMATCH; n++)
+            for (int n = 0; n <= length - MINMATCH; n++)
             {
                 this.insH = ((this.insH << this.hashShift) ^ window[n + (MINMATCH - 1)]) & this.hashMask;
                 prev[n & this.wMask] = head[this.insH];
@@ -1837,8 +1830,8 @@ namespace SixLabors.ZlibStream
             // Write the zlib header
             if (this.status == INITSTATE)
             {
-                var header = (ZDEFLATED + ((this.wBits - 8) << 4)) << 8;
-                var level_flags = (((int)this.level - 1) & 0xff) >> 1;
+                int header = (ZDEFLATED + ((this.wBits - 8) << 4)) << 8;
+                int level_flags = (((int)this.level - 1) & 0xff) >> 1;
 
                 if (level_flags > 3)
                 {
@@ -1904,7 +1897,7 @@ namespace SixLabors.ZlibStream
                 || this.lookahead != 0
                 || (flush != ZlibFlushStrategy.ZNOFLUSH && this.status != FINISHSTATE))
             {
-                var bstate = -1;
+                int bstate = -1;
                 switch (ConfigTable[(int)this.level].Func)
                 {
                     case STORED:
@@ -1963,7 +1956,7 @@ namespace SixLabors.ZlibStream
                         {
                             // state.head[s.hash_size-1]=0;
                             short* head = this.headPointer;
-                            for (var i = 0; i < this.hashSize; i++)
+                            for (int i = 0; i < this.hashSize; i++)
                             {
                                 // forget history
                                 head[i] = 0;
@@ -2007,7 +2000,7 @@ namespace SixLabors.ZlibStream
         // (See also read_buf()).
         internal void Flush_pending(ZStream strm)
         {
-            var len = this.Pending;
+            int len = this.Pending;
 
             if (len > strm.AvailOut)
             {

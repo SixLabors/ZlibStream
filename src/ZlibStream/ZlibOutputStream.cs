@@ -1,13 +1,13 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
+using System;
+using System.Buffers;
+using System.IO;
+using System.Runtime.CompilerServices;
+
 namespace SixLabors.ZlibStream
 {
-    using System;
-    using System.Buffers;
-    using System.Diagnostics.CodeAnalysis;
-    using System.IO;
-
     /// <summary>
     /// Provides methods and properties for compressing and decompressing output streams by
     /// using the Zlib algorithm.
@@ -84,11 +84,12 @@ namespace SixLabors.ZlibStream
         }
 
         /// <inheritdoc/>
+        [MethodImpl(InliningOptions.ShortMethod)]
         public override void Write(byte[] buffer, int offset, int count)
         {
-            if (buffer == null)
+            if (buffer is null)
             {
-                throw new ArgumentNullException(nameof(buffer));
+                ThrowHelper.ThrowNullException(nameof(buffer));
             }
 
             if (count == 0)
@@ -109,7 +110,7 @@ namespace SixLabors.ZlibStream
 
                 if (err != ZlibCompressionState.ZOK && err != ZlibCompressionState.ZSTREAMEND)
                 {
-                    throw new ZStreamException((this.compress ? "de" : "in") + "flating: " + this.zStream.Msg);
+                    ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Msg);
                 }
 
                 this.BaseStream.Write(this.chunkBuffer, 0, BufferSize - this.zStream.AvailOut);
@@ -167,7 +168,7 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Finishes the stream.
         /// </summary>
-        [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "This method should not throw any exceptions.")]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private void Finish()
         {
             if (!this.isFinished)
@@ -182,7 +183,7 @@ namespace SixLabors.ZlibStream
 
                     if (err != ZlibCompressionState.ZSTREAMEND && err != ZlibCompressionState.ZOK)
                     {
-                        throw new ZStreamException((this.compress ? "de" : "in") + "flating: " + this.zStream.Msg);
+                        ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Msg);
                     }
 
                     if (BufferSize - this.zStream.AvailOut > 0)
@@ -210,6 +211,7 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Ends the compression or decompression on the stream.
         /// </summary>
+        [MethodImpl(InliningOptions.ShortMethod)]
         private void EndStream()
         {
             _ = this.compress ? this.zStream.DeflateEnd() : this.zStream.InflateEnd();

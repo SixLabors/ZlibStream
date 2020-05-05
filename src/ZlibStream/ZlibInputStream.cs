@@ -136,7 +136,7 @@ namespace SixLabors.ZlibStream
 
                 if (err != ZlibCompressionState.ZOK && err != ZlibCompressionState.ZSTREAMEND)
                 {
-                    throw new ZStreamException((this.compress ? "de" : "in") + "flating: " + this.zStream.Msg);
+                    throw new ZlibStreamException((this.compress ? "de" : "in") + "flating: " + this.zStream.Msg);
                 }
 
                 if (this.noMoreinput && (this.zStream.AvailOut == count))
@@ -204,7 +204,7 @@ namespace SixLabors.ZlibStream
 
                     if (err != ZlibCompressionState.ZSTREAMEND && err != ZlibCompressionState.ZOK)
                     {
-                        throw new ZStreamException((this.compress ? "de" : "in") + "flating: " + this.zStream.Msg);
+                        throw new ZlibStreamException((this.compress ? "de" : "in") + "flating: " + this.zStream.Msg);
                     }
 
                     if (BufferSize - this.zStream.AvailOut > 0)
