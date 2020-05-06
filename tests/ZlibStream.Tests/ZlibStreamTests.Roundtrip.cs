@@ -77,6 +77,37 @@ namespace ZlibStream.Tests
             }
         }
 
+        [Fact]
+        public void DeflateMemoryProfileTest()
+        {
+            const int count = 1000 * 1000 * 4;
+            var expected = GetImageBytes(3500, 3500); ;
+
+            using (var compressed = new MemoryStream())
+            using (var deflate = new ZlibOutputStream(compressed, ZlibCompressionLevel.Level1))
+            {
+                deflate.Write(expected, 0, expected.Length);
+            }
+        }
+
+        private static byte[] GetImageBytes(int width, int height)
+        {
+            var bytes = new byte[width * height * 4];
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width * 4; x += 4)
+                {
+                    int i = 4 * y * width;
+                    bytes[i + x] = (byte)((x + y) % 256); // R
+                    bytes[i + x + 1] = 0; // G
+                    bytes[i + x + 2] = 0; // B
+                    bytes[i + x + 3] = 255; // A
+                }
+            }
+
+            return bytes;
+        }
+
         private static byte[] GetBuffer(int length)
         {
             var data = new byte[length];

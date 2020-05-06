@@ -102,7 +102,7 @@ namespace ZlibStream.Benchmarks
                 level = CompressionLevel.NoCompression;
             }
 
-            this.deflateStream = new System.IO.Compression.DeflateStream(this.rawStream, level, true);
+            this.deflateStream = new DeflateStream(this.rawStream, level, true);
         }
 
         /// <inheritdoc/>
@@ -127,7 +127,7 @@ namespace ZlibStream.Benchmarks
         /// <inheritdoc/>
         public override void Flush()
         {
-            this.deflateStream?.Flush();
+            this.deflateStream.Flush();
         }
 
         /// <inheritdoc/>
@@ -166,17 +166,8 @@ namespace ZlibStream.Benchmarks
             if (disposing)
             {
                 // dispose managed resources
-                if (this.deflateStream != null)
-                {
-                    this.deflateStream.Dispose();
-                    this.deflateStream = null;
-                }
-                else
-                {
-                    // Hack: empty input?
-                    this.rawStream.WriteByte(3);
-                    this.rawStream.WriteByte(0);
-                }
+                this.deflateStream.Dispose();
+                this.deflateStream = null;
 
                 // Add the crc
                 uint crc = (uint)this.adler32.Value;

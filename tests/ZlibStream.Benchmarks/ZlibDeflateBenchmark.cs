@@ -10,7 +10,7 @@ using SixLabors.ZlibStream;
 
 namespace ZlibStream.Benchmarks
 {
-    [Config(typeof(ShortRun))]
+    [Config(typeof(DeflateConfig))]
     public class ZlibDeflateBenchmark
     {
         private byte[] data;
@@ -18,8 +18,8 @@ namespace ZlibStream.Benchmarks
         [GlobalSetup]
         public void SetUp()
         {
-            // Equivalent to 1MP Rgba image
-            this.data = GetBuffer(1000 * 1000 * 4);
+            // Equivalent to 3.5MP RGBA image
+            this.data = GetImageBytes(3500, 3500); // GetBuffer(1000 * 1000 * 4);
         }
 
         [Params(1, 6, 9)]
@@ -60,6 +60,13 @@ namespace ZlibStream.Benchmarks
         [Benchmark]
         public long DotNetDeflate()
         {
+            // DeflateStream does not actually provide this level of compression
+            // maxing out at 6 Optimal.
+            if (this.Compression == 9)
+            {
+                return -1;
+            }
+
             using (var output = new MemoryStream())
             {
                 // Defaults to compression -1, buffer 512.
@@ -87,6 +94,24 @@ namespace ZlibStream.Benchmarks
         //        return output.Length;
         //    }
         //}
+
+        private static byte[] GetImageBytes(int width, int height)
+        {
+            var bytes = new byte[width * height * 4];
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width * 4; x += 4)
+                {
+                    int i = 4 * y * width;
+                    bytes[i + x] = (byte)((x + y) % 256); // R
+                    bytes[i + x + 1] = 0; // G
+                    bytes[i + x + 2] = 0; // B
+                    bytes[i + x + 3] = 255; // A
+                }
+            }
+
+            return bytes;
+        }
 
         private static byte[] GetBuffer(int length)
         {

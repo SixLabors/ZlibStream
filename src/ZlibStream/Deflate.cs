@@ -1201,7 +1201,7 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.HotPath)]
         internal int Deflate_fast(ZlibFlushStrategy flush)
         {
-            int hash_head = 0; // head of the hash chain
+            int hash_head; // head of the hash chain
             bool bflush; // set if current block must be flushed
 
             byte* window = this.windowPointer;
@@ -1230,6 +1230,7 @@ namespace SixLabors.ZlibStream
 
                 // Insert the string window[strstart .. strstart+2] in the
                 // dictionary, and set hash_head to the head of the hash chain:
+                hash_head = 0;
                 if (this.lookahead >= MINMATCH)
                 {
                     // TODO: Origin code looks like it has a SIMD version.
