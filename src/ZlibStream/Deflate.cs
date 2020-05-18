@@ -15,6 +15,7 @@ namespace SixLabors.ZlibStream
         private const int MAXMEMLEVEL = 9;
         private const int MAXWBITS = 15; // 32K LZ77 window
         private const int DEFMEMLEVEL = 8;
+        private const int DEFNOCOMPRESSIONMEMLEVEL = 7;
         private const int STORED = 0;
         private const int FAST = 1;
         private const int SLOW = 2;
@@ -665,8 +666,12 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         private void Put_short(int w)
         {
-            this.Put_byte((byte)w);
-            this.Put_byte((byte)ZlibUtilities.URShift(w, 8));
+            short* s = (short*)&this.pendingPointer[this.Pending];
+            s[0] = (short)w;
+            this.Pending += 2;
+
+            //this.Put_byte((byte)w);
+            //this.Put_byte((byte)ZlibUtilities.URShift(w, 8));
         }
 
         [MethodImpl(InliningOptions.ShortMethod)]
@@ -1536,6 +1541,8 @@ namespace SixLabors.ZlibStream
 
                 // We check for insufficient lookahead only every 8th comparison;
                 // the 256th check will be made at strstart+258.
+                // TODO: This can be optimized.
+                // https://github.com/cloudflare/zlib/commit/31043308c3d3edfb487d2c4cbe7290bd5b63c65c#diff-6245073f3e742f2e3efa953113cfbf1aR144-R157
                 do
                 {
                 }
@@ -1584,7 +1591,12 @@ namespace SixLabors.ZlibStream
 
             if (level == ZlibCompressionLevel.ZDEFAULTCOMPRESSION)
             {
-                level = (ZlibCompressionLevel)6;
+                level = ZlibCompressionLevel.Level6;
+            }
+
+            if (level == ZlibCompressionLevel.ZNOCOMPRESSION)
+            {
+                memLevel = DEFNOCOMPRESSIONMEMLEVEL;
             }
 
             if (windowBits < 0)

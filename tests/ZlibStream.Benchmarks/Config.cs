@@ -7,6 +7,7 @@ using BenchmarkDotNet.Diagnostics.Windows;
 #endif
 
 using System;
+using System.Reflection;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
@@ -14,8 +15,6 @@ using BenchmarkDotNet.Environments;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
-using System.Linq;
-using System.Reflection;
 
 namespace ZlibStream.Benchmarks
 {
@@ -49,7 +48,7 @@ namespace ZlibStream.Benchmarks
     {
         public DeflateConfig()
         {
-            this.AddColumn(new ByteSizeColumn());
+            this.AddColumn(new ByteSizeColumn(nameof(ZlibDeflateBenchmark.Compression)));
         }
     }
 

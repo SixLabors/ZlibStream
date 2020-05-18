@@ -34,7 +34,7 @@
     <PackageReference Update="coverlet.collector" Version="1.2.1" PrivateAssets="All"/>
 
     <PackageReference Update="SharpZipLib" Version="1.2.0" />
-    <PackageReference Update="zlib.managed" Version="1.1.4" />
+    <PackageReference Update="zlib.managed" Version="1.1.5-preview-97438968" />
   </ItemGroup>
 
 </Project>

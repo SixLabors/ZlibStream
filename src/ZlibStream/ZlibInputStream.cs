@@ -200,7 +200,9 @@ namespace SixLabors.ZlibStream
                     this.zStream.INextOut = this.chunkBuffer;
                     this.zStream.NextOutIndex = 0;
                     this.zStream.AvailOut = BufferSize;
-                    err = this.compress ? this.zStream.Deflate(ZlibFlushStrategy.ZFINISH) : this.zStream.Inflate(ZlibFlushStrategy.ZFINISH);
+                    err = this.compress
+                        ? this.zStream.Deflate(ZlibFlushStrategy.ZFINISH)
+                        : this.zStream.Inflate(ZlibFlushStrategy.ZFINISH);
 
                     if (err != ZlibCompressionState.ZSTREAMEND && err != ZlibCompressionState.ZOK)
                     {
