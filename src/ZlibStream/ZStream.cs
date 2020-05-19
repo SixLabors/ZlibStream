@@ -248,7 +248,7 @@ namespace SixLabors.ZlibStream
 
             if (this.Dstate.Noheader == 0)
             {
-                this.Adler = Adler32.Calculate(this.Adler, this.INextIn, this.NextInIndex, len);
+                this.Adler = Adler32.Calculate(this.Adler, this.INextIn.AsSpan(this.NextInIndex, len));
             }
 
             Buffer.BlockCopy(this.INextIn, this.NextInIndex, buf, start, len);

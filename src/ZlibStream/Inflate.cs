@@ -1,6 +1,8 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
+using System;
+
 namespace SixLabors.ZlibStream
 {
     /// <summary>
@@ -323,12 +325,12 @@ namespace SixLabors.ZlibStream
                 return ZlibCompressionState.ZSTREAMERROR;
             }
 
-            if (Adler32.Calculate(1, dictionary, 0, dictLength) != z.Adler)
+            if (Adler32.Calculate(dictionary.AsSpan(0, dictLength)) != z.Adler)
             {
                 return ZlibCompressionState.ZDATAERROR;
             }
 
-            z.Adler = Adler32.Calculate(0, null, 0, 0);
+            z.Adler = Adler32.SeedValue;
 
             if (length >= (1 << z.Istate.Wbits))
             {

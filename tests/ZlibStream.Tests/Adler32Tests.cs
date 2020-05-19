@@ -12,9 +12,16 @@ namespace ZlibStream.Tests
     {
         [Theory]
         [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(2)]
+        public void ReturnsCorrectWhenEmpty(uint input)
+        {
+            Assert.Equal(input, Adler32.Calculate(input, default));
+        }
+
+        [Theory]
+        [InlineData(0)]
         [InlineData(8)]
-        [InlineData(15)]
-        [InlineData(17)]
         [InlineData(215)]
         [InlineData(1024)]
         [InlineData(1024 + 15)]
@@ -27,7 +34,7 @@ namespace ZlibStream.Tests
             adler.Update(data);
 
             long expected = adler.Value;
-            long actual = Adler32.Calculate(1, data, 0, data.Length);
+            long actual = Adler32.Calculate(data);
 
             Assert.Equal(expected, actual);
         }

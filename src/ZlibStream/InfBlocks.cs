@@ -99,7 +99,7 @@ namespace SixLabors.ZlibStream
 
             if (this.checkfn != null)
             {
-                z.Adler = this.check = Adler32.Calculate(0, null, 0, 0);
+                z.Adler = this.check = Adler32.SeedValue;
             }
         }
 
@@ -715,7 +715,7 @@ namespace SixLabors.ZlibStream
             // update check information
             if (this.checkfn != null)
             {
-                z.Adler = this.check = Adler32.Calculate(this.check, this.Window, q, n);
+                z.Adler = this.check = Adler32.Calculate(this.check, this.Window.AsSpan(q, n));
             }
 
             // copy as far as end of window
@@ -752,7 +752,7 @@ namespace SixLabors.ZlibStream
                 // update check information
                 if (this.checkfn != null)
                 {
-                    z.Adler = this.check = Adler32.Calculate(this.check, this.Window, q, n);
+                    z.Adler = this.check = Adler32.Calculate(this.check, this.Window.AsSpan(q, n));
                 }
 
                 // copy
