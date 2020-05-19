@@ -50,9 +50,8 @@ namespace SixLabors.ZlibStream
         private const int ZASCII = 1;
         private const int ZUNKNOWN = 2;
 
-        // Size of bit buffer in bi_buf, inceasing to 64 from 16
-        // improves compression of sparse clusters by 4x.
-        private const int BufSize = 16 * 4;
+        // Size of bit buffer in bi_buf
+        private const int BufSize = 16;
 
         // repeat previous bit length 3-6 times (2 bits of repeat count)
         private const int REP36 = 16;
