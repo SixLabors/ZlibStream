@@ -5,7 +5,7 @@ namespace SixLabors.ZlibStream
 {
     internal sealed class StaticTree
     {
-        internal static readonly short[] StaticLtree = new short[]
+        internal static readonly short[] StaticLtree =
         {
             12, 8, 140, 8, 76, 8, 204, 8, 44, 8, 172, 8, 108, 8, 236, 8, 28, 8, 156, 8, 92,
             8, 220, 8, 60, 8, 188, 8, 124, 8, 252, 8, 2, 8, 130, 8, 66, 8, 194, 8, 34, 8,
@@ -37,7 +37,7 @@ namespace SixLabors.ZlibStream
             195, 8, 35, 8, 163, 8, 99, 8, 227, 8,
         };
 
-        internal static readonly short[] StaticDtree = new short[]
+        internal static readonly short[] StaticDtree =
         {
             0, 5, 16, 5, 8, 5, 24, 5, 4, 5, 20, 5, 12, 5, 28, 5, 2, 5, 18, 5, 10, 5, 26,
             5, 6, 5, 22, 5, 14, 5, 30, 5, 1, 5, 17, 5, 9, 5, 25, 5, 5, 5, 21, 5, 13, 5,
@@ -51,7 +51,6 @@ namespace SixLabors.ZlibStream
         internal static readonly StaticTree StaticBlDesc = new StaticTree(null, Tree.ExtraBlbits, 0, BLCODES, MAXBLBITS);
 
         private const int MAXBITS = 15;
-
         private const int BLCODES = 19;
         private const int DCODES = 30;
         private const int LITERALS = 256;
@@ -69,7 +68,7 @@ namespace SixLabors.ZlibStream
         /// <param name="extra_base">extra base.</param>
         /// <param name="elems">elements?.</param>
         /// <param name="max_length">max length.</param>
-        internal StaticTree(short[] static_tree, int[] extra_bits, int extra_base, int elems, int max_length)
+        private StaticTree(short[] static_tree, int[] extra_bits, int extra_base, int elems, int max_length)
         {
             this.StaticTreeValue = static_tree;
             this.ExtraBits = extra_bits;
@@ -78,14 +77,14 @@ namespace SixLabors.ZlibStream
             this.MaxLength = max_length;
         }
 
-        internal short[] StaticTreeValue { get; private set; } // static tree or null
+        internal short[] StaticTreeValue { get; } // static tree or null
 
-        internal int[] ExtraBits { get; private set; } // extra bits for each code or null
+        internal int[] ExtraBits { get; } // extra bits for each code or null
 
-        internal int ExtraBase { get; private set; } // base index for extra_bits
+        internal int ExtraBase { get; } // base index for extra_bits
 
-        internal int Elems { get; private set; } // max number of elements in the tree
+        internal int Elems { get; } // max number of elements in the tree
 
-        internal int MaxLength { get; private set; } // max bit length for the codes
+        internal int MaxLength { get; } // max bit length for the codes
     }
 }

@@ -95,9 +95,13 @@ namespace ZlibStream.Benchmarks
             var instance = Activator.CreateInstance(descriptor.Type);
             descriptor.GlobalSetupMethod.Invoke(instance, Array.Empty<object>());
 
-            var p = (int)benchmarkCase.Parameters.Items[0].Value;
-            PropertyInfo prop = descriptor.Type.GetProperty(this.parameterName);
-            prop.SetValue(instance, p);
+            var p = benchmarkCase.Parameters.Items[0]?.Value;
+            if (p is int pint)
+            {
+                PropertyInfo prop = descriptor.Type.GetProperty(this.parameterName);
+                prop.SetValue(instance, pint);
+            }
+
             return descriptor.WorkloadMethod.Invoke(instance, Array.Empty<object>()).ToString();
         }
 

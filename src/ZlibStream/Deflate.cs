@@ -1116,21 +1116,7 @@ namespace SixLabors.ZlibStream
             {
                 more = this.windowSize - this.lookahead - this.strStart;
 
-                // Deal with !@#$% 64K limit:
-                if (more == 0 && this.strStart == 0 && this.lookahead == 0)
-                {
-                    more = this.wSize;
-                }
-                else if (more == -1)
-                {
-                    // Very unlikely, but possible on 16 bit machine if strstart == 0
-                    // and lookahead == 1 (input done one byte at time)
-                    more--;
-
-                    // If the window is almost full and there is insufficient lookahead,
-                    // move the upper half to the lower one to make room in the upper half.
-                }
-                else if (this.strStart >= this.wSize + this.wSize - MINLOOKAHEAD)
+                if (this.strStart >= this.wSize + this.wSize - MINLOOKAHEAD)
                 {
                     Buffer.BlockCopy(this.windowBuffer, this.wSize, this.windowBuffer, 0, this.wSize);
                     this.matchStart -= this.wSize;
@@ -1325,7 +1311,7 @@ namespace SixLabors.ZlibStream
         // evaluation for matches: a match is finally adopted only if there is
         // no better match at the next window position.
         [MethodImpl(InliningOptions.HotPath)]
-        internal int Deflate_slow(ZlibFlushStrategy flush)
+        private int Deflate_slow(ZlibFlushStrategy flush)
         {
             int hash_head = 0; // head of hash chain
             bool bflush; // set if current block must be flushed
@@ -1477,7 +1463,7 @@ namespace SixLabors.ZlibStream
         }
 
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
-        internal int Longest_match(int cur_match)
+        private int Longest_match(int cur_match)
         {
             byte* window = this.windowPointer;
 
@@ -1654,15 +1640,13 @@ namespace SixLabors.ZlibStream
             this.lBuf = (1 + 2) * this.litBufsize;
 
             this.level = level;
-
-            // System.out.println("level="+level);
             this.strategy = strategy;
             this.method = (byte)method;
 
             return this.DeflateReset(strm);
         }
 
-        internal ZlibCompressionState DeflateReset(ZStream strm)
+        private ZlibCompressionState DeflateReset(ZStream strm)
         {
             strm.TotalIn = strm.TotalOut = 0;
             strm.Msg = null;

@@ -33,32 +33,27 @@ namespace SixLabors.ZlibStream
         internal const int DISTCODELEN = 512;
 
         // extra bits for each length code
-        internal static readonly int[] ExtraLbits = new int[]
-        {
+        internal static readonly int[] ExtraLbits = {
             0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3,
             3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0,
         };
 
         // extra bits for each distance code
-        internal static readonly int[] ExtraDbits = new int[]
-        {
+        internal static readonly int[] ExtraDbits = {
             0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7,
             8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13,
         };
 
         // extra bits for each bit length code
-        internal static readonly int[] ExtraBlbits = new int[]
-        {
+        internal static readonly int[] ExtraBlbits = {
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 7,
         };
 
-        internal static readonly byte[] BlOrder = new byte[]
-        {
+        internal static readonly byte[] BlOrder = {
             16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
         };
 
-        internal static readonly byte[] DistCode = new byte[]
-        {
+        internal static readonly byte[] DistCode = {
             0, 1, 2, 3, 4, 4, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8,
             9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
             10, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
@@ -89,8 +84,7 @@ namespace SixLabors.ZlibStream
             29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29,
         };
 
-        internal static readonly byte[] LengthCode = new byte[]
-        {
+        internal static readonly byte[] LengthCode = {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 12, 13,
             13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16,
             16, 17, 17, 17, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 18, 18, 18, 19,
@@ -108,14 +102,12 @@ namespace SixLabors.ZlibStream
             28,
         };
 
-        internal static readonly int[] BaseLength = new int[]
-        {
+        internal static readonly int[] BaseLength = {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56,
             64, 80, 96, 112, 128, 160, 192, 224, 0,
         };
 
-        internal static readonly int[] BaseDist = new int[]
-        {
+        internal static readonly int[] BaseDist = {
             0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384,
             512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384,
             24576,
@@ -172,14 +164,15 @@ namespace SixLabors.ZlibStream
             // Tracev((stderr,"\ngen_codes: max_code %d ", max_code));
             for (n = 0; n <= max_code; n++)
             {
-                int len = tree[(n * 2) + 1];
+                int n2 = n * 2;
+                int len = tree[ n2 + 1];
                 if (len == 0)
                 {
                     continue;
                 }
 
                 // Now reverse the bits
-                tree[n * 2] = (short)Bi_reverse(next_code[len]++, len);
+                tree[n2] = (short)Bi_reverse(next_code[len]++, len);
             }
         }
 
