@@ -1222,8 +1222,6 @@ namespace SixLabors.ZlibStream
                 hash_head = 0;
                 if (this.lookahead >= MINMATCH)
                 {
-                    // TODO: Origin code looks like it has a SIMD version.
-                    // insert_string_simd
                     hash_head = this.InsertString(prev, head, window, this.strStart);
                 }
 
@@ -1272,11 +1270,11 @@ namespace SixLabors.ZlibStream
                     {
                         this.strStart += this.matchLength;
                         this.matchLength = 0;
-                        this.insH = this.windowPointer[this.strStart];
+                        this.insH = window[this.strStart];
 
-                        this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + 1]) & this.hashMask;
+                        this.UpdateHash(window[this.strStart + 1]);
 
-                        // If lookahead < MINMATCH, ins_h is garbage, but it does not
+                        // If lookahead < MINMATCH, insH is garbage, but it does not
                         // matter since it will be recomputed at next deflate call.
                     }
                 }
