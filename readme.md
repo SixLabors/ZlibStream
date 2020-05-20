@@ -1,7 +1,8 @@
-# zlib.managed
+# ZlibStream
 
-[![NuGet Badge](https://buildstats.info/nuget/zlib.managed?includePreReleases=true)](https://www.nuget.org/packages/zlib.managed/)
 
-A fork of zlib.net with a ton of fixes. Separate versioning is used though and is recommended to be used over the outdated zlib.net.
+A WIP fork of zlib.managed with target framework and API changes (hence fork) and performance improvements.
 
-This version has Visual Studio 2017 or newer project files too.
+The goal is to indroduce as near-native performance as possible.
+
+Targets netstandard1.3+
