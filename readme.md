@@ -15,6 +15,13 @@ DeflateStream in the .NET framework is a wrapper around the Intel fork of Zlib.
 
 ### Current Benchmarks
 
+The following benchmark was designed to highlight the difference in compression of sparse data.
+  
+Notes.
+- DeflateStream uses a different (and vastly superior) compression for level 1 which we should investigate. It is unknown how compression level 2 performs using that implementation as it is not possible to configure.
+- DeflateStream produces a 34% larger file at compression level 6.
+- DeflateStream does not allow compression levels > 6. No improvement by other libraries for compression level 9.
+
 |             Method | Compression |                  Mean |               Error |              StdDev |                Median | Ratio | RatioSD |    Bytes |     Gen 0 |     Gen 1 | Gen 2 |  Allocated |
 |------------------- |------------ |----------------------:|--------------------:|--------------------:|----------------------:|------:|--------:|---------:|----------:|----------:|------:|-----------:|
 | SharpZipLibDeflate |           1 |   969,242,100.0000 ns |  15,807,210.1065 ns |  14,012,680.0296 ns |   967,734,750.0000 ns |  1.00 |    0.00 | 16315059 | 3000.0000 | 1000.0000 |     - | 49047200 B |
@@ -32,7 +39,3 @@ DeflateStream in the .NET framework is a wrapper around the Intel fork of Zlib.
 |      DotNetDeflate |           9 |             0.5439 ns |           0.0197 ns |           0.0242 ns |             0.5363 ns | 0.000 |    0.00 |       -1 |         - |         - |     - |          - |
 |        ZLibManaged |           9 | 2,916,993,316.6667 ns |  27,913,133.3542 ns |  21,792,738.4751 ns | 2,918,461,850.0000 ns | 0.954 |    0.11 |   553817 |         - |         - |     - | 51372664 B |
 
-Notes.
-- DeflateStream uses a different (and vastly superior) compression for level 1 which we should investigate.
-- DeflateStream produces a 34% larger file at compression level 6.
-- DeflateStream does not allow compression levels > 6.
