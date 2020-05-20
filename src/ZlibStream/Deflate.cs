@@ -1255,9 +1255,6 @@ namespace SixLabors.ZlibStream
                         do
                         {
                             this.strStart++;
-
-                            // TODO: Origin code looks like it has a SIMD version.
-                            // insert_string_simd
                             hash_head = this.InsertString(prev, head, window, this.strStart);
 
                             // strstart never exceeds WSIZE-MAX_MATCH, so there are
@@ -1270,8 +1267,8 @@ namespace SixLabors.ZlibStream
                     {
                         this.strStart += this.matchLength;
                         this.matchLength = 0;
-                        this.insH = window[this.strStart];
 
+                        this.insH = window[this.strStart];
                         this.UpdateHash(window[this.strStart + 1]);
 
                         // If lookahead < MINMATCH, insH is garbage, but it does not
@@ -1340,13 +1337,7 @@ namespace SixLabors.ZlibStream
                 // dictionary, and set hash_head to the head of the hash chain:
                 if (this.lookahead >= MINMATCH)
                 {
-                    // TODO: Origin code looks like it has a SIMD version.
-                    // insert_string_simd
                     hash_head = this.InsertString(prev, head, window, this.strStart);
-
-                    // this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
-                    // hash_head = (prev[this.strStart & this.wMask] = head[this.insH]) & 0xFFFF;
-                    // head[this.insH] = (short)this.strStart;
                 }
 
                 // Find the longest match, discarding those <= prev_length.
@@ -1396,13 +1387,7 @@ namespace SixLabors.ZlibStream
                     {
                         if (++this.strStart <= max_insert)
                         {
-                            // TODO: Origin code looks like it has a SIMD version.
-                            // insert_string_simd
                             hash_head = this.InsertString(prev, head, window, this.strStart);
-
-                            // this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
-                            // hash_head = (prev[this.strStart & this.wMask] = head[this.insH]) & 0xFFFF;
-                            // head[this.insH] = (short)this.strStart;
                         }
                     }
                     while (--this.prevLength != 0);
