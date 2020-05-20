@@ -1691,15 +1691,8 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         private int InsertString(short* prev, short* head, byte* window, int str)
         {
-            // TODO: Fast Crc32 Sse based Impl.
-            return this.InsertStringScalar(prev, head, window, str);
-        }
-
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private int InsertStringScalar(short* prev, short* head, byte* window, int str)
-        {
+            // TODO: Investigate Crc based hash.
             this.UpdateHash(window[str + (MINMATCH - 1)]);
-
             int ret = (prev[str & this.wMask] = head[this.insH]) & 0xFFFF;
             head[this.insH] = (short)str;
 
