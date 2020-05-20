@@ -154,9 +154,9 @@ namespace SixLabors.ZlibStream
         private int hashMask; // hash_size-1
 
         // Number of bits by which ins_h must be shifted at each input
-        // step. It must be such that after MIN_MATCH steps, the oldest
+        // step. It must be such that after MINMATCH steps, the oldest
         // byte no longer takes part in the hash key, that is:
-        // hash_shift * MIN_MATCH >= hash_bits
+        // hash_shift * MINMATCH >= hash_bits
         private int hashShift;
 
         // Window position at the beginning of the current output block. Gets
@@ -740,7 +740,7 @@ namespace SixLabors.ZlibStream
         /// the current block must be flushed.
         /// </summary>
         /// <param name="dist">The distance of matched string.</param>
-        /// <param name="len">The match length-MIN_MATCH.</param>
+        /// <param name="len">The match length-MINMATCH.</param>
         /// <returns>The <see cref="bool"/>.</returns>
         [MethodImpl(InliningOptions.ShortMethod)]
         private bool Tr_tally_dist(int dist, int len)
@@ -753,7 +753,7 @@ namespace SixLabors.ZlibStream
             pending[this.lBuf + this.lastLit++] = (byte)len;
             this.matches++;
 
-            // Here, lc is the match length - MIN_MATCH
+            // Here, lc is the match length - MINMATCH
             dist--; // dist = match distance - 1
             this.dynLtreePointer[(Tree.LengthCode[len] + LITERALS + 1) * 2]++;
             this.dynDtreePointer[Tree.D_code(dist) * 2]++;
@@ -809,7 +809,7 @@ namespace SixLabors.ZlibStream
                     }
                     else
                     {
-                        // Here, lc is the match length - MIN_MATCH
+                        // Here, lc is the match length - MINMATCH
                         code = Tree.LengthCode[lc];
 
                         this.Send_code(code + LITERALS + 1, ltree); // send the length code
@@ -1176,7 +1176,7 @@ namespace SixLabors.ZlibStream
                     this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + 1]) & this.hashMask;
                 }
 
-                // If the whole input has less than MIN_MATCH bytes, ins_h is garbage,
+                // If the whole input has less than MINMATCH bytes, ins_h is garbage,
                 // but this is not important since only literal bytes will be emitted.
             }
             while (this.lookahead < MINLOOKAHEAD && this.strm.AvailIn != 0);
@@ -1201,7 +1201,7 @@ namespace SixLabors.ZlibStream
             {
                 // Make sure that we always have enough lookahead, except
                 // at the end of the input file. We need MAX_MATCH bytes
-                // for the next match, plus MIN_MATCH bytes to insert the
+                // for the next match, plus MINMATCH bytes to insert the
                 // string following the next match.
                 if (this.lookahead < MINLOOKAHEAD)
                 {
@@ -1224,13 +1224,11 @@ namespace SixLabors.ZlibStream
                 {
                     // TODO: Origin code looks like it has a SIMD version.
                     // insert_string_simd
-                    this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
-                    hash_head = (prev[this.strStart & this.wMask] = head[this.insH]) & 0xFFFF;
-                    head[this.insH] = (short)this.strStart;
+                    hash_head = this.InsertString(prev, head, window, this.strStart);
                 }
 
                 // Find the longest match, discarding those <= prev_length.
-                // At this point we have always match_length < MIN_MATCH
+                // At this point we have always match_length < MINMATCH
                 if (hash_head != 0 && ((this.strStart - hash_head) & 0xFFFF) <= this.wSize - MINLOOKAHEAD)
                 {
                     // To simplify the code, we prevent matches with the string
@@ -1262,11 +1260,10 @@ namespace SixLabors.ZlibStream
 
                             // TODO: Origin code looks like it has a SIMD version.
                             // insert_string_simd
-                            this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
-                            hash_head = (prev[this.strStart & this.wMask] = head[this.insH]) & 0xFFFF;
+                            hash_head = this.InsertString(prev, head, window, this.strStart);
 
                             // strstart never exceeds WSIZE-MAX_MATCH, so there are
-                            // always MIN_MATCH bytes ahead.
+                            // always MINMATCH bytes ahead.
                         }
                         while (--this.matchLength != 0);
                         this.strStart++;
@@ -1279,7 +1276,7 @@ namespace SixLabors.ZlibStream
 
                         this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + 1]) & this.hashMask;
 
-                        // If lookahead < MIN_MATCH, ins_h is garbage, but it does not
+                        // If lookahead < MINMATCH, ins_h is garbage, but it does not
                         // matter since it will be recomputed at next deflate call.
                     }
                 }
@@ -1325,7 +1322,7 @@ namespace SixLabors.ZlibStream
             {
                 // Make sure that we always have enough lookahead, except
                 // at the end of the input file. We need MAX_MATCH bytes
-                // for the next match, plus MIN_MATCH bytes to insert the
+                // for the next match, plus MINMATCH bytes to insert the
                 // string following the next match.
                 if (this.lookahead < MINLOOKAHEAD)
                 {
@@ -1347,9 +1344,11 @@ namespace SixLabors.ZlibStream
                 {
                     // TODO: Origin code looks like it has a SIMD version.
                     // insert_string_simd
-                    this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
-                    hash_head = (prev[this.strStart & this.wMask] = head[this.insH]) & 0xFFFF;
-                    head[this.insH] = (short)this.strStart;
+                    hash_head = this.InsertString(prev, head, window, this.strStart);
+
+                    // this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
+                    // hash_head = (prev[this.strStart & this.wMask] = head[this.insH]) & 0xFFFF;
+                    // head[this.insH] = (short)this.strStart;
                 }
 
                 // Find the longest match, discarding those <= prev_length.
@@ -1372,7 +1371,7 @@ namespace SixLabors.ZlibStream
                     if (this.matchLength <= 5 && (this.strategy == ZlibCompressionStrategy.ZFILTERED
                         || (this.matchLength == MINMATCH && this.strStart - this.matchStart > 4096)))
                     {
-                        // If prev_match is also MIN_MATCH, match_start is garbage
+                        // If prev_match is also MINMATCH, match_start is garbage
                         // but we will ignore the current match anyway.
                         this.matchLength = MINMATCH - 1;
                     }
@@ -1401,9 +1400,11 @@ namespace SixLabors.ZlibStream
                         {
                             // TODO: Origin code looks like it has a SIMD version.
                             // insert_string_simd
-                            this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
-                            hash_head = (prev[this.strStart & this.wMask] = head[this.insH]) & 0xFFFF;
-                            head[this.insH] = (short)this.strStart;
+                            hash_head = this.InsertString(prev, head, window, this.strStart);
+
+                            // this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + (MINMATCH - 1)]) & this.hashMask;
+                            // hash_head = (prev[this.strStart & this.wMask] = head[this.insH]) & 0xFFFF;
+                            // head[this.insH] = (short)this.strStart;
                         }
                     }
                     while (--this.prevLength != 0);
@@ -1787,9 +1788,7 @@ namespace SixLabors.ZlibStream
             short* prev = this.prevPointer;
             for (int n = 0; n <= length - MINMATCH; n++)
             {
-                this.insH = ((this.insH << this.hashShift) ^ window[n + (MINMATCH - 1)]) & this.hashMask;
-                prev[n & this.wMask] = head[this.insH];
-                head[this.insH] = (short)n;
+                this.InsertString(prev, head, window, n);
             }
 
             return ZlibCompressionState.ZOK;
@@ -2018,6 +2017,44 @@ namespace SixLabors.ZlibStream
             {
                 this.PendingOut = 0;
             }
+        }
+
+        /// <summary>
+        /// Update a hash value with the given input byte
+        /// IN  assertion: all calls to UPDATE_HASH are made with consecutive input
+        /// characters, so that a running hash key can be computed from the previous
+        /// key instead of complete recalculation each time.
+        /// </summary>
+        /// <param name="c">The input byte.</param>
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void UpdateHash(byte c)
+            => this.insH = ((this.insH << this.hashShift) ^ c) & this.hashMask;
+
+        /// <summary>
+        /// Insert string str in the dictionary and set match_head to the previous head
+        /// of the hash chain(the most recent string with same hash key). Return
+        /// the previous length of the hash chain.
+        /// IN  assertion: all calls to INSERT_STRING are made with consecutive input
+        /// characters and the first MINMATCH bytes of str are valid(except for
+        /// the last MINMATCH-1 bytes of the input file).
+        /// </summary>
+        /// <returns>The <see cref="int"/>.</returns>
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private int InsertString(short* prev, short* head, byte* window, int str)
+        {
+            // TODO: Fast Crc32 Sse based Impl.
+            return this.InsertStringScalar(prev, head, window, str);
+        }
+
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private int InsertStringScalar(short* prev, short* head, byte* window, int str)
+        {
+            this.UpdateHash(window[str + (MINMATCH - 1)]);
+
+            int ret = (prev[str & this.wMask] = head[this.insH]) & 0xFFFF;
+            head[this.insH] = (short)str;
+
+            return ret;
         }
 
         private struct Config
