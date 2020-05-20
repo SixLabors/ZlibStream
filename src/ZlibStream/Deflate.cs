@@ -10,7 +10,7 @@ namespace SixLabors.ZlibStream
     /// <summary>
     /// Class for compressing data through zlib.
     /// </summary>
-    internal sealed unsafe class Deflate
+    internal sealed unsafe partial class Deflate
     {
         private const int MAXMEMLEVEL = 9;
         private const int MAXWBITS = 15; // 32K LZ77 window
@@ -933,76 +933,6 @@ namespace SixLabors.ZlibStream
             this.Flush_pending(this.strm);
         }
 
-        // Copy without compression as much as possible from the input stream, return
-        // the current block state.
-        // This function does not insert new strings in the dictionary since
-        // uncompressible data is probably not useful. This function is used
-        // only for the level=0 compression option.
-        // NOTE: this function should be optimized to avoid extra copying from
-        // window to pending_buf.
-        [MethodImpl(InliningOptions.HotPath)]
-        private int Deflate_stored(ZlibFlushStrategy flush)
-        {
-            // Smallest worthy block size when not flushing or finishing. By default
-            // this is 32K.This can be as small as 507 bytes for memLevel == 1., pending_buf is limited
-            // to pending_buf_size, and each stored block has a 5 byte header:
-            int max_block_size = Math.Min(this.pendingBufferSize - 5, this.wSize);
-            int max_start;
-
-            // Copy as much as possible from input to output:
-            while (true)
-            {
-                // Fill the window as much as possible:
-                if (this.lookahead <= 1)
-                {
-                    this.Fill_window();
-                    if (this.lookahead == 0 && flush == ZlibFlushStrategy.ZNOFLUSH)
-                    {
-                        return NeedMore;
-                    }
-
-                    if (this.lookahead == 0)
-                    {
-                        break; // flush the current block
-                    }
-                }
-
-                this.strStart += this.lookahead;
-                this.lookahead = 0;
-
-                // Emit a stored block if pending_buf will be full:
-                max_start = this.blockStart + max_block_size;
-                if (this.strStart == 0 || this.strStart >= max_start)
-                {
-                    // strstart == 0 is possible when wraparound on 16-bit machine
-                    this.lookahead = this.strStart - max_start;
-                    this.strStart = max_start;
-
-                    this.Flush_block_only(false);
-                    if (this.strm.AvailOut == 0)
-                    {
-                        return NeedMore;
-                    }
-                }
-
-                // Flush if we may have to slide, otherwise block_start may become
-                // negative and the data will be gone:
-                if (this.strStart - this.blockStart >= this.wSize - MINLOOKAHEAD)
-                {
-                    this.Flush_block_only(false);
-                    if (this.strm.AvailOut == 0)
-                    {
-                        return NeedMore;
-                    }
-                }
-            }
-
-            this.Flush_block_only(flush == ZlibFlushStrategy.ZFINISH);
-            return this.strm.AvailOut == 0 ? (flush == ZlibFlushStrategy.ZFINISH)
-                ? FinishStarted
-                : NeedMore : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
-        }
-
         // Send a stored block
         [MethodImpl(InliningOptions.ShortMethod)]
         private void Tr_stored_block(int buf, int stored_len, bool eof)
@@ -1180,270 +1110,6 @@ namespace SixLabors.ZlibStream
                 // but this is not important since only literal bytes will be emitted.
             }
             while (this.lookahead < MINLOOKAHEAD && this.strm.AvailIn != 0);
-        }
-
-        // Compress as much as possible from the input stream, return the current
-        // block state.
-        // This function does not perform lazy evaluation of matches and inserts
-        // new strings in the dictionary only for unmatched strings or for short
-        // matches. It is used only for the fast compression options.
-        [MethodImpl(InliningOptions.HotPath)]
-        internal int Deflate_fast(ZlibFlushStrategy flush)
-        {
-            int hash_head; // head of the hash chain
-            bool bflush; // set if current block must be flushed
-
-            byte* window = this.windowPointer;
-            short* head = this.headPointer;
-            short* prev = this.prevPointer;
-
-            while (true)
-            {
-                // Make sure that we always have enough lookahead, except
-                // at the end of the input file. We need MAX_MATCH bytes
-                // for the next match, plus MINMATCH bytes to insert the
-                // string following the next match.
-                if (this.lookahead < MINLOOKAHEAD)
-                {
-                    this.Fill_window();
-                    if (this.lookahead < MINLOOKAHEAD && flush == ZlibFlushStrategy.ZNOFLUSH)
-                    {
-                        return NeedMore;
-                    }
-
-                    if (this.lookahead == 0)
-                    {
-                        break; // flush the current block
-                    }
-                }
-
-                // Insert the string window[strstart .. strstart+2] in the
-                // dictionary, and set hash_head to the head of the hash chain:
-                hash_head = 0;
-                if (this.lookahead >= MINMATCH)
-                {
-                    hash_head = this.InsertString(prev, head, window, this.strStart);
-                }
-
-                // Find the longest match, discarding those <= prev_length.
-                // At this point we have always match_length < MINMATCH
-                if (hash_head != 0 && ((this.strStart - hash_head) & 0xFFFF) <= this.wSize - MINLOOKAHEAD)
-                {
-                    // To simplify the code, we prevent matches with the string
-                    // of window index 0 (in particular we have to avoid a match
-                    // of the string with itself at the start of the input file).
-                    if (this.strategy != ZlibCompressionStrategy.ZHUFFMANONLY)
-                    {
-                        this.matchLength = this.Longest_match(hash_head);
-
-                        // longest_match() sets match_start
-                    }
-                }
-
-                if (this.matchLength >= MINMATCH)
-                {
-                    // check_match(strstart, match_start, match_length);
-                    bflush = this.Tr_tally_dist(this.strStart - this.matchStart, this.matchLength - MINMATCH);
-
-                    this.lookahead -= this.matchLength;
-
-                    // Insert new strings in the hash table only if the match length
-                    // is not too large. This saves time but degrades compression.
-                    if (this.matchLength <= this.maxLazyMatch && this.lookahead >= MINMATCH)
-                    {
-                        this.matchLength--; // string at strstart already in hash table
-                        do
-                        {
-                            this.strStart++;
-                            hash_head = this.InsertString(prev, head, window, this.strStart);
-
-                            // strstart never exceeds WSIZE-MAX_MATCH, so there are
-                            // always MINMATCH bytes ahead.
-                        }
-                        while (--this.matchLength != 0);
-                        this.strStart++;
-                    }
-                    else
-                    {
-                        this.strStart += this.matchLength;
-                        this.matchLength = 0;
-
-                        this.insH = window[this.strStart];
-                        this.UpdateHash(window[this.strStart + 1]);
-
-                        // If lookahead < MINMATCH, insH is garbage, but it does not
-                        // matter since it will be recomputed at next deflate call.
-                    }
-                }
-                else
-                {
-                    // No match, output a literal byte
-                    bflush = this.Tr_tally_lit(window[this.strStart]);
-                    this.lookahead--;
-                    this.strStart++;
-                }
-
-                if (bflush)
-                {
-                    this.Flush_block_only(false);
-                    if (this.strm.AvailOut == 0)
-                    {
-                        return NeedMore;
-                    }
-                }
-            }
-
-            this.Flush_block_only(flush == ZlibFlushStrategy.ZFINISH);
-            return this.strm.AvailOut == 0
-                ? flush == ZlibFlushStrategy.ZFINISH ? FinishStarted : NeedMore
-                : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
-        }
-
-        // Same as above, but achieves better compression. We use a lazy
-        // evaluation for matches: a match is finally adopted only if there is
-        // no better match at the next window position.
-        [MethodImpl(InliningOptions.HotPath)]
-        private int Deflate_slow(ZlibFlushStrategy flush)
-        {
-            int hash_head = 0; // head of hash chain
-            bool bflush; // set if current block must be flushed
-
-            byte* window = this.windowPointer;
-            short* head = this.headPointer;
-            short* prev = this.prevPointer;
-
-            // Process the input block.
-            while (true)
-            {
-                // Make sure that we always have enough lookahead, except
-                // at the end of the input file. We need MAX_MATCH bytes
-                // for the next match, plus MINMATCH bytes to insert the
-                // string following the next match.
-                if (this.lookahead < MINLOOKAHEAD)
-                {
-                    this.Fill_window();
-                    if (this.lookahead < MINLOOKAHEAD && flush == ZlibFlushStrategy.ZNOFLUSH)
-                    {
-                        return NeedMore;
-                    }
-
-                    if (this.lookahead == 0)
-                    {
-                        break; // flush the current block
-                    }
-                }
-
-                // Insert the string window[strstart .. strstart+2] in the
-                // dictionary, and set hash_head to the head of the hash chain:
-                if (this.lookahead >= MINMATCH)
-                {
-                    hash_head = this.InsertString(prev, head, window, this.strStart);
-                }
-
-                // Find the longest match, discarding those <= prev_length.
-                this.prevLength = this.matchLength;
-                this.prevMatch = this.matchStart;
-                this.matchLength = MINMATCH - 1;
-
-                if (hash_head != 0 && this.prevLength < this.maxLazyMatch
-                    && ((this.strStart - hash_head) & 0xFFFF) <= this.wSize - MINLOOKAHEAD)
-                {
-                    // To simplify the code, we prevent matches with the string
-                    // of window index 0 (in particular we have to avoid a match
-                    // of the string with itself at the start of the input file).
-                    if (this.strategy != ZlibCompressionStrategy.ZHUFFMANONLY)
-                    {
-                        this.matchLength = this.Longest_match(hash_head);
-                    }
-
-                    // longest_match() sets match_start
-                    if (this.matchLength <= 5 && (this.strategy == ZlibCompressionStrategy.ZFILTERED
-                        || (this.matchLength == MINMATCH && this.strStart - this.matchStart > 4096)))
-                    {
-                        // If prev_match is also MINMATCH, match_start is garbage
-                        // but we will ignore the current match anyway.
-                        this.matchLength = MINMATCH - 1;
-                    }
-                }
-
-                // If there was a match at the previous step and the current
-                // match is not better, output the previous match:
-                if (this.prevLength >= MINMATCH && this.matchLength <= this.prevLength)
-                {
-                    int max_insert = this.strStart + this.lookahead - MINMATCH;
-
-                    // Do not insert strings in hash table beyond this.
-
-                    // check_match(strstart-1, prev_match, prev_length);
-                    bflush = this.Tr_tally_dist(this.strStart - 1 - this.prevMatch, this.prevLength - MINMATCH);
-
-                    // Insert in hash table all strings up to the end of the match.
-                    // strstart-1 and strstart are already inserted. If there is not
-                    // enough lookahead, the last two strings are not inserted in
-                    // the hash table.
-                    this.lookahead -= this.prevLength - 1;
-                    this.prevLength -= 2;
-                    do
-                    {
-                        if (++this.strStart <= max_insert)
-                        {
-                            hash_head = this.InsertString(prev, head, window, this.strStart);
-                        }
-                    }
-                    while (--this.prevLength != 0);
-                    this.matchAvailable = 0;
-                    this.matchLength = MINMATCH - 1;
-                    this.strStart++;
-
-                    if (bflush)
-                    {
-                        this.Flush_block_only(false);
-                        if (this.strm.AvailOut == 0)
-                        {
-                            return NeedMore;
-                        }
-                    }
-                }
-                else if (this.matchAvailable != 0)
-                {
-                    // If there was no match at the previous position, output a
-                    // single literal. If there was a match but the current match
-                    // is longer, truncate the previous match to a single literal.
-                    bflush = this.Tr_tally_lit(window[this.strStart - 1]);
-
-                    if (bflush)
-                    {
-                        this.Flush_block_only(false);
-                    }
-
-                    this.strStart++;
-                    this.lookahead--;
-                    if (this.strm.AvailOut == 0)
-                    {
-                        return NeedMore;
-                    }
-                }
-                else
-                {
-                    // There is no previous match to compare with, wait for
-                    // the next step to decide.
-                    this.matchAvailable = 1;
-                    this.strStart++;
-                    this.lookahead--;
-                }
-            }
-
-            if (this.matchAvailable != 0)
-            {
-                _ = this.Tr_tally_lit(window[this.strStart - 1]);
-                this.matchAvailable = 0;
-            }
-
-            this.Flush_block_only(flush == ZlibFlushStrategy.ZFINISH);
-
-            return this.strm.AvailOut == 0
-                ? flush == ZlibFlushStrategy.ZFINISH ? FinishStarted : NeedMore
-                : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
         }
 
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
@@ -1878,15 +1544,15 @@ namespace SixLabors.ZlibStream
                 switch (ConfigTable[(int)this.level].Func)
                 {
                     case STORED:
-                        bstate = this.Deflate_stored(flush);
+                        bstate = this.DeflateStored(flush);
                         break;
 
                     case FAST:
-                        bstate = this.Deflate_fast(flush);
+                        bstate = this.DeflateFast(flush);
                         break;
 
                     case SLOW:
-                        bstate = this.Deflate_slow(flush);
+                        bstate = this.DeflateSlow(flush);
                         break;
 
                     // TODO: Add Huffman and RLE
