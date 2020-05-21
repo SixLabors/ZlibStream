@@ -3,7 +3,6 @@
 
 using System.Buffers.Binary;
 using BenchmarkDotNet.Attributes;
-using SixLabors.ZlibStream;
 
 namespace ZlibStream.Benchmarks
 {
@@ -14,7 +13,7 @@ namespace ZlibStream.Benchmarks
         [Benchmark]
         public void PutShort()
         {
-            BinaryPrimitives.WriteInt16LittleEndian(this.buffer, (short)512);
+            BinaryPrimitives.WriteInt16LittleEndian(this.buffer, 255);
         }
 
         [Benchmark]
@@ -22,7 +21,7 @@ namespace ZlibStream.Benchmarks
         {
             const int w = 255;
             this.buffer[0] = (byte)w;
-            this.buffer[1] = (byte)ZlibUtilities.URShift(w, 8);
+            this.buffer[1] = (byte)w >> 8;
         }
     }
 }

@@ -158,17 +158,17 @@ namespace SixLabors.ZlibStream
                         t = b & 7;
                         this.last = t & 1;
 
-                        switch (ZlibUtilities.URShift(t, 1))
+                        switch (t >> 1)
                         {
                             case 0: // stored
                             {
-                                b = ZlibUtilities.URShift(b, 3);
+                                b >>= 3;
                                 k -= 3;
                             }
 
                             t = k & 7; // go to byte boundary
                             {
-                                b = ZlibUtilities.URShift(b, t);
+                                b >>= t;
                                 k -= t;
                             }
 
@@ -187,7 +187,7 @@ namespace SixLabors.ZlibStream
                             }
 
                             {
-                                b = ZlibUtilities.URShift(b, 3);
+                                b >>= 3;
                                 k -= 3;
                             }
 
@@ -196,7 +196,7 @@ namespace SixLabors.ZlibStream
 
                             case 2: // dynamic
                             {
-                                b = ZlibUtilities.URShift(b, 3);
+                                b >>= 3;
                                 k -= 3;
                             }
 
@@ -205,7 +205,7 @@ namespace SixLabors.ZlibStream
 
                             case 3: // illegal
                             {
-                                b = ZlibUtilities.URShift(b, 3);
+                                b >>= 3;
                                 k -= 3;
                             }
 
@@ -245,7 +245,7 @@ namespace SixLabors.ZlibStream
                             k += 8;
                         }
 
-                        if ((ZlibUtilities.URShift(~b, 16) & 0xffff) != (b & 0xffff))
+                        if (((~b >> 16) & 0xffff) != (b & 0xffff))
                         {
                             this.mode = BAD;
                             z.Msg = "invalid stored block lengths";
@@ -377,7 +377,7 @@ namespace SixLabors.ZlibStream
                         t = 258 + (t & 0x1f) + ((t >> 5) & 0x1f);
                         this.blens = new int[t];
                         {
-                            b = ZlibUtilities.URShift(b, 14);
+                            b >>= 14;
                             k -= 14;
                         }
 
@@ -386,7 +386,7 @@ namespace SixLabors.ZlibStream
                         goto case BTREE;
 
                     case BTREE:
-                        while (this.index < 4 + ZlibUtilities.URShift(this.table, 10))
+                        while (this.index < 4 + (this.table >> 10))
                         {
                             while (k < 3)
                             {
@@ -412,7 +412,7 @@ namespace SixLabors.ZlibStream
 
                             this.blens[Border[this.index++]] = b & 7;
                             {
-                                b = ZlibUtilities.URShift(b, 3);
+                                b >>= 3;
                                 k -= 3;
                             }
                         }
@@ -491,7 +491,7 @@ namespace SixLabors.ZlibStream
 
                             if (c < 16)
                             {
-                                b = ZlibUtilities.URShift(b, t);
+                                b >>= t;
                                 k -= t;
                                 this.blens[this.index++] = c;
                             }
@@ -523,12 +523,12 @@ namespace SixLabors.ZlibStream
                                     k += 8;
                                 }
 
-                                b = ZlibUtilities.URShift(b, t);
+                                b >>= t;
                                 k -= t;
 
                                 j += b & InflateMask[i];
 
-                                b = ZlibUtilities.URShift(b, i);
+                                b >>= i;
                                 k -= i;
 
                                 i = this.index;

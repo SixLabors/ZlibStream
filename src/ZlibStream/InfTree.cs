@@ -307,7 +307,7 @@ namespace SixLabors.ZlibStream
                             x[h] = i; // save pattern for backing up
                             r[0] = (byte)j; // bits in this table
                             r[1] = (byte)l; // bits to dump before this table
-                            j = ZlibUtilities.URShift(i, w - l);
+                            j = i >> (w - l);
                             r[2] = q - u[h - 1] - j; // offset to this table
                             Buffer.BlockCopy(r, 0, hp, (u[h - 1] + j) * 3, 3); // connect to last table
                         }
@@ -336,13 +336,13 @@ namespace SixLabors.ZlibStream
 
                     // fill code-like entries with r
                     f = 1 << (k - w);
-                    for (j = ZlibUtilities.URShift(i, w); j < z; j += f)
+                    for (j = i >> w; j < z; j += f)
                     {
                         Buffer.BlockCopy(r, 0, hp, (q + j) * 3, 3);
                     }
 
                     // backwards increment the k-bit code i
-                    for (j = 1 << (k - 1); (i & j) != 0; j = ZlibUtilities.URShift(j, 1))
+                    for (j = 1 << (k - 1); (i & j) != 0; j >>= 1)
                     {
                         i ^= j;
                     }

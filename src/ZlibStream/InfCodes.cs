@@ -375,7 +375,7 @@ namespace SixLabors.ZlibStream
         {
             int j; // temporary storage
 
-             // int[] t; // temporary pointer
+            // int[] t; // temporary pointer
             int tindex; // temporary pointer
             int e; // extra bits or operation
             var b = 0; // bit buffer
@@ -459,7 +459,7 @@ namespace SixLabors.ZlibStream
 
                         tindex = (this.TreeIndex + (b & InflateMask[j])) * 3;
 
-                        b = ZlibUtilities.URShift(b, this.Tree[tindex + 1]);
+                        b >>= this.Tree[tindex + 1];
                         k -= this.Tree[tindex + 1];
 
                         e = this.Tree[tindex];

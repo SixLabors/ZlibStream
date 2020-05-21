@@ -641,17 +641,17 @@ namespace SixLabors.ZlibStream
         // Output a byte on the stream.
         // IN assertion: there is enough room in pending_buf.
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void Put_byte(byte[] p, int start, int len)
+        private void PutByte(byte[] p, int start, int len)
         {
             Buffer.BlockCopy(p, start, this.pendingBuffer, this.Pending, len);
             this.Pending += len;
         }
 
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void Put_byte(byte c) => this.pendingPointer[this.Pending++] = c;
+        private void PutByte(byte c) => this.pendingPointer[this.Pending++] = c;
 
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void Put_ushort(int w)
+        private void PutShort(int w)
         {
             ushort* s = (ushort*)&this.pendingPointer[this.Pending];
             s[0] = (ushort)w;
@@ -659,10 +659,10 @@ namespace SixLabors.ZlibStream
         }
 
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void PutushortMSB(int b)
+        private void PutShortMSB(int b)
         {
-            this.Put_byte((byte)(b >> 8));
-            this.Put_byte((byte)b);
+            this.PutByte((byte)(b >> 8));
+            this.PutByte((byte)b);
         }
 
         [MethodImpl(InliningOptions.ShortMethod)]
@@ -679,8 +679,8 @@ namespace SixLabors.ZlibStream
             if (this.biValid > BufSize - length)
             {
                 this.biBuf |= (ushort)(value << this.biValid);
-                this.Put_ushort(this.biBuf);
-                this.biBuf = (ushort)ZlibUtilities.URShift(value, BufSize - this.biValid);
+                this.PutShort(this.biBuf);
+                this.biBuf = (ushort)(value >> (BufSize - this.biValid));
                 this.biValid += length - BufSize;
             }
             else
@@ -734,7 +734,7 @@ namespace SixLabors.ZlibStream
             byte* pending = this.pendingPointer;
             int dbuffindex = this.dBuf + (this.lastLit * 2);
 
-            pending[dbuffindex++] = (byte)ZlibUtilities.URShift(dist, 8);
+            pending[dbuffindex++] = (byte)(dist >> 8);
             pending[dbuffindex] = (byte)dist;
             pending[this.lBuf + this.lastLit++] = (byte)len;
             this.matches++;
@@ -856,7 +856,7 @@ namespace SixLabors.ZlibStream
                 n++;
             }
 
-            this.dataType = (byte)(bin_freq > ZlibUtilities.URShift(ascii_freq, 2) ? ZBINARY : ZASCII);
+            this.dataType = (byte)(bin_freq > (ascii_freq >> 2) ? ZBINARY : ZASCII);
         }
 
         // Flush the bit buffer, keeping at most 7 bits in it.
@@ -865,14 +865,14 @@ namespace SixLabors.ZlibStream
         {
             if (this.biValid == 16)
             {
-                this.Put_ushort(this.biBuf);
+                this.PutShort(this.biBuf);
                 this.biBuf = 0;
                 this.biValid = 0;
             }
             else if (this.biValid >= 8)
             {
-                this.Put_byte((byte)this.biBuf);
-                this.biBuf = (ushort)ZlibUtilities.URShift(this.biBuf, 8);
+                this.PutByte((byte)this.biBuf);
+                this.biBuf = (ushort)(this.biBuf >> 8);
                 this.biValid -= 8;
             }
         }
@@ -883,11 +883,11 @@ namespace SixLabors.ZlibStream
         {
             if (this.biValid > 8)
             {
-                this.Put_ushort(this.biBuf);
+                this.PutShort(this.biBuf);
             }
             else if (this.biValid > 0)
             {
-                this.Put_byte((byte)this.biBuf);
+                this.PutByte((byte)this.biBuf);
             }
 
             this.biBuf = 0;
@@ -904,11 +904,11 @@ namespace SixLabors.ZlibStream
 
             if (header)
             {
-                this.Put_ushort((ushort)len);
-                this.Put_ushort((ushort)~len);
+                this.PutShort((ushort)len);
+                this.PutShort((ushort)~len);
             }
 
-            this.Put_byte(this.windowBuffer, buf, len);
+            this.PutByte(this.windowBuffer, buf, len);
         }
 
         [MethodImpl(InliningOptions.ShortMethod)]
@@ -957,8 +957,8 @@ namespace SixLabors.ZlibStream
                 max_blindex = this.Build_bl_tree();
 
                 // Determine the best encoding. Compute first the block length in bytes
-                opt_lenb = ZlibUtilities.URShift(this.OptLen + 3 + 7, 3);
-                static_lenb = ZlibUtilities.URShift(this.StaticLen + 3 + 7, 3);
+                opt_lenb = (this.OptLen + 3 + 7) >> 3;
+                static_lenb = (this.StaticLen + 3 + 7) >> 3;
 
                 if (static_lenb <= opt_lenb)
                 {
@@ -1476,13 +1476,13 @@ namespace SixLabors.ZlibStream
                 header += 31 - (header % 31);
 
                 this.status = BUSYSTATE;
-                this.PutushortMSB(header);
+                this.PutShortMSB(header);
 
                 // Save the adler32 of the preset dictionary:
                 if (this.strStart != 0)
                 {
-                    this.PutushortMSB((int)strm.Adler >> 16);
-                    this.PutushortMSB((int)strm.Adler);
+                    this.PutShortMSB((int)strm.Adler >> 16);
+                    this.PutShortMSB((int)strm.Adler);
                 }
 
                 strm.Adler = Adler32.SeedValue;
@@ -1613,8 +1613,8 @@ namespace SixLabors.ZlibStream
             }
 
             // Write the zlib trailer (adler32)
-            this.PutushortMSB((int)strm.Adler >> 16);
-            this.PutushortMSB((int)strm.Adler);
+            this.PutShortMSB((int)strm.Adler >> 16);
+            this.PutShortMSB((int)strm.Adler);
             this.Flush_pending(strm);
 
             // If avail_out is zero, the application will call deflate again

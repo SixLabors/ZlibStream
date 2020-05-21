@@ -133,7 +133,7 @@ namespace SixLabors.ZlibStream
         // used.
         [MethodImpl(InliningOptions.ShortMethod)]
         internal static int D_code(int dist)
-            => dist < 256 ? DistCode[dist] : DistCode[256 + ZlibUtilities.URShift(dist, 7)];
+            => dist < 256 ? DistCode[dist] : DistCode[256 + (dist >> 7)];
 
         // Generate the codes for a given tree and bit counts (which need not be
         // optimal).
