@@ -140,7 +140,6 @@ namespace SixLabors.ZlibStream
         private MemoryHandle headHandle;
         private ushort* headPointer;
 
-        private uint insH; // hash index of string to be inserted
         private int hashSize; // number of elements in hash table
         private int hashBits; // log2(hashSize)
         private uint hashMask; // hashSize - 1
@@ -342,7 +341,6 @@ namespace SixLabors.ZlibStream
             this.lookahead = 0;
             this.matchLength = this.prevLength = MINMATCH - 1;
             this.matchAvailable = 0;
-            this.insH = 0;
         }
 
         // Initialize the tree data structures for a new zlib stream.
@@ -1088,7 +1086,6 @@ namespace SixLabors.ZlibStream
                 // Initialize the hash value now that we have some input:
                 if (this.lookahead >= MINMATCH)
                 {
-                    this.insH = window[this.strStart];
                     this.UpdateHash(window[this.strStart + 1]);
                 }
 
@@ -1204,7 +1201,13 @@ namespace SixLabors.ZlibStream
         internal ZlibCompressionState DeflateInit(ZStream strm, ZlibCompressionLevel level)
             => this.DeflateInit(strm, level, MAXWBITS);
 
-        internal ZlibCompressionState DeflateInit2(ZStream strm, ZlibCompressionLevel level, int method, int windowBits, int memLevel, ZlibCompressionStrategy strategy)
+        internal ZlibCompressionState DeflateInit2(
+            ZStream strm,
+            ZlibCompressionLevel level,
+            int method,
+            int windowBits,
+            int memLevel,
+            ZlibCompressionStrategy strategy)
         {
             int noheader = 0;
             strm.Msg = null;
@@ -1416,7 +1419,6 @@ namespace SixLabors.ZlibStream
             // s->lookahead stays null, so s->ins_h will be recomputed at the next
             // call of fill_window.
             byte* window = this.windowPointer;
-            this.insH = window[0];
             this.UpdateHash(window[1]);
 
             ushort* head = this.headPointer;
@@ -1660,15 +1662,15 @@ namespace SixLabors.ZlibStream
         /// characters, so that a running hash key can be computed from the previous
         /// key instead of complete recalculation each time.
         /// </summary>
-        /// <param name="c">The input byte.</param>
+        /// <param name="val">The input byte.</param>
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void UpdateHash(byte c) => this.insH = ((this.insH << this.hashShift) ^ c) & this.hashMask;
+        private uint UpdateHash(uint val) => (val * 2654435761U) >> (32 - this.hashBits);
 
         /// <summary>
         /// Insert string str in the dictionary and set match_head to the previous head
         /// of the hash chain(the most recent string with same hash key). Return
         /// the previous length of the hash chain.
-        /// IN  assertion: all calls to INSERT_STRING are made with consecutive input
+        /// IN  assertion: all calls to InsertString are made with consecutive input
         /// characters and the first MINMATCH bytes of str are valid(except for
         /// the last MINMATCH-1 bytes of the input file).
         /// </summary>
@@ -1676,11 +1678,15 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         private int InsertString(ushort* prev, ushort* head, byte* window, int str)
         {
-            this.UpdateHash(window[str + (MINMATCH - 1)]);
-            int ret = prev[str & this.wMask] = head[this.insH];
-            head[this.insH] = (ushort)str;
+            uint hash = this.UpdateHash(*(uint*)(window + (str + (MINMATCH - 1))));
+            ushort cur = head[hash & this.hashMask];
+            if (cur != str)
+            {
+                prev[str & this.wMask] = cur;
+                head[hash & this.hashMask] = (ushort)str;
+            }
 
-            return ret;
+            return cur;
         }
 
         private struct Config

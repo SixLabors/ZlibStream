@@ -100,7 +100,6 @@ namespace SixLabors.ZlibStream
                         this.strStart += this.matchLength;
                         this.matchLength = 0;
 
-                        this.insH = window[this.strStart];
                         this.UpdateHash(window[this.strStart + 1]);
 
                         // If lookahead < MINMATCH, insH is garbage, but it does not
