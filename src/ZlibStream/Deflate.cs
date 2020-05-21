@@ -140,10 +140,10 @@ namespace SixLabors.ZlibStream
         private MemoryHandle headHandle;
         private ushort* headPointer;
 
-        private int insH; // hash index of string to be inserted
+        private uint insH; // hash index of string to be inserted
         private int hashSize; // number of elements in hash table
         private int hashBits; // log2(hashSize)
-        private int hashMask; // hashSize - 1
+        private uint hashMask; // hashSize - 1
 
         // Number of bits by which ins_h must be shifted at each input
         // step. It must be such that after MINMATCH steps, the oldest
@@ -1089,7 +1089,7 @@ namespace SixLabors.ZlibStream
                 if (this.lookahead >= MINMATCH)
                 {
                     this.insH = window[this.strStart];
-                    this.insH = ((this.insH << this.hashShift) ^ window[this.strStart + 1]) & this.hashMask;
+                    this.UpdateHash(window[this.strStart + 1]);
                 }
 
                 // If the whole input has less than MINMATCH bytes, ins_h is garbage,
@@ -1248,7 +1248,7 @@ namespace SixLabors.ZlibStream
 
             this.hashBits = memLevel + 7;
             this.hashSize = 1 << this.hashBits;
-            this.hashMask = this.hashSize - 1;
+            this.hashMask = (uint)this.hashSize - 1;
             this.hashShift = (this.hashBits + MINMATCH - 1) / MINMATCH;
 
             this.windowBuffer = ArrayPool<byte>.Shared.Rent(this.wSize * 2);
@@ -1417,7 +1417,7 @@ namespace SixLabors.ZlibStream
             // call of fill_window.
             byte* window = this.windowPointer;
             this.insH = window[0];
-            this.insH = ((this.insH << this.hashShift) ^ window[1]) & this.hashMask;
+            this.UpdateHash(window[1]);
 
             ushort* head = this.headPointer;
             ushort* prev = this.prevPointer;
@@ -1662,8 +1662,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="c">The input byte.</param>
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void UpdateHash(byte c)
-            => this.insH = ((this.insH << this.hashShift) ^ c) & this.hashMask;
+        private void UpdateHash(byte c) => this.insH = ((this.insH << this.hashShift) ^ c) & this.hashMask;
 
         /// <summary>
         /// Insert string str in the dictionary and set match_head to the previous head
@@ -1677,7 +1676,6 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         private int InsertString(ushort* prev, ushort* head, byte* window, int str)
         {
-            // TODO: Investigate Crc based hash.
             this.UpdateHash(window[str + (MINMATCH - 1)]);
             int ret = prev[str & this.wMask] = head[this.insH];
             head[this.insH] = (ushort)str;
