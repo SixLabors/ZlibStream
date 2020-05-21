@@ -132,13 +132,13 @@ namespace SixLabors.ZlibStream
         // Link to older string with same hash index. To limit the size of this
         // array to 64K, this link is maintained only for the last 32K strings.
         // An index in this array is thus a window index modulo 32K.
-        private short[] prevBuffer;
+        private ushort[] prevBuffer;
         private MemoryHandle prevHandle;
-        private short* prevPointer;
+        private ushort* prevPointer;
 
-        private short[] headBuffer; // Heads of the hash chains or NIL.
+        private ushort[] headBuffer; // Heads of the hash chains or NIL.
         private MemoryHandle headHandle;
-        private short* headPointer;
+        private ushort* headPointer;
 
         private int insH; // hash index of string to be inserted
         private int hashSize; // number of elements in hash table
@@ -189,24 +189,24 @@ namespace SixLabors.ZlibStream
         private int niceMatch;
 
         // Used by trees.
-        private readonly short[] dynLtreeBuffer; // literal and length tree
+        private readonly ushort[] dynLtreeBuffer; // literal and length tree
         private MemoryHandle dynLtreeHandle;
-        private readonly short* dynLtreePointer;
+        private readonly ushort* dynLtreePointer;
 
-        private readonly short[] dynDtreeBuffer; // distance tree
+        private readonly ushort[] dynDtreeBuffer; // distance tree
         private MemoryHandle dynDtreeHandle;
-        private readonly short* dynDtreePointer;
+        private readonly ushort* dynDtreePointer;
 
-        private readonly short[] blTreeBuffer; // Huffman tree for bit lengths
+        private readonly ushort[] blTreeBuffer; // Huffman tree for bit lengths
         private MemoryHandle bltreeHandle;
-        private readonly short* blTreePointer;
+        private readonly ushort* blTreePointer;
 
         private readonly Tree lDesc = new Tree(); // desc for literal tree
         private readonly Tree dDesc = new Tree(); // desc for distance tree
         private readonly Tree blDesc = new Tree(); // desc for bit length tree
 
         // number of codes at each bit length for an optimal tree
-        private readonly short[] blCountBuffer;
+        private readonly ushort[] blCountBuffer;
         private MemoryHandle blCountHandle;
 
         // heap used to build the Huffman trees
@@ -223,7 +223,7 @@ namespace SixLabors.ZlibStream
 
         // Output buffer. bits are inserted starting at the bottom (least
         // significant bits).
-        private short biBuf;
+        private ushort biBuf;
 
         // Number of valid bits in bi_buf.  All bits above the last valid bit
         // are always zero.
@@ -262,9 +262,9 @@ namespace SixLabors.ZlibStream
         /// </summary>
         internal Deflate()
         {
-            this.blCountBuffer = ArrayPool<short>.Shared.Rent(MAXBITS + 1);
-            this.blCountHandle = new Memory<short>(this.blCountBuffer).Pin();
-            this.BlCountPointer = (short*)this.blCountHandle.Pointer;
+            this.blCountBuffer = ArrayPool<ushort>.Shared.Rent(MAXBITS + 1);
+            this.blCountHandle = new Memory<ushort>(this.blCountBuffer).Pin();
+            this.BlCountPointer = (ushort*)this.blCountHandle.Pointer;
 
             this.heapBuffer = ArrayPool<int>.Shared.Rent((2 * LCODES) + 1);
             this.heapHandle = new Memory<int>(this.heapBuffer).Pin();
@@ -274,17 +274,17 @@ namespace SixLabors.ZlibStream
             this.depthHandle = new Memory<byte>(this.depthBuffer).Pin();
             this.DepthPointer = (byte*)this.depthHandle.Pointer;
 
-            this.dynLtreeBuffer = ArrayPool<short>.Shared.Rent(HEAPSIZE * 2); // literal and length tree
-            this.dynLtreeHandle = new Memory<short>(this.dynLtreeBuffer).Pin();
-            this.dynLtreePointer = (short*)this.dynLtreeHandle.Pointer;
+            this.dynLtreeBuffer = ArrayPool<ushort>.Shared.Rent(HEAPSIZE * 2); // literal and length tree
+            this.dynLtreeHandle = new Memory<ushort>(this.dynLtreeBuffer).Pin();
+            this.dynLtreePointer = (ushort*)this.dynLtreeHandle.Pointer;
 
-            this.dynDtreeBuffer = ArrayPool<short>.Shared.Rent(((2 * DCODES) + 1) * 2); // Distance tree
-            this.dynDtreeHandle = new Memory<short>(this.dynDtreeBuffer).Pin();
-            this.dynDtreePointer = (short*)this.dynDtreeHandle.Pointer;
+            this.dynDtreeBuffer = ArrayPool<ushort>.Shared.Rent(((2 * DCODES) + 1) * 2); // Distance tree
+            this.dynDtreeHandle = new Memory<ushort>(this.dynDtreeBuffer).Pin();
+            this.dynDtreePointer = (ushort*)this.dynDtreeHandle.Pointer;
 
-            this.blTreeBuffer = ArrayPool<short>.Shared.Rent(((2 * BLCODES) + 1) * 2); // Huffman tree for bit lengths
-            this.bltreeHandle = new Memory<short>(this.blTreeBuffer).Pin();
-            this.blTreePointer = (short*)this.bltreeHandle.Pointer;
+            this.blTreeBuffer = ArrayPool<ushort>.Shared.Rent(((2 * BLCODES) + 1) * 2); // Huffman tree for bit lengths
+            this.bltreeHandle = new Memory<ushort>(this.blTreeBuffer).Pin();
+            this.blTreePointer = (ushort*)this.bltreeHandle.Pointer;
         }
 
         internal int Pending { get; set; } // nb of bytes in the pending buffer
@@ -292,7 +292,7 @@ namespace SixLabors.ZlibStream
         internal int Noheader { get; set; } // suppress zlib header and adler32
 
         // number of codes at each bit length for an optimal tree
-        internal short* BlCountPointer { get; private set; }
+        internal ushort* BlCountPointer { get; private set; }
 
         // heap used to build the Huffman trees
         // The sons of heap[n] are heap[2*n] and heap[2*n+1]. heap[0] is not used.
@@ -313,7 +313,7 @@ namespace SixLabors.ZlibStream
         internal int StaticLen { get; set; } // bit length of current block with static trees
 
         [MethodImpl(InliningOptions.ShortMethod)]
-        private static bool Smaller(short* tree, int n, int m, byte* depth)
+        private static bool Smaller(ushort* tree, int n, int m, byte* depth)
         {
             int n2 = 2 * n;
             int m2 = 2 * m;
@@ -323,7 +323,7 @@ namespace SixLabors.ZlibStream
         private void Lm_init()
         {
             this.windowSize = 2 * this.wSize;
-            short* head = this.headPointer;
+            ushort* head = this.headPointer;
 
             head[this.hashSize - 1] = 0;
             for (int i = 0; i < this.hashSize - 1; i++)
@@ -368,9 +368,9 @@ namespace SixLabors.ZlibStream
         private void Init_block()
         {
             // Initialize the trees.
-            short* dynLtree = this.dynLtreePointer;
-            short* dynDtree = this.dynDtreePointer;
-            short* blTree = this.blTreePointer;
+            ushort* dynLtree = this.dynLtreePointer;
+            ushort* dynDtree = this.dynDtreePointer;
+            ushort* blTree = this.blTreePointer;
 
             for (int i = 0; i < LCODES; i++)
             {
@@ -401,7 +401,7 @@ namespace SixLabors.ZlibStream
         /// <param name="tree">The tree to restore.</param>
         /// <param name="k">The node to move down.</param>
         [MethodImpl(InliningOptions.ShortMethod)]
-        public void Pqdownheap(short* tree, int k)
+        public void Pqdownheap(ushort* tree, int k)
         {
             int* heap = this.HeapPointer;
             byte* depth = this.DepthPointer;
@@ -439,7 +439,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="tree">The tree to be scanned.</param>
         /// <param name="max_code">And its largest code of non zero frequency</param>
-        private void Scan_tree(short* tree, int max_code)
+        private void Scan_tree(ushort* tree, int max_code)
         {
             int n; // iterates over all tree elements
             int prevlen = -1; // last emitted length
@@ -448,7 +448,7 @@ namespace SixLabors.ZlibStream
             int count = 0; // repeat count of the current code
             int max_count = 7; // max repeat count
             int min_count = 4; // min repeat count
-            short* blTree = this.blTreePointer;
+            ushort* blTree = this.blTreePointer;
 
             if (nextlen == 0)
             {
@@ -456,7 +456,7 @@ namespace SixLabors.ZlibStream
                 min_count = 3;
             }
 
-            tree[((max_code + 1) * 2) + 1] = -1; // guard
+            tree[((max_code + 1) * 2) + 1] = ushort.MaxValue; // guard
 
             for (n = 0; n <= max_code; n++)
             {
@@ -468,7 +468,7 @@ namespace SixLabors.ZlibStream
                 }
                 else if (count < min_count)
                 {
-                    blTree[curlen * 2] = (short)(blTree[curlen * 2] + count);
+                    blTree[curlen * 2] = (ushort)(blTree[curlen * 2] + count);
                 }
                 else if (curlen != 0)
                 {
@@ -527,7 +527,7 @@ namespace SixLabors.ZlibStream
             // Determine the number of bit length codes to send. The pkzip format
             // requires that at least 4 bit length codes be sent. (appnote.txt says
             // 3 but the actual value used is 4.)
-            short* blTree = this.blTreePointer;
+            ushort* blTree = this.blTreePointer;
             for (max_blindex = BLCODES - 1; max_blindex >= 3; max_blindex--)
             {
                 if (blTree[(Tree.BlOrder[max_blindex] * 2) + 1] != 0)
@@ -548,7 +548,7 @@ namespace SixLabors.ZlibStream
         private void Send_all_trees(int lcodes, int dcodes, int blcodes)
         {
             int rank; // index in bl_order
-            short* blTree = this.blTreePointer;
+            ushort* blTree = this.blTreePointer;
             this.Send_bits(lcodes - 257, 5); // not +255 as stated in appnote.txt
             this.Send_bits(dcodes - 1, 5);
             this.Send_bits(blcodes - 4, 4); // not -3 as stated in appnote.txt
@@ -563,9 +563,9 @@ namespace SixLabors.ZlibStream
 
         // Send a literal or distance tree in compressed form, using the codes in
         // bl_tree.
-        private void Send_tree(short* tree, int max_code)
+        private void Send_tree(ushort* tree, int max_code)
         {
-            short* blTree = this.blTreePointer;
+            ushort* blTree = this.blTreePointer;
             int n; // iterates over all tree elements
             int prevlen = -1; // last emitted length
             int curlen; // length of current code
@@ -651,41 +651,41 @@ namespace SixLabors.ZlibStream
         private void Put_byte(byte c) => this.pendingPointer[this.Pending++] = c;
 
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void Put_short(int w)
+        private void Put_ushort(int w)
         {
-            short* s = (short*)&this.pendingPointer[this.Pending];
-            s[0] = (short)w;
+            ushort* s = (ushort*)&this.pendingPointer[this.Pending];
+            s[0] = (ushort)w;
             this.Pending += 2;
         }
 
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void PutShortMSB(int b)
+        private void PutushortMSB(int b)
         {
             this.Put_byte((byte)(b >> 8));
             this.Put_byte((byte)b);
         }
 
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void Send_code(int c, short* tree)
-            => this.Send_bits(tree[c * 2] & 0xFFFF, tree[(c * 2) + 1] & 0xFFFF);
+        private void Send_code(int c, ushort* tree)
+            => this.Send_bits(tree[c * 2], tree[(c * 2) + 1]);
 
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void Send_code(int c, short[] tree)
-            => this.Send_bits(tree[c * 2] & 0xFFFF, tree[(c * 2) + 1] & 0xFFFF);
+        private void Send_code(int c, ushort[] tree)
+            => this.Send_bits(tree[c * 2], tree[(c * 2) + 1]);
 
         [MethodImpl(InliningOptions.ShortMethod)]
         private void Send_bits(int value, int length)
         {
             if (this.biValid > BufSize - length)
             {
-                this.biBuf |= (short)((value << this.biValid) & 0xFFFF);
-                this.Put_short(this.biBuf);
-                this.biBuf = (short)ZlibUtilities.URShift(value, BufSize - this.biValid);
+                this.biBuf |= (ushort)(value << this.biValid);
+                this.Put_ushort(this.biBuf);
+                this.biBuf = (ushort)ZlibUtilities.URShift(value, BufSize - this.biValid);
                 this.biValid += length - BufSize;
             }
             else
             {
-                this.biBuf |= (short)((value << this.biValid) & 0xFFFF);
+                this.biBuf |= (ushort)(value << this.biValid);
                 this.biValid += length;
             }
         }
@@ -771,7 +771,7 @@ namespace SixLabors.ZlibStream
 
         // Send the block data compressed using the given Huffman trees
         [MethodImpl(InliningOptions.HotPath)]
-        private void Compress_block(short* ltree, short* dtree)
+        private void Compress_block(ushort* ltree, ushort* dtree)
         {
             int dist; // distance of matched string
             int lc; // match length or unmatched char (if dist == 0)
@@ -836,7 +836,7 @@ namespace SixLabors.ZlibStream
             int n = 0;
             int ascii_freq = 0;
             int bin_freq = 0;
-            short* dynLtree = this.dynLtreePointer;
+            ushort* dynLtree = this.dynLtreePointer;
 
             while (n < 7)
             {
@@ -865,14 +865,14 @@ namespace SixLabors.ZlibStream
         {
             if (this.biValid == 16)
             {
-                this.Put_short(this.biBuf);
+                this.Put_ushort(this.biBuf);
                 this.biBuf = 0;
                 this.biValid = 0;
             }
             else if (this.biValid >= 8)
             {
                 this.Put_byte((byte)this.biBuf);
-                this.biBuf = (short)ZlibUtilities.URShift(this.biBuf, 8);
+                this.biBuf = (ushort)ZlibUtilities.URShift(this.biBuf, 8);
                 this.biValid -= 8;
             }
         }
@@ -883,7 +883,7 @@ namespace SixLabors.ZlibStream
         {
             if (this.biValid > 8)
             {
-                this.Put_short(this.biBuf);
+                this.Put_ushort(this.biBuf);
             }
             else if (this.biValid > 0)
             {
@@ -904,8 +904,8 @@ namespace SixLabors.ZlibStream
 
             if (header)
             {
-                this.Put_short((short)len);
-                this.Put_short((short)~len);
+                this.Put_ushort((ushort)len);
+                this.Put_ushort((ushort)~len);
             }
 
             this.Put_byte(this.windowBuffer, buf, len);
@@ -984,9 +984,9 @@ namespace SixLabors.ZlibStream
             {
                 this.Send_bits((STATICTREES << 1) + (eof ? 1 : 0), 3);
 
-                fixed (short* ltree = StaticTree.StaticLtree)
+                fixed (ushort* ltree = StaticTree.StaticLtree)
                 {
-                    fixed (short* dtree = StaticTree.StaticDtree)
+                    fixed (ushort* dtree = StaticTree.StaticDtree)
                     {
                         this.Compress_block(ltree, dtree);
                     }
@@ -1025,8 +1025,8 @@ namespace SixLabors.ZlibStream
             int more; // Amount of free space at the end of the window.
 
             byte* window = this.windowPointer;
-            short* head = this.headPointer;
-            short* prev = this.prevPointer;
+            ushort* head = this.headPointer;
+            ushort* prev = this.prevPointer;
 
             do
             {
@@ -1048,8 +1048,8 @@ namespace SixLabors.ZlibStream
                     p = n;
                     do
                     {
-                        m = head[--p] & 0xFFFF;
-                        head[p] = (short)(m >= this.wSize ? (m - this.wSize) : 0);
+                        m = head[--p];
+                        head[p] = (ushort)(m >= this.wSize ? (m - this.wSize) : 0);
                     }
                     while (--n != 0);
 
@@ -1057,8 +1057,8 @@ namespace SixLabors.ZlibStream
                     p = n;
                     do
                     {
-                        m = prev[--p] & 0xFFFF;
-                        prev[p] = (short)(m >= this.wSize ? (m - this.wSize) : 0);
+                        m = prev[--p];
+                        prev[p] = (ushort)(m >= this.wSize ? (m - this.wSize) : 0);
 
                         // If n is not on any hash chain, prev[n] is garbage but
                         // its value will never be used.
@@ -1135,7 +1135,7 @@ namespace SixLabors.ZlibStream
                 nice_match = this.lookahead;
             }
 
-            short* prev = this.prevPointer;
+            ushort* prev = this.prevPointer;
 
             do
             {
@@ -1192,7 +1192,7 @@ namespace SixLabors.ZlibStream
                     scan_end = window[scan + best_len];
                 }
             }
-            while ((cur_match = prev[cur_match & wmask] & 0xFFFF) > limit
+            while ((cur_match = prev[cur_match & wmask]) > limit
                     && --chain_length != 0);
 
             return Math.Min(best_len, this.lookahead);
@@ -1255,13 +1255,13 @@ namespace SixLabors.ZlibStream
             this.windowHandle = new Memory<byte>(this.windowBuffer).Pin();
             this.windowPointer = (byte*)this.windowHandle.Pointer;
 
-            this.prevBuffer = ArrayPool<short>.Shared.Rent(this.wSize);
-            this.prevHandle = new Memory<short>(this.prevBuffer).Pin();
-            this.prevPointer = (short*)this.prevHandle.Pointer;
+            this.prevBuffer = ArrayPool<ushort>.Shared.Rent(this.wSize);
+            this.prevHandle = new Memory<ushort>(this.prevBuffer).Pin();
+            this.prevPointer = (ushort*)this.prevHandle.Pointer;
 
-            this.headBuffer = ArrayPool<short>.Shared.Rent(this.hashSize);
-            this.headHandle = new Memory<short>(this.headBuffer).Pin();
-            this.headPointer = (short*)this.headHandle.Pointer;
+            this.headBuffer = ArrayPool<ushort>.Shared.Rent(this.hashSize);
+            this.headHandle = new Memory<ushort>(this.headBuffer).Pin();
+            this.headPointer = (ushort*)this.headHandle.Pointer;
 
             this.litBufsize = 1 << (memLevel + 6); // 16K elements by default
 
@@ -1318,22 +1318,22 @@ namespace SixLabors.ZlibStream
             ArrayPool<byte>.Shared.Return(this.pendingBuffer);
 
             this.headHandle.Dispose();
-            ArrayPool<short>.Shared.Return(this.headBuffer);
+            ArrayPool<ushort>.Shared.Return(this.headBuffer);
 
             this.prevHandle.Dispose();
-            ArrayPool<short>.Shared.Return(this.prevBuffer);
+            ArrayPool<ushort>.Shared.Return(this.prevBuffer);
 
             this.windowHandle.Dispose();
             ArrayPool<byte>.Shared.Return(this.windowBuffer);
 
             this.bltreeHandle.Dispose();
-            ArrayPool<short>.Shared.Return(this.blTreeBuffer);
+            ArrayPool<ushort>.Shared.Return(this.blTreeBuffer);
 
             this.dynDtreeHandle.Dispose();
-            ArrayPool<short>.Shared.Return(this.dynDtreeBuffer);
+            ArrayPool<ushort>.Shared.Return(this.dynDtreeBuffer);
 
             this.dynLtreeHandle.Dispose();
-            ArrayPool<short>.Shared.Return(this.dynLtreeBuffer);
+            ArrayPool<ushort>.Shared.Return(this.dynLtreeBuffer);
 
             this.depthHandle.Dispose();
             ArrayPool<byte>.Shared.Return(this.depthBuffer);
@@ -1342,7 +1342,7 @@ namespace SixLabors.ZlibStream
             ArrayPool<int>.Shared.Return(this.heapBuffer);
 
             this.blCountHandle.Dispose();
-            ArrayPool<short>.Shared.Return(this.blCountBuffer);
+            ArrayPool<ushort>.Shared.Return(this.blCountBuffer);
 
             // free
             // dstate=null;
@@ -1419,8 +1419,8 @@ namespace SixLabors.ZlibStream
             this.insH = window[0];
             this.insH = ((this.insH << this.hashShift) ^ window[1]) & this.hashMask;
 
-            short* head = this.headPointer;
-            short* prev = this.prevPointer;
+            ushort* head = this.headPointer;
+            ushort* prev = this.prevPointer;
             for (int n = 0; n <= length - MINMATCH; n++)
             {
                 this.InsertString(prev, head, window, n);
@@ -1476,13 +1476,13 @@ namespace SixLabors.ZlibStream
                 header += 31 - (header % 31);
 
                 this.status = BUSYSTATE;
-                this.PutShortMSB(header);
+                this.PutushortMSB(header);
 
                 // Save the adler32 of the preset dictionary:
                 if (this.strStart != 0)
                 {
-                    this.PutShortMSB((int)ZlibUtilities.URShift(strm.Adler, 16));
-                    this.PutShortMSB((int)(strm.Adler & 0xFFFF));
+                    this.PutushortMSB((int)strm.Adler >> 16);
+                    this.PutushortMSB((int)strm.Adler);
                 }
 
                 strm.Adler = Adler32.SeedValue;
@@ -1584,7 +1584,7 @@ namespace SixLabors.ZlibStream
                         if (flush == ZlibFlushStrategy.ZFULLFLUSH)
                         {
                             // state.head[s.hash_size-1]=0;
-                            short* head = this.headPointer;
+                            ushort* head = this.headPointer;
                             for (int i = 0; i < this.hashSize; i++)
                             {
                                 // forget history
@@ -1613,8 +1613,8 @@ namespace SixLabors.ZlibStream
             }
 
             // Write the zlib trailer (adler32)
-            this.PutShortMSB((int)ZlibUtilities.URShift(strm.Adler, 16));
-            this.PutShortMSB((int)(strm.Adler & 0xFFFF));
+            this.PutushortMSB((int)strm.Adler >> 16);
+            this.PutushortMSB((int)strm.Adler);
             this.Flush_pending(strm);
 
             // If avail_out is zero, the application will call deflate again
@@ -1675,12 +1675,12 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <returns>The <see cref="int"/>.</returns>
         [MethodImpl(InliningOptions.ShortMethod)]
-        private int InsertString(short* prev, short* head, byte* window, int str)
+        private int InsertString(ushort* prev, ushort* head, byte* window, int str)
         {
             // TODO: Investigate Crc based hash.
             this.UpdateHash(window[str + (MINMATCH - 1)]);
-            int ret = (prev[str & this.wMask] = head[this.insH]) & 0xFFFF;
-            head[this.insH] = (short)str;
+            int ret = prev[str & this.wMask] = head[this.insH];
+            head[this.insH] = (ushort)str;
 
             return ret;
         }

@@ -24,8 +24,8 @@ namespace SixLabors.ZlibStream
             bool bflush; // set if current block must be flushed
 
             byte* window = this.windowPointer;
-            short* head = this.headPointer;
-            short* prev = this.prevPointer;
+            ushort* head = this.headPointer;
+            ushort* prev = this.prevPointer;
 
             // Process the input block.
             while (true)
@@ -61,7 +61,7 @@ namespace SixLabors.ZlibStream
                 this.matchLength = MINMATCH - 1;
 
                 if (hash_head != 0 && this.prevLength < this.maxLazyMatch
-                    && ((this.strStart - hash_head) & 0xFFFF) <= this.wSize - MINLOOKAHEAD)
+                    && this.strStart - hash_head <= this.wSize - MINLOOKAHEAD)
                 {
                     // To simplify the code, we prevent matches with the string
                     // of window index 0 (in particular we have to avoid a match

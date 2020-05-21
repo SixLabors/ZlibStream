@@ -14,7 +14,7 @@ namespace SixLabors.ZlibStream
         /// Compress as much as possible from the input stream, return the current
         /// block state.
         /// This function does not perform lazy evaluation of matches and inserts
-        /// new strings in the dictionary only for unmatched strings or for short
+        /// new strings in the dictionary only for unmatched strings or for ushort
         /// matches. It is used only for the fast compression options.
         /// </summary>
         /// <param name="flush">The flush strategy.</param>
@@ -26,8 +26,8 @@ namespace SixLabors.ZlibStream
             bool bflush; // set if current block must be flushed
 
             byte* window = this.windowPointer;
-            short* head = this.headPointer;
-            short* prev = this.prevPointer;
+            ushort* head = this.headPointer;
+            ushort* prev = this.prevPointer;
 
             while (true)
             {
@@ -59,7 +59,7 @@ namespace SixLabors.ZlibStream
 
                 // Find the longest match, discarding those <= prev_length.
                 // At this point we have always match_length < MINMATCH
-                if (hash_head != 0 && ((this.strStart - hash_head) & 0xFFFF) <= this.wSize - MINLOOKAHEAD)
+                if (hash_head != 0 && (this.strStart - hash_head) <= this.wSize - MINLOOKAHEAD)
                 {
                     // To simplify the code, we prevent matches with the string
                     // of window index 0 (in particular we have to avoid a match

@@ -5,7 +5,7 @@ namespace SixLabors.ZlibStream
 {
     internal sealed class StaticTree
     {
-        internal static readonly short[] StaticLtree =
+        internal static readonly ushort[] StaticLtree =
         {
             12, 8, 140, 8, 76, 8, 204, 8, 44, 8, 172, 8, 108, 8, 236, 8, 28, 8, 156, 8, 92,
             8, 220, 8, 60, 8, 188, 8, 124, 8, 252, 8, 2, 8, 130, 8, 66, 8, 194, 8, 34, 8,
@@ -37,7 +37,7 @@ namespace SixLabors.ZlibStream
             195, 8, 35, 8, 163, 8, 99, 8, 227, 8,
         };
 
-        internal static readonly short[] StaticDtree =
+        internal static readonly ushort[] StaticDtree =
         {
             0, 5, 16, 5, 8, 5, 24, 5, 4, 5, 20, 5, 12, 5, 28, 5, 2, 5, 18, 5, 10, 5, 26,
             5, 6, 5, 22, 5, 14, 5, 30, 5, 1, 5, 17, 5, 9, 5, 25, 5, 5, 5, 21, 5, 13, 5,
@@ -68,7 +68,7 @@ namespace SixLabors.ZlibStream
         /// <param name="extra_base">extra base.</param>
         /// <param name="elems">elements?.</param>
         /// <param name="max_length">max length.</param>
-        private StaticTree(short[] static_tree, int[] extra_bits, int extra_base, int elems, int max_length)
+        private StaticTree(ushort[] static_tree, int[] extra_bits, int extra_base, int elems, int max_length)
         {
             this.StaticTreeValue = static_tree;
             this.ExtraBits = extra_bits;
@@ -77,7 +77,7 @@ namespace SixLabors.ZlibStream
             this.MaxLength = max_length;
         }
 
-        internal short[] StaticTreeValue { get; } // static tree or null
+        internal ushort[] StaticTreeValue { get; } // static tree or null
 
         internal int[] ExtraBits { get; } // extra bits for each code or null
 

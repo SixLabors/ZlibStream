@@ -122,7 +122,7 @@ namespace SixLabors.ZlibStream
         private const int LCODES = LITERALS + 1 + LENGTHCODES;
         private const int HEAPSIZE = (2 * LCODES) + 1;
 
-        internal short[] DynTree { get; set; } // the dynamic tree
+        internal ushort[] DynTree { get; set; } // the dynamic tree
 
         internal int MaxCode { get; private set; } // largest code with non zero frequency
 
@@ -142,11 +142,11 @@ namespace SixLabors.ZlibStream
         // OUT assertion: the field code is set for all tree elements of non
         //     zero code length.
         [MethodImpl(InliningOptions.ShortMethod)]
-        private static void Gen_codes(short* tree, int max_code, short* bl_count)
+        private static void Gen_codes(ushort* tree, int max_code, ushort* bl_count)
         {
-            short* next_code = stackalloc short[MAXBITS + 1]; // next code value for each bit length
+            ushort* next_code = stackalloc ushort[MAXBITS + 1]; // next code value for each bit length
 
-            short code = 0; // running code value
+            ushort code = 0; // running code value
             int bits; // bit index
             int n; // code index
 
@@ -154,43 +154,45 @@ namespace SixLabors.ZlibStream
             // without bit reversal.
             for (bits = 1; bits <= MAXBITS; bits++)
             {
-                next_code[bits] = code = (short)((code + bl_count[bits - 1]) << 1);
+                next_code[bits] = code = (ushort)((code + bl_count[bits - 1]) << 1);
             }
 
             // Check that the bit counts in bl_count are consistent. The last code
             // must be all ones.
-            // Assert (code + bl_count[MAX_BITS]-1 == (1<<MAX_BITS)-1,
-            //        "inconsistent bit counts");
-            // Tracev((stderr,"\ngen_codes: max_code %d ", max_code));
             for (n = 0; n <= max_code; n++)
             {
                 int n2 = n * 2;
-                int len = tree[ n2 + 1];
+                int len = tree[n2 + 1];
                 if (len == 0)
                 {
                     continue;
                 }
 
                 // Now reverse the bits
-                tree[n2] = (short)Bi_reverse(next_code[len]++, len);
+                tree[n2] = (ushort)Bi_reverse(next_code[len]++, len);
             }
         }
 
-        // Reverse the first len bits of a code, using straightforward code (a faster
-        // method would use a table)
-        // IN assertion: 1 <= len <= 15
+        /// <summary>
+        /// Reverse the first len bits of a code, using straightforward code (a faster
+        /// method would use a table)
+        /// </summary>
+        /// <param name="code">The value to invert.</param>
+        /// <param name="len">Its bit length.</param>
+        /// <returns>The <see cref="uint"/>.</returns>
         [MethodImpl(InliningOptions.ShortMethod)]
-        private static int Bi_reverse(int code, int len)
+        private static uint Bi_reverse(uint code, int len)
         {
-            var res = 0;
+            // IN assertion: 1 <= len <= 15
+            uint res = 0;
             do
             {
-                res |= code & 1;
-                code = ZlibUtilities.URShift(code, 1);
+                res |= code & 1U;
+                code >>= 1;
                 res <<= 1;
             }
             while (--len > 0);
-            return ZlibUtilities.URShift(res, 1);
+            return res >> 1;
         }
 
         // Compute the optimal bit lengths for a tree and update the total bit length
@@ -207,8 +209,8 @@ namespace SixLabors.ZlibStream
             using (MemoryHandle streeHandle = this.StatDesc.StaticTreeValue.AsMemory().Pin())
             using (MemoryHandle extraHandle = this.StatDesc.ExtraBits.AsMemory().Pin())
             {
-                short* tree = (short*)treeHandle.Pointer;
-                short* stree = (short*)streeHandle.Pointer;
+                ushort* tree = (ushort*)treeHandle.Pointer;
+                ushort* stree = (ushort*)streeHandle.Pointer;
                 int* extra = (int*)extraHandle.Pointer;
                 int base_Renamed = this.StatDesc.ExtraBase;
                 int max_length = this.StatDesc.MaxLength;
@@ -216,9 +218,9 @@ namespace SixLabors.ZlibStream
                 int n, m; // iterate over the tree elements
                 int bits; // bit length
                 int xbits; // extra bits
-                short f; // frequency
+                ushort f; // frequency
                 int overflow = 0; // number of elements with bit length too large
-                short* blCount = s.BlCountPointer;
+                ushort* blCount = s.BlCountPointer;
                 int* heap = s.HeapPointer;
 
                 for (bits = 0; bits <= MAXBITS; bits++)
@@ -240,7 +242,7 @@ namespace SixLabors.ZlibStream
                         overflow++;
                     }
 
-                    tree[(n * 2) + 1] = (short)bits;
+                    tree[(n * 2) + 1] = (ushort)bits;
 
                     // We overwrite tree[n*2+1] which is no longer needed
                     if (n > this.MaxCode)
@@ -279,7 +281,7 @@ namespace SixLabors.ZlibStream
                     }
 
                     blCount[bits]--; // move one leaf down the tree
-                    blCount[bits + 1] = (short)(blCount[bits + 1] + 2); // move one overflow item as its brother
+                    blCount[bits + 1] = (ushort)(blCount[bits + 1] + 2); // move one overflow item as its brother
                     blCount[max_length]--;
 
                     // The brother of the overflow item also moves one step up,
@@ -302,7 +304,7 @@ namespace SixLabors.ZlibStream
                         if (tree[(m * 2) + 1] != bits)
                         {
                             s.OptLen = (int)(s.OptLen + ((bits - (long)tree[(m * 2) + 1]) * tree[m * 2]));
-                            tree[(m * 2) + 1] = (short)bits;
+                            tree[(m * 2) + 1] = (ushort)bits;
                         }
 
                         n--;
@@ -322,13 +324,13 @@ namespace SixLabors.ZlibStream
             using (MemoryHandle treeHandle = this.DynTree.AsMemory().Pin())
             using (MemoryHandle streeHandle = this.StatDesc.StaticTreeValue.AsMemory().Pin())
             {
-                short* tree = (short*)treeHandle.Pointer;
-                short* stree = (short*)streeHandle.Pointer;
+                ushort* tree = (ushort*)treeHandle.Pointer;
+                ushort* stree = (ushort*)streeHandle.Pointer;
                 int elems = this.StatDesc.Elems;
                 int n, m; // iterate over heap elements
                 var max_code = -1; // largest code with non zero frequency
                 int node; // new node being created
-                short* blCount = s.BlCountPointer;
+                ushort* blCount = s.BlCountPointer;
                 int* heap = s.HeapPointer;
                 byte* depth = s.DepthPointer;
 
@@ -393,9 +395,9 @@ namespace SixLabors.ZlibStream
                     heap[--s.HeapMax] = m;
 
                     // Create a new node father of n and m
-                    tree[node * 2] = (short)(tree[n * 2] + tree[m * 2]);
+                    tree[node * 2] = (ushort)(tree[n * 2] + tree[m * 2]);
                     depth[node] = (byte)(Math.Max(depth[n], depth[m]) + 1);
-                    tree[(n * 2) + 1] = tree[(m * 2) + 1] = (short)node;
+                    tree[(n * 2) + 1] = tree[(m * 2) + 1] = (ushort)node;
 
                     // and insert the new node in the heap
                     heap[1] = node++;
