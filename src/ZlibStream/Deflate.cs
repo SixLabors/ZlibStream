@@ -50,9 +50,6 @@ namespace SixLabors.ZlibStream
         private const int ZASCII = 1;
         private const int ZUNKNOWN = 2;
 
-        // Size of bit buffer in bi_buf
-        private const int BufSize = 16;
-
         // repeat previous bit length 3-6 times (2 bits of repeat count)
         private const int REP36 = 16;
 
@@ -65,15 +62,16 @@ namespace SixLabors.ZlibStream
         private const int MINMATCH = 3;
         private const int MAXMATCH = 258;
         private const int MAXBITS = 15;
-        private const int DCODES = 30;
-        private const int BLCODES = 19;
-        private const int LENGTHCODES = 29;
-        private const int LITERALS = 256;
+        private const int DCODES = 30; // number of distance codes
+        private const int BLCODES = 19; // number of codes used to transfer the bit lengths
+        private const int LENGTHCODES = 29; // number of length codes, not counting the special END_BLOCK code
+        private const int LITERALS = 256; // number of literal bytes 0..255
 
         private const int ENDBLOCK = 256;
         private const int MINLOOKAHEAD = MAXMATCH + MINMATCH + 1;
         private const int LCODES = LITERALS + 1 + LENGTHCODES;
-        private const int HEAPSIZE = (2 * LCODES) + 1;
+        private const int HEAPSIZE = (2 * LCODES) + 1; // maximum heap size
+        private const int BufSize = 16; // Size of bit buffer in bi_buf
 
         private static readonly Config[] ConfigTable = new Config[10]
         {
@@ -98,8 +96,8 @@ namespace SixLabors.ZlibStream
             string.Empty,
         };
 
+        // State
         private ZStream strm; // pointer back to this zlib stream
-
         private int status; // as the name implies
 
         private int pendingBufferSize; // size of pending_buf
@@ -108,15 +106,12 @@ namespace SixLabors.ZlibStream
         private byte* pendingPointer;
 
         private byte dataType; // UNKNOWN, BINARY or ASCII
-
         private byte method; // STORED (for zip only) or DEFLATED
-
         private ZlibFlushStrategy lastFlush; // value of flush param for previous deflate call
 
+        // Used by deflate
         private int wSize; // LZ77 window size (32K by default)
-
         private int wBits; // log2(w_size)  (8..16)
-
         private int wMask; // w_size - 1
 
         // Sliding window. Input bytes are read into the second half of the window,
@@ -126,37 +121,34 @@ namespace SixLabors.ZlibStream
         // performed with a length multiple of the block size. Also, it limits
         // the window size to 64K, which is quite useful on MSDOS.
         // To do: use the user input buffer as sliding window.
-        private int windowSize;
-
         private byte[] windowBuffer;
         private MemoryHandle windowHandle;
         private byte* windowPointer;
 
         // Actual size of window: 2*wSize, except when the user input buffer
         // is directly used as sliding window.
-        private short[] prevBuffer;
-        private MemoryHandle prevHandle;
-        private short* prevPointer;
+        private int windowSize;
 
         // Link to older string with same hash index. To limit the size of this
         // array to 64K, this link is maintained only for the last 32K strings.
         // An index in this array is thus a window index modulo 32K.
+        private short[] prevBuffer;
+        private MemoryHandle prevHandle;
+        private short* prevPointer;
+
         private short[] headBuffer; // Heads of the hash chains or NIL.
         private MemoryHandle headHandle;
         private short* headPointer;
 
         private int insH; // hash index of string to be inserted
-
         private int hashSize; // number of elements in hash table
-
-        private int hashBits; // log2(hash_size)
-
-        private int hashMask; // hash_size-1
+        private int hashBits; // log2(hashSize)
+        private int hashMask; // hashSize - 1
 
         // Number of bits by which ins_h must be shifted at each input
         // step. It must be such that after MINMATCH steps, the oldest
         // byte no longer takes part in the hash key, that is:
-        // hash_shift * MINMATCH >= hash_bits
+        // hashShift * MINMATCH >= hashBits
         private int hashShift;
 
         // Window position at the beginning of the current output block. Gets
@@ -164,15 +156,10 @@ namespace SixLabors.ZlibStream
         private int blockStart;
 
         private int matchLength; // length of best match
-
         private int prevMatch; // previous match
-
         private int matchAvailable; // set if previous match exists
-
         private int strStart; // start of string to insert
-
         private int matchStart; // start of matching string
-
         private int lookahead; // number of valid bytes ahead in window
 
         // Length of the best match at previous step. Matches not greater than this
@@ -186,13 +173,13 @@ namespace SixLabors.ZlibStream
         // Attempt to find a better match only when the current match is strictly
         // smaller than this value. This mechanism is used only for compression
         // levels >= 4.
-        private int maxLazyMatch;
-
+        //
         // Insert new strings in the hash table only if the match length is not
         // greater than this length. This saves time but degrades compression.
         // max_insert_length is used only for compression levels <= 3.
-        private ZlibCompressionLevel level; // compression level (1..9)
+        private int maxLazyMatch;
 
+        private ZlibCompressionLevel level; // compression level (1..9)
         private ZlibCompressionStrategy strategy; // favor or force Huffman coding
 
         // Use a faster search when the previous match is longer than this
@@ -200,6 +187,23 @@ namespace SixLabors.ZlibStream
 
         // Stop searching when current match exceeds this
         private int niceMatch;
+
+        // Used by trees.
+        private readonly short[] dynLtreeBuffer; // literal and length tree
+        private MemoryHandle dynLtreeHandle;
+        private readonly short* dynLtreePointer;
+
+        private readonly short[] dynDtreeBuffer; // distance tree
+        private MemoryHandle dynDtreeHandle;
+        private readonly short* dynDtreePointer;
+
+        private readonly short[] blTreeBuffer; // Huffman tree for bit lengths
+        private MemoryHandle bltreeHandle;
+        private readonly short* blTreePointer;
+
+        private readonly Tree lDesc = new Tree(); // desc for literal tree
+        private readonly Tree dDesc = new Tree(); // desc for distance tree
+        private readonly Tree blDesc = new Tree(); // desc for bit length tree
 
         // number of codes at each bit length for an optimal tree
         private readonly short[] blCountBuffer;
@@ -212,24 +216,6 @@ namespace SixLabors.ZlibStream
         // Depth of each subtree used as tie breaker for trees of equal frequency
         private readonly byte[] depthBuffer;
         private MemoryHandle depthHandle;
-
-        private readonly short[] dynLtreeBuffer; // literal and length tree
-        private MemoryHandle dynLtreeHandle;
-        private readonly short* dynLtreePointer;
-
-        private readonly short[] dynDtreeBuffer; // distance tree
-        private MemoryHandle dynDtreeHandle;
-        private readonly short* dynDtreePointer;
-
-        private short[] blTreeBuffer; // Huffman tree for bit lengths
-        private MemoryHandle bltreeHandle;
-        private readonly short* blTreePointer;
-
-        private Tree lDesc = new Tree(); // desc for literal tree
-
-        private Tree dDesc = new Tree(); // desc for distance tree
-
-        private Tree blDesc = new Tree(); // desc for bit length tree
 
         private int matches; // number of string matches in current block
 
