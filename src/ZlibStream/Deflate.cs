@@ -1086,7 +1086,7 @@ namespace SixLabors.ZlibStream
                 // Initialize the hash value now that we have some input:
                 if (this.lookahead >= MINMATCH)
                 {
-                    this.UpdateHash(window[this.strStart + 1]);
+                    this.InsertString(prev, head, window, this.strStart + 1);
                 }
 
                 // If the whole input has less than MINMATCH bytes, ins_h is garbage,
@@ -1096,13 +1096,63 @@ namespace SixLabors.ZlibStream
         }
 
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        private int Compare_256_Aligned(byte* src0, byte* src1)
+        {
+            int len = 0;
+            do
+            {
+                if (*src0 != *src1) { return len; }
+                src0++; src1++; len++;
+                if (*src0 != *src1) { return len; }
+                src0++; src1++; len++;
+                if (*src0 != *src1) { return len; }
+                src0++; src1++; len++;
+                if (*src0 != *src1) { return len; }
+                src0++; src1++; len++;
+                if (*src0 != *src1) { return len; }
+                src0++; src1++; len++;
+                if (*src0 != *src1) { return len; }
+                src0++; src1++; len++;
+                if (*src0 != *src1) { return len; }
+                src0++; src1++; len++;
+                if (*src0 != *src1) { return len; }
+                src0++; src1++; len++;
+            }
+            while (len < 256);
+            return 256;
+        }
+
+        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        private int Compare_256_Unaligned_16(byte* src0, byte* src1)
+        {
+            int len = 0;
+            do
+            {
+                if (*(ushort*)src0 != *(ushort*)src1)
+                    return len + ((*src0 == *src1) ? 1 : 0);
+                src0 += 2; src1 += 2; len += 2;
+                if (*(ushort*)src0 != *(ushort*)src1)
+                    return len + ((*src0 == *src1) ? 1 : 0);
+                src0 += 2; src1 += 2; len += 2;
+                if (*(ushort*)src0 != *(ushort*)src1)
+                    return len + ((*src0 == *src1) ? 1 : 0);
+                src0 += 2; src1 += 2; len += 2;
+                if (*(ushort*)src0 != *(ushort*)src1)
+                    return len + ((*src0 == *src1) ? 1 : 0);
+                src0 += 2; src1 += 2; len += 2;
+            }
+            while (len < 256);
+            return 256;
+        }
+
+        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
         private int Longest_match(int cur_match)
         {
             byte* window = this.windowPointer;
 
             int chain_length = this.maxChainLength; // max hash chain length
-            int scan = this.strStart; // current string
-            int match; // matched string
+            byte* scan = &window[this.strStart]; // current string
+            byte* match; // matched string
             int len; // length of current match
             int best_len = this.prevLength; // best match length so far
             int limit = this.strStart > (this.wSize - MINLOOKAHEAD) ? this.strStart - (this.wSize - MINLOOKAHEAD) : 0;
@@ -1112,9 +1162,11 @@ namespace SixLabors.ZlibStream
             // we prevent matches with the string of window index 0.
             int wmask = this.wMask;
 
-            int strend = this.strStart + MAXMATCH;
-            byte scan_end1 = window[scan + best_len - 1];
-            byte scan_end = window[scan + best_len];
+            if (best_len == 0)
+                best_len = 1;
+
+            ushort scan_start = *(ushort*)scan;
+            ushort scan_end = *(ushort*)&scan[best_len-1];
 
             // The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
             // It is easy to get rid of this optimization if necessary.
@@ -1136,45 +1188,22 @@ namespace SixLabors.ZlibStream
 
             do
             {
-                match = cur_match;
+                if (cur_match >= this.strStart)
+                    break;
+                match = &window[cur_match];
 
                 // Skip to next match if the match length cannot increase
                 // or if the match length is less than 2:
-                if (window[match + best_len] != scan_end
-                    || window[match + best_len - 1] != scan_end1
-                    || window[match] != window[scan]
-                    || window[++match] != window[scan + 1])
+                if (*(ushort*)&match[best_len - 1] != scan_end ||
+                    *(ushort*)match != scan_start)
                 {
                     continue;
                 }
 
-                // The check at best_len-1 can be removed because it will be made
-                // again later. (This heuristic is not always a win.)
-                // It is not necessary to compare scan[2] and match[2] since they
-                // are always equal when the other bytes match, given that
-                // the hash keys are equal and that HASH_BITS >= 8.
-                scan += 2;
-                match++;
-
-                // We check for insufficient lookahead only every 8th comparison;
-                // the 256th check will be made at strstart+258.
                 // TODO: This can be optimized.
                 // https://github.com/cloudflare/zlib/commit/31043308c3d3edfb487d2c4cbe7290bd5b63c65c#diff-6245073f3e742f2e3efa953113cfbf1aR144-R157
-                do
-                {
-                }
-                while (window[++scan] == window[++match]
-                && window[++scan] == window[++match]
-                && window[++scan] == window[++match]
-                && window[++scan] == window[++match]
-                && window[++scan] == window[++match]
-                && window[++scan] == window[++match]
-                && window[++scan] == window[++match]
-                && window[++scan] == window[++match]
-                && scan < strend);
 
-                len = MAXMATCH - (strend - scan);
-                scan = strend - MAXMATCH;
+                len = this.Compare_256_Unaligned_16(scan+2, match+2) + 2;
 
                 if (len > best_len)
                 {
@@ -1185,8 +1214,7 @@ namespace SixLabors.ZlibStream
                         break;
                     }
 
-                    scan_end1 = window[scan + best_len - 1];
-                    scan_end = window[scan + best_len];
+                    scan_end = *(ushort*)&scan[best_len - 1];
                 }
             }
             while ((cur_match = prev[cur_match & wmask]) > limit
@@ -1419,10 +1447,11 @@ namespace SixLabors.ZlibStream
             // s->lookahead stays null, so s->ins_h will be recomputed at the next
             // call of fill_window.
             byte* window = this.windowPointer;
-            this.UpdateHash(window[1]);
-
             ushort* head = this.headPointer;
             ushort* prev = this.prevPointer;
+
+            this.InsertString(prev, head, window, 1);
+
             for (int n = 0; n <= length - MINMATCH; n++)
             {
                 this.InsertString(prev, head, window, n);
