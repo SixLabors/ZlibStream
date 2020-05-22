@@ -144,12 +144,6 @@ namespace SixLabors.ZlibStream
         private int hashBits; // log2(hashSize)
         private uint hashMask; // hashSize - 1
 
-        // Number of bits by which ins_h must be shifted at each input
-        // step. It must be such that after MINMATCH steps, the oldest
-        // byte no longer takes part in the hash key, that is:
-        // hashShift * MINMATCH >= hashBits
-        private int hashShift;
-
         // Window position at the beginning of the current output block. Gets
         // negative when the window is moved backwards.
         private int blockStart;
@@ -1252,7 +1246,6 @@ namespace SixLabors.ZlibStream
             this.hashBits = memLevel + 7;
             this.hashSize = 1 << this.hashBits;
             this.hashMask = (uint)this.hashSize - 1;
-            this.hashShift = (this.hashBits + MINMATCH - 1) / MINMATCH;
 
             this.windowBuffer = ArrayPool<byte>.Shared.Rent(this.wSize * 2);
             this.windowHandle = new Memory<byte>(this.windowBuffer).Pin();
