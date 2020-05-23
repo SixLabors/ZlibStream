@@ -46,7 +46,7 @@ git submodule update --init --recursive
 
 ### Current Benchmarks
 
-The following benchmark was designed to highlight the difference in compression of sparse data.
+The following benchmark was designed to highlight the difference in compression of sparse data. 
   
 |             Method | Compression |                  Mean |              Error |              StdDev |                Median | Ratio | RatioSD |    Bytes |     Gen 0 |     Gen 1 | Gen 2 |  Allocated |
 |------------------- |------------ |----------------------:|-------------------:|--------------------:|----------------------:|------:|--------:|---------:|----------:|----------:|------:|-----------:|

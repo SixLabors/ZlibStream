@@ -250,6 +250,11 @@ namespace SixLabors.ZlibStream
         // array would be necessary.
         private int dBuf; // index of pendig_buf
 
+        // Whether or not a block is currently open for the QUICK deflation scheme.
+        // This is set to true if there is an active block, or false if the block was just
+        // closed.
+        private bool blockOpen;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Deflate"/> class.
         /// </summary>
@@ -694,8 +699,8 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         private void Tr_align()
         {
-            this.Send_bits(STATICTREES << 1, 3);
-            this.Send_code(ENDBLOCK, StaticTree.StaticLtree);
+            this.Tr_emit_tree(STATICTREES, false);
+            this.Tr_emit_end_block(StaticTree.StaticLtree);
 
             this.Bi_flush();
 
@@ -705,8 +710,8 @@ namespace SixLabors.ZlibStream
             // of the EOB plus what we have just sent of the empty static block.
             if (1 + this.lastEobLen + 10 - this.biValid < 9)
             {
-                this.Send_bits(STATICTREES << 1, 3);
-                this.Send_code(ENDBLOCK, StaticTree.StaticLtree);
+                this.Tr_emit_tree(STATICTREES, false);
+                this.Tr_emit_end_block(StaticTree.StaticLtree);
                 this.Bi_flush();
             }
 
@@ -817,6 +822,7 @@ namespace SixLabors.ZlibStream
 
             this.Send_code(ENDBLOCK, ltree);
             this.lastEobLen = ltree[(ENDBLOCK * 2) + 1];
+            this.blockOpen = false;
         }
 
         // Set the data type to ASCII or BINARY, using a crude approximation:
@@ -915,8 +921,24 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         private void Tr_stored_block(int buf, int stored_len, bool eof)
         {
-            this.Send_bits((STOREDBLOCK << 1) + (eof ? 1 : 0), 3); // send block type
+            this.Tr_emit_tree(STOREDBLOCK, eof);
             this.Copy_block(buf, stored_len, true); // with header
+        }
+
+        // Send the start of a block
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void Tr_emit_tree(int type, bool eof)
+        {
+            this.Send_bits((type << 1) + (eof ? 1 : 0), 3); // send block type
+            this.blockOpen = true;
+        }
+
+        // Send the end of a block
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void Tr_emit_end_block(ushort[] tree)
+        {
+            this.Send_code(ENDBLOCK, tree);
+            this.blockOpen = false;
         }
 
         // Determine the best encoding for the current block: dynamic trees, static
@@ -974,7 +996,7 @@ namespace SixLabors.ZlibStream
             }
             else if (static_lenb == opt_lenb)
             {
-                this.Send_bits((STATICTREES << 1) + (eof ? 1 : 0), 3);
+                this.Tr_emit_tree(STATICTREES, eof);
 
                 fixed (ushort* ltree = StaticTree.StaticLtree)
                 {
@@ -986,7 +1008,7 @@ namespace SixLabors.ZlibStream
             }
             else
             {
-                this.Send_bits((DYNTREES << 1) + (eof ? 1 : 0), 3);
+                this.Tr_emit_tree(DYNTREES, eof);
                 this.Send_all_trees(this.lDesc.MaxCode + 1, this.dDesc.MaxCode + 1, max_blindex + 1);
                 this.Compress_block(this.dynLtreePointer, this.dynDtreePointer);
             }
