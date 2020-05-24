@@ -1,10 +1,7 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
-#if SUPPORTS_RUNTIME_INTRINSICS
 using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
 
 namespace SixLabors.ZlibStream
 {
@@ -150,23 +147,60 @@ namespace SixLabors.ZlibStream
             }
         }
 
+        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
         private int Compare258(byte* src0, byte* src1)
         {
-            int cnt = 0;
-
+            int len = 0;
             do
             {
-                int ret;
-                Vector128<byte> xxm_src0 = Sse2.LoadVector128(src0 + cnt);
-                Vector128<byte> xxm_src1 = Sse2.LoadVector128(src1 + cnt);
+                if (*(ushort*)src0 != *(ushort*)src1)
+                {
+                    return len + ((*src0 == *src1) ? 1 : 0);
+                }
 
-                // TODO: implement when _mm_cmpestri is available.
-                // https://github.com/dotnet/runtime/issues/31914
+                src0 += 2;
+                src1 += 2;
+                len += 2;
+
+                if (*(ushort*)src0 != *(ushort*)src1)
+                {
+                    return len + ((*src0 == *src1) ? 1 : 0);
+                }
+
+                src0 += 2;
+                src1 += 2;
+                len += 2;
+
+                if (*(ushort*)src0 != *(ushort*)src1)
+                {
+                    return len + ((*src0 == *src1) ? 1 : 0);
+                }
+
+                src0 += 2;
+                src1 += 2;
+                len += 2;
+
+                if (*(ushort*)src0 != *(ushort*)src1)
+                {
+                    return len + ((*src0 == *src1) ? 1 : 0);
+                }
+
+                src0 += 2;
+                src1 += 2;
+                len += 2;
             }
-            while (cnt < 256);
+            while (len < 256);
 
-            return cnt;
+            src0 += 2;
+            src1 += 2;
+            len += 2;
+
+            if (*(ushort*)src0 != *(ushort*)src1)
+            {
+                return len + ((*src0 == *src1) ? 1 : 0);
+            }
+
+            return len;
         }
     }
 }
-#endif

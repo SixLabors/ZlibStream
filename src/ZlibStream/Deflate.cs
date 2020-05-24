@@ -19,6 +19,7 @@ namespace SixLabors.ZlibStream
         private const int STORED = 0;
         private const int FAST = 1;
         private const int SLOW = 2;
+        private const int QUICK = 3;
 
         // block not completed, need more input or more output
         private const int NeedMore = 0;
@@ -77,7 +78,7 @@ namespace SixLabors.ZlibStream
         {
             // good  lazy  nice  chain
             new Config(0, 0, 0, 0, STORED), // 0
-            new Config(4, 4, 8, 4, FAST),  // 1
+            new Config(4, 4, 8, 4, FAST), // QUICK),  // 1
             new Config(4, 5, 16, 8, FAST),  // 2
             new Config(4, 6, 32, 32, FAST),  // 3
 
@@ -1117,22 +1118,77 @@ namespace SixLabors.ZlibStream
             int len = 0;
             do
             {
-                if (*src0 != *src1) { return len; }
-                src0++; src1++; len++;
-                if (*src0 != *src1) { return len; }
-                src0++; src1++; len++;
-                if (*src0 != *src1) { return len; }
-                src0++; src1++; len++;
-                if (*src0 != *src1) { return len; }
-                src0++; src1++; len++;
-                if (*src0 != *src1) { return len; }
-                src0++; src1++; len++;
-                if (*src0 != *src1) { return len; }
-                src0++; src1++; len++;
-                if (*src0 != *src1) { return len; }
-                src0++; src1++; len++;
-                if (*src0 != *src1) { return len; }
-                src0++; src1++; len++;
+                if (*src0 != *src1)
+                {
+                    return len;
+                }
+
+                src0++;
+                src1++;
+                len++;
+
+                if (*src0 != *src1)
+                {
+                    return len;
+                }
+
+                src0++;
+                src1++;
+                len++;
+
+                if (*src0 != *src1)
+                {
+                    return len;
+                }
+
+                src0++;
+                src1++;
+                len++;
+
+                if (*src0 != *src1)
+                {
+                    return len;
+                }
+
+                src0++;
+                src1++;
+                len++;
+
+                if (*src0 != *src1)
+                {
+                    return len;
+                }
+
+                src0++;
+                src1++;
+                len++;
+
+                if (*src0 != *src1)
+                {
+                    return len;
+                }
+
+                src0++;
+                src1++;
+                len++;
+
+                if (*src0 != *src1)
+                {
+                    return len;
+                }
+
+                src0++;
+                src1++;
+                len++;
+
+                if (*src0 != *src1)
+                {
+                    return len;
+                }
+
+                src0++;
+                src1++;
+                len++;
             }
             while (len < 256);
             return 256;
@@ -1145,17 +1201,37 @@ namespace SixLabors.ZlibStream
             do
             {
                 if (*(ushort*)src0 != *(ushort*)src1)
+                {
                     return len + ((*src0 == *src1) ? 1 : 0);
-                src0 += 2; src1 += 2; len += 2;
+                }
+
+                src0 += 2;
+                src1 += 2;
+                len += 2;
                 if (*(ushort*)src0 != *(ushort*)src1)
+                {
                     return len + ((*src0 == *src1) ? 1 : 0);
-                src0 += 2; src1 += 2; len += 2;
+                }
+
+                src0 += 2;
+                src1 += 2;
+                len += 2;
                 if (*(ushort*)src0 != *(ushort*)src1)
+                {
                     return len + ((*src0 == *src1) ? 1 : 0);
-                src0 += 2; src1 += 2; len += 2;
+                }
+
+                src0 += 2;
+                src1 += 2;
+                len += 2;
                 if (*(ushort*)src0 != *(ushort*)src1)
+                {
                     return len + ((*src0 == *src1) ? 1 : 0);
-                src0 += 2; src1 += 2; len += 2;
+                }
+
+                src0 += 2;
+                src1 += 2;
+                len += 2;
             }
             while (len < 256);
             return 256;
@@ -1179,10 +1255,12 @@ namespace SixLabors.ZlibStream
             int wmask = this.wMask;
 
             if (best_len == 0)
+            {
                 best_len = 1;
+            }
 
             ushort scan_start = *(ushort*)scan;
-            ushort scan_end = *(ushort*)&scan[best_len-1];
+            ushort scan_end = *(ushort*)&scan[best_len - 1];
 
             // The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
             // It is easy to get rid of this optimization if necessary.
@@ -1205,7 +1283,10 @@ namespace SixLabors.ZlibStream
             do
             {
                 if (cur_match >= this.strStart)
+                {
                     break;
+                }
+
                 match = &window[cur_match];
 
                 // Skip to next match if the match length cannot increase
@@ -1218,8 +1299,7 @@ namespace SixLabors.ZlibStream
 
                 // TODO: This can be optimized.
                 // https://github.com/cloudflare/zlib/commit/31043308c3d3edfb487d2c4cbe7290bd5b63c65c#diff-6245073f3e742f2e3efa953113cfbf1aR144-R157
-
-                len = this.Compare_256_Unaligned_16(scan+2, match+2) + 2;
+                len = this.Compare_256_Unaligned_16(scan + 2, match + 2) + 2;
 
                 if (len > best_len)
                 {
@@ -1585,6 +1665,10 @@ namespace SixLabors.ZlibStream
 
                     case SLOW:
                         bstate = this.DeflateSlow(flush);
+                        break;
+
+                    case QUICK:
+                        bstate = this.DeflateQuick(flush);
                         break;
 
                     // TODO: Add Huffman and RLE
