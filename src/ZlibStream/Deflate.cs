@@ -1366,6 +1366,12 @@ namespace SixLabors.ZlibStream
                 return ZlibCompressionState.ZSTREAMERROR;
             }
 
+            if (level == ZlibCompressionLevel.ZBESTCOMPRESSION)
+            {
+                // TODO: Enable different bits for Quick
+                // windowBits = 13;
+            }
+
             strm.Dstate = this;
 
             this.Noheader = noheader;

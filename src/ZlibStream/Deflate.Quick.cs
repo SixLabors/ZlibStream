@@ -76,7 +76,7 @@ namespace SixLabors.ZlibStream
 
                             if (dist > 0 && (dist - 1) < this.wSize - 1)
                             {
-                                matchLen = this.Compare258(window + this.strStart, window + hash_head);
+                                matchLen = this.Compare_258_Unaligned_16(window + this.strStart, window + hash_head);
 
                                 if (matchLen >= MINMATCH)
                                 {
@@ -148,59 +148,25 @@ namespace SixLabors.ZlibStream
         }
 
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
-        private int Compare258(byte* src0, byte* src1)
+        private int Compare_258_Unaligned_16(byte* src0, byte* src1)
         {
-            int len = 0;
-            do
+            if (*src0 != *src1)
             {
-                if (*(ushort*)src0 != *(ushort*)src1)
-                {
-                    return len + ((*src0 == *src1) ? 1 : 0);
-                }
-
-                src0 += 2;
-                src1 += 2;
-                len += 2;
-
-                if (*(ushort*)src0 != *(ushort*)src1)
-                {
-                    return len + ((*src0 == *src1) ? 1 : 0);
-                }
-
-                src0 += 2;
-                src1 += 2;
-                len += 2;
-
-                if (*(ushort*)src0 != *(ushort*)src1)
-                {
-                    return len + ((*src0 == *src1) ? 1 : 0);
-                }
-
-                src0 += 2;
-                src1 += 2;
-                len += 2;
-
-                if (*(ushort*)src0 != *(ushort*)src1)
-                {
-                    return len + ((*src0 == *src1) ? 1 : 0);
-                }
-
-                src0 += 2;
-                src1 += 2;
-                len += 2;
-            }
-            while (len < 256);
-
-            src0 += 2;
-            src1 += 2;
-            len += 2;
-
-            if (*(ushort*)src0 != *(ushort*)src1)
-            {
-                return len + ((*src0 == *src1) ? 1 : 0);
+                return 0;
             }
 
-            return len;
+            src0 += 1;
+            src1 += 1;
+
+            if (*src0 != *src1)
+            {
+                return 1;
+            }
+
+            src0 += 1;
+            src1 += 1;
+
+            return this.Compare_256_Unaligned_16(src0, src1) + 2;
         }
     }
 }
