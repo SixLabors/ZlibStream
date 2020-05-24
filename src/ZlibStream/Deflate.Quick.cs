@@ -150,21 +150,10 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
         private int Compare_258_Unaligned_16(byte* src0, byte* src1)
         {
-            if (*src0 != *src1)
+            if (*(ushort*)src0 != *(ushort*)src1)
             {
-                return 0;
+                return (*src0 == *src1) ? 1 : 0;
             }
-
-            src0 += 1;
-            src1 += 1;
-
-            if (*src0 != *src1)
-            {
-                return 1;
-            }
-
-            src0 += 1;
-            src1 += 1;
 
             return this.Compare_256_Unaligned_16(src0, src1) + 2;
         }
