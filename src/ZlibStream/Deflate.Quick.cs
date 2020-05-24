@@ -35,7 +35,7 @@ namespace SixLabors.ZlibStream
             {
                 fixed (ushort* dtree = StaticTree.StaticDtree)
                 {
-                    if (this.blockOpen)
+                    if (!this.blockOpen)
                     {
                         last = flush == ZlibFlushStrategy.ZFINISH;
                         this.Tr_emit_tree(STATICTREES, last);
@@ -123,7 +123,7 @@ namespace SixLabors.ZlibStream
                         this.strStart++;
                         this.lookahead--;
                     }
-                    while (this.strm.AvailIn != 0);
+                    while (this.strm.AvailOut != 0);
 
                     if (this.strm.AvailOut == 0 && flush != ZlibFlushStrategy.ZFINISH)
                     {
