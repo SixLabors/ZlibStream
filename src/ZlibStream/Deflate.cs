@@ -707,7 +707,7 @@ namespace SixLabors.ZlibStream
         private void Tr_align()
         {
             this.Tr_emit_tree(STATICTREES, false);
-            this.Tr_emit_end_block(StaticTree.StaticLtree);
+            this.Tr_emit_end_block(StaticTree.StaticLtree, false);
 
             this.Bi_flush();
 
@@ -718,7 +718,7 @@ namespace SixLabors.ZlibStream
             if (1 + this.lastEobLen + 10 - this.biValid < 9)
             {
                 this.Tr_emit_tree(STATICTREES, false);
-                this.Tr_emit_end_block(StaticTree.StaticLtree);
+                this.Tr_emit_end_block(StaticTree.StaticLtree, false);
                 this.Bi_flush();
             }
 
@@ -915,15 +915,17 @@ namespace SixLabors.ZlibStream
         private void Tr_emit_tree(int type, bool eof)
         {
             this.Send_bits((type << 1) + (eof ? 1 : 0), 3); // send block type
-            this.blockOpen = true;
         }
 
         // Send the end of a block
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void Tr_emit_end_block(ushort[] tree)
+        private void Tr_emit_end_block(ushort[] tree, bool last)
         {
             this.Send_code(ENDBLOCK, tree);
-            this.blockOpen = false;
+            if (last)
+            {
+                this.Bi_windup();
+            }
         }
 
         // Emit match dist/length code.
