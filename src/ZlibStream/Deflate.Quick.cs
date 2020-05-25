@@ -43,6 +43,8 @@ namespace SixLabors.ZlibStream
 
                     do
                     {
+                        // Perhaps this is incorrect? The buffer is 16
+                        // whereas in ng it is 64.
                         if (this.Pending + 4 >= this.pendingBufferSize)
                         {
                             this.Flush_pending(this.strm);
@@ -90,29 +92,9 @@ namespace SixLabors.ZlibStream
                                         matchLen = MAXMATCH;
                                     }
 
-                                    int lc = matchLen - MINMATCH;
-                                    int code = Tree.LengthCode[lc];
+                                    this.Tr_emit_distance(ltree, dtree, matchLen - MINMATCH, dist);
 
-                                    this.Send_code(code + LITERALS + 1, ltree); // send the length code
-                                    int extra = Tree.ExtraLbits[code];
-                                    if (extra != 0)
-                                    {
-                                        lc -= Tree.BaseLength[code];
-                                        this.Send_bits(lc, extra); // send the extra length bits
-                                    }
-
-                                    dist--; // dist is now the match distance - 1
-                                    code = Tree.D_code(dist);
-
-                                    this.Send_code(code, dtree); // send the distance code
-                                    extra = Tree.ExtraDbits[code];
-                                    if (extra != 0)
-                                    {
-                                        dist -= Tree.BaseDist[code];
-                                        this.Send_bits(dist, extra); // send the extra distance bits
-                                    }
-
-                                    this.lookahead = matchLen;
+                                    this.lookahead -= matchLen;
                                     this.strStart += matchLen;
                                     continue;
                                 }

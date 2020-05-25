@@ -1,6 +1,8 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
+// Uncomment to us DeflateQuick
+// #define USE_QUICK
 using System;
 using System.Buffers;
 using System.Runtime.CompilerServices;
@@ -78,7 +80,11 @@ namespace SixLabors.ZlibStream
         {
             // good  lazy  nice  chain
             new Config(0, 0, 0, 0, STORED), // 0
-            new Config(4, 4, 8, 4, FAST), // QUICK),  // 1
+#if USE_QUICK
+            new Config(4, 4, 8, 4, QUICK),  // 1
+#else
+            new Config(4, 4, 8, 4, FAST),   // 1
+#endif
             new Config(4, 5, 16, 8, FAST),  // 2
             new Config(4, 6, 32, 32, FAST),  // 3
 
@@ -774,8 +780,6 @@ namespace SixLabors.ZlibStream
             int dist; // distance of matched string
             int lc; // match length or unmatched char (if dist == 0)
             int lx = 0; // running index in l_buf
-            int code; // the code to send
-            int extra; // number of extra bits to send
 
             if (this.lastLit != 0)
             {
@@ -793,27 +797,7 @@ namespace SixLabors.ZlibStream
                     }
                     else
                     {
-                        // Here, lc is the match length - MINMATCH
-                        code = Tree.LengthCode[lc];
-
-                        this.Send_code(code + LITERALS + 1, ltree); // send the length code
-                        extra = Tree.ExtraLbits[code];
-                        if (extra != 0)
-                        {
-                            lc -= Tree.BaseLength[code];
-                            this.Send_bits(lc, extra); // send the extra length bits
-                        }
-
-                        dist--; // dist is now the match distance - 1
-                        code = Tree.D_code(dist);
-
-                        this.Send_code(code, dtree); // send the distance code
-                        extra = Tree.ExtraDbits[code];
-                        if (extra != 0)
-                        {
-                            dist -= Tree.BaseDist[code];
-                            this.Send_bits(dist, extra); // send the extra distance bits
-                        }
+                        this.Tr_emit_distance(ltree, dtree, lc, dist);
                     } // literal or match pair ?
 
                     // Check that the overlay between pending_buf and d_buf+l_buf is ok:
@@ -940,6 +924,35 @@ namespace SixLabors.ZlibStream
         {
             this.Send_code(ENDBLOCK, tree);
             this.blockOpen = false;
+        }
+
+        // Emit match dist/length code.
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void Tr_emit_distance(ushort* ltree, ushort* dtree, int lc, int dist)
+        {
+            // code is the code to send
+            // extra is number of extra bits to send
+            // Here, lc is the match length - MINMATCH
+            int code = Tree.LengthCode[lc];
+
+            this.Send_code(code + LITERALS + 1, ltree); // send the length code
+            int extra = Tree.ExtraLbits[code];
+            if (extra != 0)
+            {
+                lc -= Tree.BaseLength[code];
+                this.Send_bits(lc, extra); // send the extra length bits
+            }
+
+            dist--; // dist is now the match distance - 1
+            code = Tree.D_code(dist);
+
+            this.Send_code(code, dtree); // send the distance code
+            extra = Tree.ExtraDbits[code];
+            if (extra != 0)
+            {
+                dist -= Tree.BaseDist[code];
+                this.Send_bits(dist, extra); // send the extra distance bits
+            }
         }
 
         // Determine the best encoding for the current block: dynamic trees, static
@@ -1366,11 +1379,12 @@ namespace SixLabors.ZlibStream
                 return ZlibCompressionState.ZSTREAMERROR;
             }
 
-            if (level == ZlibCompressionLevel.ZBESTCOMPRESSION)
+#if USE_QUICK
+            if (level == ZlibCompressionLevel.ZBESTSPEED)
             {
-                // TODO: Enable different bits for Quick
-                // windowBits = 13;
+                windowBits = 13;
             }
+#endif
 
             strm.Dstate = this;
 
