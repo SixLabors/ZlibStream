@@ -39,6 +39,7 @@ namespace SixLabors.ZlibStream
                     {
                         last = flush == ZlibFlushStrategy.ZFINISH;
                         this.Tr_emit_tree(STATICTREES, last);
+                        this.blockOpen = true;
                     }
 
                     do
@@ -59,8 +60,9 @@ namespace SixLabors.ZlibStream
                             this.Fill_window();
                             if (this.lookahead < MINLOOKAHEAD && flush == ZlibFlushStrategy.ZNOFLUSH)
                             {
-                                this.Tr_emit_end_block(StaticTree.StaticLtree);
+                                this.Tr_emit_end_block(StaticTree.StaticLtree, false);
                                 this.blockStart = this.strStart;
+                                this.blockOpen = false;
                                 this.Flush_pending(this.strm);
                                 return NeedMore;
                             }
@@ -76,7 +78,7 @@ namespace SixLabors.ZlibStream
                             hash_head = this.InsertString(prev, head, window, this.strStart);
                             dist = this.strStart - hash_head;
 
-                            if (dist > 0 && (dist - 1) < this.wSize - 1)
+                            if (dist > 0 && dist < this.wSize - MINLOOKAHEAD)
                             {
                                 matchLen = this.Compare_258_Unaligned_16(window + this.strStart, window + hash_head);
 
@@ -113,8 +115,9 @@ namespace SixLabors.ZlibStream
                     }
 
                     last = flush == ZlibFlushStrategy.ZFINISH;
-                    this.Tr_emit_end_block(StaticTree.StaticLtree);
+                    this.Tr_emit_end_block(StaticTree.StaticLtree, last);
                     this.blockStart = this.strStart;
+                    this.blockOpen = false;
                     this.Flush_pending(this.strm);
 
                     if (last)
