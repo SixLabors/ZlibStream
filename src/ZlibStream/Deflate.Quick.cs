@@ -140,6 +140,9 @@ namespace SixLabors.ZlibStream
                 return (*src0 == *src1) ? 1 : 0;
             }
 
+            *src0 += 2;
+            *src1 += 2;
+
             return this.Compare_256_Unaligned_16(src0, src1) + 2;
         }
     }
