@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SharpZipLib"  />
-    <PackageReference Include="zlib.managed"  />
+    <PackageReference Include="SharpZipLib" />
+    <PackageReference Include="zlib.managed" />
   </ItemGroup>
 
 </Project>

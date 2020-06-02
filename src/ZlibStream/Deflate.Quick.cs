@@ -44,8 +44,6 @@ namespace SixLabors.ZlibStream
 
                     do
                     {
-                        // Perhaps this is incorrect? The buffer is 16
-                        // whereas in ng it is 64.
                         if (this.Pending + 4 >= this.pendingBufferSize)
                         {
                             this.Flush_pending(this.strm);
@@ -80,7 +78,7 @@ namespace SixLabors.ZlibStream
 
                             if (dist > 0 && dist < this.wSize - MINLOOKAHEAD)
                             {
-                                matchLen = this.Compare_258_Unaligned_16(window + this.strStart, window + hash_head);
+                                matchLen = Compare258(window + this.strStart, window + hash_head);
 
                                 if (matchLen >= MINMATCH)
                                 {
@@ -133,7 +131,7 @@ namespace SixLabors.ZlibStream
         }
 
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
-        private int Compare_258_Unaligned_16(byte* src0, byte* src1)
+        private static int Compare258(byte* src0, byte* src1)
         {
             if (*(ushort*)src0 != *(ushort*)src1)
             {
@@ -143,7 +141,7 @@ namespace SixLabors.ZlibStream
             *src0 += 2;
             *src1 += 2;
 
-            return this.Compare_256_Unaligned_16(src0, src1) + 2;
+            return Compare256(src0, src1) + 2;
         }
     }
 }

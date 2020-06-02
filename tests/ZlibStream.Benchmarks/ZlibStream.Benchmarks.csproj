@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -15,4 +15,8 @@
     <PackageReference Include="zlib.managed"  />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\ZlibStream.Tests\TestUtilities\**" />
+  </ItemGroup>
+  
 </Project>

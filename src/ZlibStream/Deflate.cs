@@ -1050,8 +1050,7 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.HotPath)]
         private void Fill_window()
         {
-            int n, m;
-            int p;
+            int n;
             int more; // Amount of free space at the end of the window.
 
             byte* window = this.windowPointer;
@@ -1069,31 +1068,7 @@ namespace SixLabors.ZlibStream
                     this.strStart -= this.wSize; // we now have strstart >= MAX_DIST
                     this.blockStart -= this.wSize;
 
-                    // Slide the hash table (could be avoided with 32 bit values
-                    // at the expense of memory usage). We slide even when level == 0
-                    // to keep the hash table consistent if we switch back to level > 0
-                    // later. (Using level 0 permanently is not an optimal usage of
-                    // zlib, so we don't care about this pathological case.)
-                    n = this.hashSize;
-                    p = n;
-                    do
-                    {
-                        m = head[--p];
-                        head[p] = (ushort)(m >= this.wSize ? (m - this.wSize) : 0);
-                    }
-                    while (--n != 0);
-
-                    n = this.wSize;
-                    p = n;
-                    do
-                    {
-                        m = prev[--p];
-                        prev[p] = (ushort)(m >= this.wSize ? (m - this.wSize) : 0);
-
-                        // If n is not on any hash chain, prev[n] is garbage but
-                        // its value will never be used.
-                    }
-                    while (--n != 0);
+                    this.SlideHash(head, prev);
                     more += this.wSize;
                 }
 
@@ -1125,131 +1100,6 @@ namespace SixLabors.ZlibStream
                 // but this is not important since only literal bytes will be emitted.
             }
             while (this.lookahead < MINLOOKAHEAD && this.strm.AvailIn != 0);
-        }
-
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
-        private int Compare_256_Aligned(byte* src0, byte* src1)
-        {
-            int len = 0;
-            do
-            {
-                if (*src0 != *src1)
-                {
-                    return len;
-                }
-
-                src0++;
-                src1++;
-                len++;
-
-                if (*src0 != *src1)
-                {
-                    return len;
-                }
-
-                src0++;
-                src1++;
-                len++;
-
-                if (*src0 != *src1)
-                {
-                    return len;
-                }
-
-                src0++;
-                src1++;
-                len++;
-
-                if (*src0 != *src1)
-                {
-                    return len;
-                }
-
-                src0++;
-                src1++;
-                len++;
-
-                if (*src0 != *src1)
-                {
-                    return len;
-                }
-
-                src0++;
-                src1++;
-                len++;
-
-                if (*src0 != *src1)
-                {
-                    return len;
-                }
-
-                src0++;
-                src1++;
-                len++;
-
-                if (*src0 != *src1)
-                {
-                    return len;
-                }
-
-                src0++;
-                src1++;
-                len++;
-
-                if (*src0 != *src1)
-                {
-                    return len;
-                }
-
-                src0++;
-                src1++;
-                len++;
-            }
-            while (len < 256);
-            return 256;
-        }
-
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
-        private int Compare_256_Unaligned_16(byte* src0, byte* src1)
-        {
-            int len = 0;
-            do
-            {
-                if (*(ushort*)src0 != *(ushort*)src1)
-                {
-                    return len + ((*src0 == *src1) ? 1 : 0);
-                }
-
-                src0 += 2;
-                src1 += 2;
-                len += 2;
-                if (*(ushort*)src0 != *(ushort*)src1)
-                {
-                    return len + ((*src0 == *src1) ? 1 : 0);
-                }
-
-                src0 += 2;
-                src1 += 2;
-                len += 2;
-                if (*(ushort*)src0 != *(ushort*)src1)
-                {
-                    return len + ((*src0 == *src1) ? 1 : 0);
-                }
-
-                src0 += 2;
-                src1 += 2;
-                len += 2;
-                if (*(ushort*)src0 != *(ushort*)src1)
-                {
-                    return len + ((*src0 == *src1) ? 1 : 0);
-                }
-
-                src0 += 2;
-                src1 += 2;
-                len += 2;
-            }
-            while (len < 256);
-            return 256;
         }
 
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
@@ -1306,15 +1156,13 @@ namespace SixLabors.ZlibStream
 
                 // Skip to next match if the match length cannot increase
                 // or if the match length is less than 2:
-                if (*(ushort*)&match[best_len - 1] != scan_end ||
-                    *(ushort*)match != scan_start)
+                if (*(ushort*)&match[best_len - 1] != scan_end
+                    || *(ushort*)match != scan_start)
                 {
                     continue;
                 }
 
-                // TODO: This can be optimized.
-                // https://github.com/cloudflare/zlib/commit/31043308c3d3edfb487d2c4cbe7290bd5b63c65c#diff-6245073f3e742f2e3efa953113cfbf1aR144-R157
-                len = this.Compare_256_Unaligned_16(scan + 2, match + 2) + 2;
+                len = Compare256(scan + 2, match + 2) + 2;
 
                 if (len > best_len)
                 {
@@ -1328,8 +1176,7 @@ namespace SixLabors.ZlibStream
                     scan_end = *(ushort*)&scan[best_len - 1];
                 }
             }
-            while ((cur_match = prev[cur_match & wmask]) > limit
-                    && --chain_length != 0);
+            while ((cur_match = prev[cur_match & wmask]) > limit && --chain_length != 0);
 
             return Math.Min(best_len, this.lookahead);
         }

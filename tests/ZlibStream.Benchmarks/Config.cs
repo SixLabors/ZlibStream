@@ -7,6 +7,7 @@ using BenchmarkDotNet.Diagnostics.Windows;
 #endif
 
 using System;
+using System.Linq;
 using System.Reflection;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
@@ -44,7 +45,7 @@ namespace ZlibStream.Benchmarks
 
     }
 
-    public class DeflateConfig : Config
+    public class DeflateConfig : ShortRun
     {
         public DeflateConfig()
         {
@@ -95,14 +96,20 @@ namespace ZlibStream.Benchmarks
             var instance = Activator.CreateInstance(descriptor.Type);
             descriptor.GlobalSetupMethod.Invoke(instance, Array.Empty<object>());
 
-            var p = benchmarkCase.Parameters.Items[0]?.Value;
+            var p = benchmarkCase.Parameters.Items.First(x => x.Name == this.parameterName).Value;
             if (p is int pint)
             {
                 PropertyInfo prop = descriptor.Type.GetProperty(this.parameterName);
                 prop.SetValue(instance, pint);
             }
 
-            return descriptor.WorkloadMethod.Invoke(instance, Array.Empty<object>()).ToString();
+            var args = Array.Empty<object>();
+            if (benchmarkCase.HasArguments)
+            {
+                args = benchmarkCase.Parameters.Items.Where(x => x.IsArgument).Select(x => x.Value).ToArray();
+            }
+
+            return descriptor.WorkloadMethod.Invoke(instance, args).ToString();
         }
 
         public string GetValue(Summary summary, BenchmarkCase benchmarkCase, SummaryStyle style)

@@ -28,6 +28,21 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		readme.md = readme.md
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Corpus", "Corpus", "{7211DB62-F3C8-419C-846B-89949EBD1EAC}"
+	ProjectSection(SolutionItems) = preProject
+		tests\corpus\alice29.txt = tests\corpus\alice29.txt
+		tests\corpus\asyoulik.txt = tests\corpus\asyoulik.txt
+		tests\corpus\cp.html = tests\corpus\cp.html
+		tests\corpus\fields.c = tests\corpus\fields.c
+		tests\corpus\grammar.lsp = tests\corpus\grammar.lsp
+		tests\corpus\kennedy.xls = tests\corpus\kennedy.xls
+		tests\corpus\lcet10.txt = tests\corpus\lcet10.txt
+		tests\corpus\plrabn12.txt = tests\corpus\plrabn12.txt
+		tests\corpus\ptt5 = tests\corpus\ptt5
+		tests\corpus\sum = tests\corpus\sum
+		tests\corpus\xargs.1 = tests\corpus\xargs.1
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -54,6 +69,7 @@ Global
 		{0C89B7A2-A218-49E4-B545-5B044A45F977} = {78670B24-8720-48FC-BD04-68C667B1C8CC}
 		{01E63166-CDBA-450F-A597-DE096B05A052} = {CB611663-07F2-4419-B83D-7AED9B406865}
 		{15FE1586-DED2-41F4-9292-6BE8787A60C4} = {CB611663-07F2-4419-B83D-7AED9B406865}
+		{7211DB62-F3C8-419C-846B-89949EBD1EAC} = {CB611663-07F2-4419-B83D-7AED9B406865}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {AE022F12-D088-439B-8AD2-EAAF2FE7C6C0}
