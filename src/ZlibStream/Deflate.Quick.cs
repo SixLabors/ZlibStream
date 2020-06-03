@@ -35,15 +35,26 @@ namespace SixLabors.ZlibStream
             {
                 fixed (ushort* dtree = StaticTree.StaticDtree)
                 {
-                    if (!this.blockOpen)
-                    {
-                        last = flush == ZlibFlushStrategy.ZFINISH;
-                        this.Tr_emit_tree(STATICTREES, last);
-                        this.blockOpen = true;
-                    }
-
                     do
                     {
+                        if (this.lookahead < MINLOOKAHEAD)
+                        {
+                            this.Fill_window();
+                            if (this.lookahead < MINLOOKAHEAD && flush == ZlibFlushStrategy.ZNOFLUSH)
+                            {
+                                // Always emit end block, in case next call is with Z_FINISH
+                                // and we need to emit start of last block
+                                this.QuickEndBlock(false);
+                                return NeedMore;
+                            }
+
+                            if (this.lookahead == 0)
+                            {
+                                break;
+                            }
+                        }
+
+                        // TODO: Check 8 vs 4.
                         if (this.Pending + 8 >= this.pendingBufferSize)
                         {
                             this.Flush_pending(this.strm);
@@ -53,22 +64,12 @@ namespace SixLabors.ZlibStream
                             }
                         }
 
-                        if (this.lookahead < MINLOOKAHEAD)
+                        if (!this.blockOpen)
                         {
-                            this.Fill_window();
-                            if (this.lookahead < MINLOOKAHEAD && flush == ZlibFlushStrategy.ZNOFLUSH)
-                            {
-                                this.Tr_emit_end_block(StaticTree.StaticLtree, false);
-                                this.blockStart = this.strStart;
-                                this.blockOpen = false;
-                                this.Flush_pending(this.strm);
-                                return NeedMore;
-                            }
-
-                            if (this.lookahead == 0)
-                            {
-                                break;
-                            }
+                            // Start new block when we have lookahead data, so that if no
+                            // input data is given an empty block will not be written.
+                            last = flush == ZlibFlushStrategy.ZFINISH;
+                            this.QuickStartBlock(last);
                         }
 
                         if (this.lookahead >= MINMATCH)
@@ -93,7 +94,6 @@ namespace SixLabors.ZlibStream
                                     }
 
                                     this.Tr_emit_distance(ltree, dtree, matchLen - MINMATCH, dist);
-
                                     this.lookahead -= matchLen;
                                     this.strStart += matchLen;
                                     continue;
@@ -107,15 +107,8 @@ namespace SixLabors.ZlibStream
                     }
                     while (this.strm.AvailOut != 0);
 
-                    if (this.strm.AvailOut == 0 && flush != ZlibFlushStrategy.ZFINISH)
-                    {
-                        return NeedMore;
-                    }
-
                     last = flush == ZlibFlushStrategy.ZFINISH;
-                    this.Tr_emit_end_block(StaticTree.StaticLtree, last);
-                    this.blockStart = this.strStart;
-                    this.blockOpen = false;
+                    this.QuickEndBlock(last);
                     this.Flush_pending(this.strm);
 
                     if (last)
@@ -139,6 +132,22 @@ namespace SixLabors.ZlibStream
             }
 
             return Compare256(src0 + 2, src1 + 2) + 2;
+        }
+
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void QuickStartBlock(bool last)
+        {
+            this.Tr_emit_tree(STATICTREES, last);
+            this.blockStart = this.strStart;
+            this.blockOpen = true;
+        }
+
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void QuickEndBlock(bool last)
+        {
+            this.Tr_emit_end_block(StaticTree.StaticLtree, last);
+            this.blockStart = this.strStart;
+            this.blockOpen = false;
         }
     }
 }

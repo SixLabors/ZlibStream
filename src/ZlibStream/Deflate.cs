@@ -2,6 +2,7 @@
 // See LICENSE for more details.
 
 // Uncomment to us DeflateQuick
+// TODO: Make an option.
 // #define USE_QUICK
 using System;
 using System.Buffers;
