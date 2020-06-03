@@ -1223,7 +1223,7 @@ namespace SixLabors.ZlibStream
                 || level < ZlibCompressionLevel.ZNOCOMPRESSION
                 || level > ZlibCompressionLevel.ZBESTCOMPRESSION
                 || strategy < ZlibCompressionStrategy.ZDEFAULTSTRATEGY
-                || strategy > ZlibCompressionStrategy.ZHUFFMANONLY)
+                || strategy > ZlibCompressionStrategy.ZRLE)
             {
                 return ZlibCompressionState.ZSTREAMERROR;
             }
@@ -1522,27 +1522,31 @@ namespace SixLabors.ZlibStream
                 || (flush != ZlibFlushStrategy.ZNOFLUSH && this.status != FINISHSTATE))
             {
                 int bstate = -1;
-                switch (ConfigTable[(int)this.level].Func)
+
+                if (this.strategy == ZlibCompressionStrategy.ZRLE)
                 {
-                    case STORED:
-                        bstate = this.DeflateStored(flush);
-                        break;
+                    bstate = this.DeflateRle(flush);
+                }
+                else
+                {
+                    switch (ConfigTable[(int)this.level].Func)
+                    {
+                        case STORED:
+                            bstate = this.DeflateStored(flush);
+                            break;
 
-                    case FAST:
-                        bstate = this.DeflateFast(flush);
-                        break;
+                        case FAST:
+                            bstate = this.DeflateFast(flush);
+                            break;
 
-                    case SLOW:
-                        bstate = this.DeflateSlow(flush);
-                        break;
+                        case SLOW:
+                            bstate = this.DeflateSlow(flush);
+                            break;
 
-                    case QUICK:
-                        bstate = this.DeflateQuick(flush);
-                        break;
-
-                    // TODO: Add Huffman and RLE
-                    default:
-                        break;
+                        case QUICK:
+                            bstate = this.DeflateQuick(flush);
+                            break;
+                    }
                 }
 
                 if (bstate == FinishStarted || bstate == FinishDone)

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Six Labors and contributors.
+// Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
 namespace SixLabors.ZlibStream
@@ -19,8 +19,13 @@ namespace SixLabors.ZlibStream
         ZFILTERED,
 
         /// <summary>
-        /// huffman compression strategy.
+        /// Huffman compression strategy.
         /// </summary>
         ZHUFFMANONLY,
+
+        /// <summary>
+        /// Run Length Encoded
+        /// </summary>
+        ZRLE
     }
 }

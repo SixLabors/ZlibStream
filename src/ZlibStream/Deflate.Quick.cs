@@ -44,7 +44,7 @@ namespace SixLabors.ZlibStream
 
                     do
                     {
-                        if (this.Pending + 4 >= this.pendingBufferSize)
+                        if (this.Pending + 8 >= this.pendingBufferSize)
                         {
                             this.Flush_pending(this.strm);
                             if (this.strm.AvailIn == 0 && flush != ZlibFlushStrategy.ZFINISH)
@@ -138,10 +138,7 @@ namespace SixLabors.ZlibStream
                 return (*src0 == *src1) ? 1 : 0;
             }
 
-            *src0 += 2;
-            *src1 += 2;
-
-            return Compare256(src0, src1) + 2;
+            return Compare256(src0 + 2, src1 + 2) + 2;
         }
     }
 }
