@@ -11,11 +11,8 @@ namespace SixLabors.ZlibStream
     internal sealed unsafe partial class Deflate
     {
         /// <summary>
-        /// Compress as much as possible from the input stream, return the current
-        /// block state.
-        /// This function does not perform lazy evaluation of matches and inserts
-        /// new strings in the dictionary only for unmatched strings or for ushort
-        /// matches. It is used only for the fast compression options.
+        /// The deflate_quick deflate strategy, designed to be used when cycles are
+        /// at a premium.
         /// </summary>
         /// <param name="flush">The flush strategy.</param>
         /// <returns>The <see cref="int"/>.</returns>
