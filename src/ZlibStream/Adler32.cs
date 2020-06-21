@@ -63,6 +63,11 @@ namespace SixLabors.ZlibStream
             }
 
 #if SUPPORTS_RUNTIME_INTRINSICS
+            if (Avx2.IsSupported && buffer.Length >= MinBufferSize)
+            {
+                return CalculateSse(adler, buffer);
+            }
+
             if (Ssse3.IsSupported && buffer.Length >= MinBufferSize)
             {
                 return CalculateSse(adler, buffer);
@@ -77,13 +82,140 @@ namespace SixLabors.ZlibStream
         // Based on https://github.com/chromium/chromium/blob/master/third_party/zlib/adler32_simd.c
 #if SUPPORTS_RUNTIME_INTRINSICS
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        private static unsafe uint CalculateAvx(uint adler, ReadOnlySpan<byte> buffer)
+        {
+            uint s1 = adler & 0xFFFF;
+            uint s2 = (adler >> 16) & 0xFFFF;
+
+            // Process the data in blocks.
+            const int BLOCK_SIZE = 64;
+
+            uint length = (uint)buffer.Length;
+            uint blocks = length / BLOCK_SIZE;
+            length -= blocks * BLOCK_SIZE;
+
+            int index = 0;
+            fixed (byte* bufferPtr = buffer)
+            fixed (byte* tapPtr = Tap1Tap2)
+            {
+                index += (int)blocks * BLOCK_SIZE;
+                var localBufferPtr = bufferPtr;
+
+                // _mm_setr_epi8 on x86
+                Vector256<sbyte> tap1 = Avx.LoadVector256((sbyte*)tapPtr);
+                Vector256<sbyte> tap2 = Avx.LoadVector256((sbyte*)(tapPtr + 0x10));
+                Vector256<byte> zero = Vector256<byte>.Zero;
+                var ones = Vector256.Create((short)1);
+
+                while (blocks > 0)
+                {
+                    uint n = NMAX / BLOCK_SIZE;  /* The NMAX constraint. */
+                    if (n > blocks)
+                    {
+                        n = blocks;
+                    }
+
+                    blocks -= n;
+
+                    // Process n blocks of data. At most NMAX data bytes can be
+                    // processed before s2 must be reduced modulo BASE.
+                    Vector256<uint> v_ps = Vector256.CreateScalar(s1 * n);
+                    Vector256<uint> v_s2 = Vector256.CreateScalar(s2);
+                    Vector256<uint> v_s1 = Vector256<uint>.Zero;
+
+                    do
+                    {
+                        // Load 32 input bytes.
+                        Vector256<byte> bytes1 = Avx.LoadDquVector256(localBufferPtr);
+                        Vector256<byte> bytes2 = Avx.LoadDquVector256(localBufferPtr + 0x10);
+
+                        // Add previous block byte sum to v_ps.
+                        v_ps = Avx2.Add(v_ps, v_s1);
+
+                        // Horizontally add the bytes for s1, multiply-adds the
+                        // bytes by [ 32, 31, 30, ... ] for s2.
+                        v_s1 = Avx2.Add(v_s1, Avx2.SumAbsoluteDifferences(bytes1, zero).AsUInt32());
+                        Vector256<short> mad1 = Avx2.MultiplyAddAdjacent(bytes1, tap1);
+                        v_s2 = Avx2.Add(v_s2, Avx2.MultiplyAddAdjacent(mad1, ones).AsUInt32());
+
+                        v_s1 = Avx2.Add(v_s1, Avx2.SumAbsoluteDifferences(bytes2, zero).AsUInt32());
+                        Vector256<short> mad2 = Avx2.MultiplyAddAdjacent(bytes2, tap2);
+                        v_s2 = Avx2.Add(v_s2, Avx2.MultiplyAddAdjacent(mad2, ones).AsUInt32());
+
+                        localBufferPtr += BLOCK_SIZE;
+                    }
+                    while (--n > 0);
+
+                    v_s2 = Avx2.Add(v_s2, Avx2.ShiftLeftLogical(v_ps, 5));
+
+                    // Sum epi32 ints v_s1(s2) and accumulate in s1(s2).
+                    const byte S2301 = 0b1011_0001;  // A B C D -> B A D C
+                    const byte S1032 = 0b0100_1110;  // A B C D -> C D A B
+
+                    v_s1 = Avx2.Add(v_s1, Avx2.Shuffle(v_s1, S1032));
+
+                    s1 += v_s1.ToScalar();
+
+                    v_s2 = Avx2.Add(v_s2, Avx2.Shuffle(v_s2, S2301));
+                    v_s2 = Avx2.Add(v_s2, Avx2.Shuffle(v_s2, S1032));
+
+                    s2 = v_s2.ToScalar();
+
+                    // Reduce.
+                    s1 %= BASE;
+                    s2 %= BASE;
+                }
+
+                if (length > 0)
+                {
+                    if (length >= 16)
+                    {
+                        s2 += s1 += localBufferPtr[0];
+                        s2 += s1 += localBufferPtr[1];
+                        s2 += s1 += localBufferPtr[2];
+                        s2 += s1 += localBufferPtr[3];
+                        s2 += s1 += localBufferPtr[4];
+                        s2 += s1 += localBufferPtr[5];
+                        s2 += s1 += localBufferPtr[6];
+                        s2 += s1 += localBufferPtr[7];
+                        s2 += s1 += localBufferPtr[8];
+                        s2 += s1 += localBufferPtr[9];
+                        s2 += s1 += localBufferPtr[10];
+                        s2 += s1 += localBufferPtr[11];
+                        s2 += s1 += localBufferPtr[12];
+                        s2 += s1 += localBufferPtr[13];
+                        s2 += s1 += localBufferPtr[14];
+                        s2 += s1 += localBufferPtr[15];
+
+                        localBufferPtr += 16;
+                        length -= 16;
+                    }
+
+                    while (length-- > 0)
+                    {
+                        s2 += s1 += *localBufferPtr++;
+                    }
+
+                    if (s1 >= BASE)
+                    {
+                        s1 -= BASE;
+                    }
+
+                    s2 %= BASE;
+                }
+
+                return s1 | (s2 << 16);
+            }
+        }
+
+        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
         private static unsafe uint CalculateSse(uint adler, ReadOnlySpan<byte> buffer)
         {
             uint s1 = adler & 0xFFFF;
             uint s2 = (adler >> 16) & 0xFFFF;
 
             // Process the data in blocks.
-            const int BLOCK_SIZE = 1 << 5;
+            const int BLOCK_SIZE = 32;
 
             uint length = (uint)buffer.Length;
             uint blocks = length / BLOCK_SIZE;
