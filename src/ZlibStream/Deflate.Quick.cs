@@ -32,8 +32,26 @@ namespace SixLabors.ZlibStream
             {
                 fixed (ushort* dtree = StaticTree.StaticDtree)
                 {
+                    if (!this.blockOpen && this.lookahead > 0)
+                    {
+                        // Start new block when we have lookahead data, so that if no
+                        // input data is given an empty block will not be written.
+                        last = flush == ZlibFlushStrategy.ZFINISH;
+                        this.QuickStartBlock(last);
+                    }
+
                     do
                     {
+                        if (this.Pending + 4 >= this.pendingBufferSize)
+                        {
+                            this.Flush_pending(this.strm);
+                            if (this.strm.AvailIn == 0 && flush != ZlibFlushStrategy.ZFINISH)
+                            {
+                                // Break to emit end block and return need_more
+                                break;
+                            }
+                        }
+
                         if (this.lookahead < MINLOOKAHEAD)
                         {
                             this.Fill_window();
@@ -49,24 +67,14 @@ namespace SixLabors.ZlibStream
                             {
                                 break;
                             }
-                        }
 
-                        // TODO: Check 8 vs 4.
-                        if (this.Pending + 8 >= this.pendingBufferSize)
-                        {
-                            this.Flush_pending(this.strm);
-                            if (this.strm.AvailIn == 0 && flush != ZlibFlushStrategy.ZFINISH)
+                            if (!this.blockOpen)
                             {
-                                return NeedMore;
+                                // Start new block when we have lookahead data, so that if no
+                                // input data is given an empty block will not be written.
+                                last = flush == ZlibFlushStrategy.ZFINISH;
+                                this.QuickStartBlock(last);
                             }
-                        }
-
-                        if (!this.blockOpen)
-                        {
-                            // Start new block when we have lookahead data, so that if no
-                            // input data is given an empty block will not be written.
-                            last = flush == ZlibFlushStrategy.ZFINISH;
-                            this.QuickStartBlock(last);
                         }
 
                         if (this.lookahead >= MINMATCH)
@@ -83,11 +91,6 @@ namespace SixLabors.ZlibStream
                                     if (matchLen > this.lookahead)
                                     {
                                         matchLen = this.lookahead;
-                                    }
-
-                                    if (matchLen > MAXMATCH)
-                                    {
-                                        matchLen = MAXMATCH;
                                     }
 
                                     this.Tr_emit_distance(ltree, dtree, matchLen - MINMATCH, dist);
