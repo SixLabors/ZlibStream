@@ -658,8 +658,7 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         private void PutShort(int w)
         {
-            ushort* s = (ushort*)&this.pendingPointer[this.Pending];
-            s[0] = (ushort)w;
+            *(ushort*)&this.pendingPointer[this.Pending] = (ushort)w;
             this.Pending += 2;
         }
 
@@ -1631,8 +1630,10 @@ namespace SixLabors.ZlibStream
         // through this function so some applications may wish to modify it
         // to avoid allocating a large strm->next_out buffer and copying into it.
         // (See also read_buf()).
+        [MethodImpl(InliningOptions.ShortMethod)]
         internal void Flush_pending(ZStream strm)
         {
+            this.Bi_flush();
             int len = this.Pending;
 
             if (len > strm.AvailOut)

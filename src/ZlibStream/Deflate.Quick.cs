@@ -145,9 +145,12 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         private void QuickEndBlock(bool last)
         {
-            this.Tr_emit_end_block(StaticTree.StaticLtree, last);
-            this.blockStart = this.strStart;
-            this.blockOpen = false;
+            if (this.blockOpen)
+            {
+                this.Tr_emit_end_block(StaticTree.StaticLtree, last);
+                this.blockStart = this.strStart;
+                this.blockOpen = false;
+            }
         }
     }
 }
