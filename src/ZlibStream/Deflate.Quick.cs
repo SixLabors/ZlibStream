@@ -42,7 +42,7 @@ namespace SixLabors.ZlibStream
 
                     do
                     {
-                        if (this.Pending + 4 >= this.pendingBufferSize)
+                        if (this.Pending + 12 >= this.pendingBufferSize)
                         {
                             this.Flush_pending(this.strm);
                             if (this.strm.AvailIn == 0 && flush != ZlibFlushStrategy.ZFINISH)
