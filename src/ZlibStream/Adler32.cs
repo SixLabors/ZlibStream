@@ -34,6 +34,8 @@ namespace SixLabors.ZlibStream
         // The C# compiler emits this as a compile-time constant embedded in the PE file.
         private static ReadOnlySpan<byte> Tap1Tap2 => new byte[]
         {
+            64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, // tap1
+            48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, // tap2
             32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, // tap1
             16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 // tap2
         };
@@ -65,12 +67,12 @@ namespace SixLabors.ZlibStream
 #if SUPPORTS_RUNTIME_INTRINSICS
             if (Avx2.IsSupported && buffer.Length >= MinBufferSize)
             {
-                return CalculateSse(adler, buffer);
+                return CalculateAvx2(adler, buffer);
             }
 
             if (Ssse3.IsSupported && buffer.Length >= MinBufferSize)
             {
-                return CalculateSse(adler, buffer);
+                return CalculateSse3(adler, buffer);
             }
 
             return CalculateScalar(adler, buffer);
@@ -82,7 +84,7 @@ namespace SixLabors.ZlibStream
         // Based on https://github.com/chromium/chromium/blob/master/third_party/zlib/adler32_simd.c
 #if SUPPORTS_RUNTIME_INTRINSICS
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
-        private static unsafe uint CalculateAvx(uint adler, ReadOnlySpan<byte> buffer)
+        private static unsafe uint CalculateAvx2(uint adler, ReadOnlySpan<byte> buffer)
         {
             uint s1 = adler & 0xFFFF;
             uint s2 = (adler >> 16) & 0xFFFF;
@@ -103,7 +105,7 @@ namespace SixLabors.ZlibStream
 
                 // _mm_setr_epi8 on x86
                 Vector256<sbyte> tap1 = Avx.LoadVector256((sbyte*)tapPtr);
-                Vector256<sbyte> tap2 = Avx.LoadVector256((sbyte*)(tapPtr + 0x10));
+                Vector256<sbyte> tap2 = Avx.LoadVector256((sbyte*)(tapPtr + 0x20));
                 Vector256<byte> zero = Vector256<byte>.Zero;
                 var ones = Vector256.Create((short)1);
 
@@ -125,9 +127,9 @@ namespace SixLabors.ZlibStream
 
                     do
                     {
-                        // Load 32 input bytes.
+                        // Load 64 input bytes.
                         Vector256<byte> bytes1 = Avx.LoadDquVector256(localBufferPtr);
-                        Vector256<byte> bytes2 = Avx.LoadDquVector256(localBufferPtr + 0x10);
+                        Vector256<byte> bytes2 = Avx.LoadDquVector256(localBufferPtr + 0x20);
 
                         // Add previous block byte sum to v_ps.
                         v_ps = Avx2.Add(v_ps, v_s1);
@@ -146,7 +148,7 @@ namespace SixLabors.ZlibStream
                     }
                     while (--n > 0);
 
-                    v_s2 = Avx2.Add(v_s2, Avx2.ShiftLeftLogical(v_ps, 5));
+                    v_s2 = Avx2.Add(v_s2, Avx2.ShiftLeftLogical(v_ps, 6));
 
                     // Sum epi32 ints v_s1(s2) and accumulate in s1(s2).
                     const byte S2301 = 0b1011_0001;  // A B C D -> B A D C
@@ -154,12 +156,12 @@ namespace SixLabors.ZlibStream
 
                     v_s1 = Avx2.Add(v_s1, Avx2.Shuffle(v_s1, S1032));
 
-                    s1 += v_s1.ToScalar();
+                    s1 += Sse2.ConvertToUInt32(Sse2.Add(v_s1.GetLower(), v_s1.GetUpper()));
 
                     v_s2 = Avx2.Add(v_s2, Avx2.Shuffle(v_s2, S2301));
                     v_s2 = Avx2.Add(v_s2, Avx2.Shuffle(v_s2, S1032));
 
-                    s2 = v_s2.ToScalar();
+                    s2 = Sse2.ConvertToUInt32(Sse2.Add(v_s2.GetLower(), v_s2.GetUpper()));
 
                     // Reduce.
                     s1 %= BASE;
@@ -209,7 +211,7 @@ namespace SixLabors.ZlibStream
         }
 
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
-        private static unsafe uint CalculateSse(uint adler, ReadOnlySpan<byte> buffer)
+        private static unsafe uint CalculateSse3(uint adler, ReadOnlySpan<byte> buffer)
         {
             uint s1 = adler & 0xFFFF;
             uint s2 = (adler >> 16) & 0xFFFF;
@@ -223,7 +225,7 @@ namespace SixLabors.ZlibStream
 
             int index = 0;
             fixed (byte* bufferPtr = buffer)
-            fixed (byte* tapPtr = Tap1Tap2)
+            fixed (byte* tapPtr = Tap1Tap2.Slice(32))
             {
                 index += (int)blocks * BLOCK_SIZE;
                 var localBufferPtr = bufferPtr;
@@ -281,12 +283,14 @@ namespace SixLabors.ZlibStream
 
                     v_s1 = Sse2.Add(v_s1, Sse2.Shuffle(v_s1, S1032));
 
-                    s1 += v_s1.ToScalar();
+                    // ToScalar isn't optimized pre .NET 5
+                    // https://github.com/dotnet/runtime/pull/37882
+                    s1 += Sse2.ConvertToUInt32(v_s1);
 
                     v_s2 = Sse2.Add(v_s2, Sse2.Shuffle(v_s2, S2301));
                     v_s2 = Sse2.Add(v_s2, Sse2.Shuffle(v_s2, S1032));
 
-                    s2 = v_s2.ToScalar();
+                    s2 = Sse2.ConvertToUInt32(v_s2);
 
                     // Reduce.
                     s1 %= BASE;
