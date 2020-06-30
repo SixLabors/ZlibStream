@@ -1,9 +1,9 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
-// Uncomment to us DeflateQuick
+// Uncomment to use DeflateQuick
 // TODO: Make an option.
-#define USE_QUICK
+// #define USE_QUICK
 using System;
 using System.Buffers;
 using System.Runtime.CompilerServices;

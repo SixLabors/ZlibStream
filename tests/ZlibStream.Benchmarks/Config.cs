@@ -49,7 +49,7 @@ namespace ZlibStream.Benchmarks
     {
         public DeflateConfig()
         {
-            this.AddColumn(new ByteSizeColumn(nameof(ZlibDeflateBenchmark.Compression)));
+            this.AddColumn(new ByteSizeColumn(nameof(DeflateCorpusBenchmark.Compression)));
         }
     }
 
@@ -94,7 +94,7 @@ namespace ZlibStream.Benchmarks
             Descriptor descriptor = benchmarkCase.Descriptor;
 
             var instance = Activator.CreateInstance(descriptor.Type);
-            descriptor.GlobalSetupMethod.Invoke(instance, Array.Empty<object>());
+            descriptor.GlobalSetupMethod?.Invoke(instance, Array.Empty<object>());
 
             var p = benchmarkCase.Parameters.Items.First(x => x.Name == this.parameterName).Value;
             if (p is int pint)

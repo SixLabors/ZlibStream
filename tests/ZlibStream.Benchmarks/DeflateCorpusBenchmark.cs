@@ -13,7 +13,7 @@ using ZlibStream.Tests.TestUtilities;
 namespace ZlibStream.Benchmarks
 {
     [Config(typeof(DeflateConfig))]
-    public class ZlibDeflateBenchmark
+    public class DeflateCorpusBenchmark
     {
         private Dictionary<string, byte[]> data = new Dictionary<string, byte[]>();
 
