@@ -4,6 +4,7 @@
 using System;
 using System.Buffers;
 using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace SixLabors.ZlibStream
 {
@@ -95,12 +96,14 @@ namespace SixLabors.ZlibStream
         }
 
         /// <inheritdoc/>
+        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
         public override int ReadByte()
             => this.Read(this.byteBuffer, 0, 1) == -1
             ? -1
             : this.byteBuffer[0] & 0xFF;
 
         /// <inheritdoc/>
+        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
         public override int Read(byte[] buffer, int offset, int count)
         {
             if (count == 0)
@@ -138,7 +141,7 @@ namespace SixLabors.ZlibStream
 
                 if (err != CompressionState.ZOK && err != CompressionState.ZSTREAMEND)
                 {
-                    throw new ZlibStreamException((this.compress ? "de" : "in") + "flating: " + this.zStream.Msg);
+                    ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Msg);
                 }
 
                 if (this.noMoreinput && (this.zStream.AvailOut == count))
@@ -208,7 +211,7 @@ namespace SixLabors.ZlibStream
 
                     if (err != CompressionState.ZSTREAMEND && err != CompressionState.ZOK)
                     {
-                        throw new ZlibStreamException((this.compress ? "de" : "in") + "flating: " + this.zStream.Msg);
+                        ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Msg);
                     }
 
                     if (this.bufferSize - this.zStream.AvailOut > 0)

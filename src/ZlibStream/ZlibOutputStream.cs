@@ -89,6 +89,7 @@ namespace SixLabors.ZlibStream
         }
 
         /// <inheritdoc/>
+        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
         public override void WriteByte(byte value)
         {
             this.byteBuffer[0] = value;
@@ -96,7 +97,7 @@ namespace SixLabors.ZlibStream
         }
 
         /// <inheritdoc/>
-        [MethodImpl(InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
         public override void Write(byte[] buffer, int offset, int count)
         {
             if (buffer is null)
