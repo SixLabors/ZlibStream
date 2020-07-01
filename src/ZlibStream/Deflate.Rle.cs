@@ -18,7 +18,7 @@ namespace SixLabors.ZlibStream
         /// <param name="flush">The flush strategy.</param>
         /// <returns>The <see cref="int"/>.</returns>
         [MethodImpl(InliningOptions.HotPath)]
-        internal int DeflateRle(ZlibFlushStrategy flush)
+        internal int DeflateRle(FlushStrategy flush)
         {
             bool bflush; // set if current block must be flushed
             int prev; // byte at distance one to match
@@ -34,7 +34,7 @@ namespace SixLabors.ZlibStream
                 if (this.lookahead <= MAXMATCH)
                 {
                     this.Fill_window();
-                    if (this.lookahead <= MAXMATCH && flush == ZlibFlushStrategy.ZNOFLUSH)
+                    if (this.lookahead <= MAXMATCH && flush == FlushStrategy.NoFlush)
                     {
                         return NeedMore;
                     }
@@ -100,10 +100,10 @@ namespace SixLabors.ZlibStream
                 }
             }
 
-            this.Flush_block_only(flush == ZlibFlushStrategy.ZFINISH);
+            this.Flush_block_only(flush == FlushStrategy.Finish);
             return this.strm.AvailOut == 0
-                ? flush == ZlibFlushStrategy.ZFINISH ? FinishStarted : NeedMore
-                : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
+                ? flush == FlushStrategy.Finish ? FinishStarted : NeedMore
+                : flush == FlushStrategy.Finish ? FinishDone : BlockDone;
         }
     }
 }

@@ -3,18 +3,14 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
-#if SUPPORTS_SERIALIZATION
-using System.Runtime.CompilerServices;
-
-[assembly: TypeForwardedTo(typeof(System.SerializableAttribute))]
-#else
+#if !SUPPORTS_SERIALIZATION
 namespace System
 {
     /// <summary>
     /// Indicates that a class can be serialized. This class cannot be inherited.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum | AttributeTargets.Delegate, Inherited = false)]
-    public sealed class SerializableAttribute : Attribute
+    internal sealed class SerializableAttribute : Attribute
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="SerializableAttribute"/> class.

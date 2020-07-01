@@ -6,32 +6,32 @@ namespace SixLabors.ZlibStream
     /// <summary>
     /// Provides enumeration of compression levels for Zlib.
     /// </summary>
-    public enum ZlibCompressionLevel
+    public enum CompressionLevel
     {
         /// <summary>
         /// The default compression level. Equivalent to <see cref="Level6"/>.
         /// </summary>
-        ZDEFAULTCOMPRESSION = -1,
+        DefaultCompression = -1,
 
         /// <summary>
-        /// Level 0. Equivalent to <see cref="ZNOCOMPRESSION"/>.
+        /// Level 0. Equivalent to <see cref="NoCompression"/>.
         /// </summary>
         Level0 = 0,
 
         /// <summary>
         /// No compression. Equivalent to <see cref="Level0"/>.
         /// </summary>
-        ZNOCOMPRESSION = Level0,
+        NoCompression = Level0,
 
         /// <summary>
-        /// Level 1. Equivalent to <see cref="ZBESTSPEED"/>.
+        /// Level 1. Equivalent to <see cref="BestSpeed"/>.
         /// </summary>
         Level1 = 1,
 
         /// <summary>
         /// Best speed compression level.
         /// </summary>
-        ZBESTSPEED = Level1,
+        BestSpeed = Level1,
 
         /// <summary>
         /// Level 2.
@@ -69,13 +69,13 @@ namespace SixLabors.ZlibStream
         Level8 = 8,
 
         /// <summary>
-        /// Level 9. Equivalent to <see cref="ZBESTCOMPRESSION"/>.
+        /// Level 9. Equivalent to <see cref="BestCompression"/>.
         /// </summary>
         Level9 = 9,
 
         /// <summary>
         /// Best compression level. Equivalent to <see cref="Level9"/>.
         /// </summary>
-        ZBESTCOMPRESSION = Level9,
+        BestCompression = Level9,
     }
 }

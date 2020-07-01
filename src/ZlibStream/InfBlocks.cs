@@ -103,7 +103,7 @@ namespace SixLabors.ZlibStream
             }
         }
 
-        internal ZlibCompressionState Proc(ZStream z, ZlibCompressionState r)
+        internal CompressionState Proc(ZStream z, CompressionState r)
         {
             int t; // temporary storage
             int b; // bit buffer
@@ -137,7 +137,7 @@ namespace SixLabors.ZlibStream
                         {
                             if (n != 0)
                             {
-                                r = ZlibCompressionState.ZOK;
+                                r = CompressionState.ZOK;
                             }
                             else
                             {
@@ -211,7 +211,7 @@ namespace SixLabors.ZlibStream
 
                             this.mode = BAD;
                             z.Msg = "invalid block type";
-                            r = ZlibCompressionState.ZDATAERROR;
+                            r = CompressionState.ZDATAERROR;
 
                             this.Bitb = b; this.Bitk = k;
                             z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
@@ -227,7 +227,7 @@ namespace SixLabors.ZlibStream
                         {
                             if (n != 0)
                             {
-                                r = ZlibCompressionState.ZOK;
+                                r = CompressionState.ZOK;
                             }
                             else
                             {
@@ -249,7 +249,7 @@ namespace SixLabors.ZlibStream
                         {
                             this.mode = BAD;
                             z.Msg = "invalid stored block lengths";
-                            r = ZlibCompressionState.ZDATAERROR;
+                            r = CompressionState.ZDATAERROR;
 
                             this.Bitb = b;
                             this.Bitk = k;
@@ -310,7 +310,7 @@ namespace SixLabors.ZlibStream
                             }
                         }
 
-                        r = ZlibCompressionState.ZOK;
+                        r = CompressionState.ZOK;
 
                         t = this.left;
                         if (t > n)
@@ -340,7 +340,7 @@ namespace SixLabors.ZlibStream
                         {
                             if (n != 0)
                             {
-                                r = ZlibCompressionState.ZOK;
+                                r = CompressionState.ZOK;
                             }
                             else
                             {
@@ -363,7 +363,7 @@ namespace SixLabors.ZlibStream
                         {
                             this.mode = BAD;
                             z.Msg = "too many length or distance symbols";
-                            r = ZlibCompressionState.ZDATAERROR;
+                            r = CompressionState.ZDATAERROR;
 
                             this.Bitb = b;
                             this.Bitk = k;
@@ -392,7 +392,7 @@ namespace SixLabors.ZlibStream
                             {
                                 if (n != 0)
                                 {
-                                    r = ZlibCompressionState.ZOK;
+                                    r = CompressionState.ZOK;
                                 }
                                 else
                                 {
@@ -424,10 +424,10 @@ namespace SixLabors.ZlibStream
 
                         this.bb[0] = 7;
                         t = (int)InfTree.Inflate_trees_bits(this.blens, this.bb, this.tb, this.hufts, z);
-                        if (t != (int)ZlibCompressionState.ZOK)
+                        if (t != (int)CompressionState.ZOK)
                         {
-                            r = (ZlibCompressionState)t;
-                            if (r == ZlibCompressionState.ZDATAERROR)
+                            r = (CompressionState)t;
+                            if (r == CompressionState.ZDATAERROR)
                             {
                                 this.blens = null;
                                 this.mode = BAD;
@@ -463,7 +463,7 @@ namespace SixLabors.ZlibStream
                             {
                                 if (n != 0)
                                 {
-                                    r = ZlibCompressionState.ZOK;
+                                    r = CompressionState.ZOK;
                                 }
                                 else
                                 {
@@ -505,7 +505,7 @@ namespace SixLabors.ZlibStream
                                 {
                                     if (n != 0)
                                     {
-                                        r = ZlibCompressionState.ZOK;
+                                        r = CompressionState.ZOK;
                                     }
                                     else
                                     {
@@ -538,7 +538,7 @@ namespace SixLabors.ZlibStream
                                     this.blens = null;
                                     this.mode = BAD;
                                     z.Msg = "invalid bit length repeat";
-                                    r = ZlibCompressionState.ZDATAERROR;
+                                    r = CompressionState.ZDATAERROR;
 
                                     this.Bitb = b;
                                     this.Bitk = k;
@@ -570,15 +570,15 @@ namespace SixLabors.ZlibStream
                             bd[0] = 6; // must be <= 9 for lookahead assumptions
                             t = this.table;
                             t = (int)InfTree.Inflate_trees_dynamic(257 + (t & 0x1f), 1 + ((t >> 5) & 0x1f), this.blens, bl, bd, tl, td, this.hufts, z);
-                            if (t != (int)ZlibCompressionState.ZOK)
+                            if (t != (int)CompressionState.ZOK)
                             {
-                                if (t == (int)ZlibCompressionState.ZDATAERROR)
+                                if (t == (int)CompressionState.ZDATAERROR)
                                 {
                                     this.blens = null;
                                     this.mode = BAD;
                                 }
 
-                                r = (ZlibCompressionState)t;
+                                r = (CompressionState)t;
 
                                 this.Bitb = b;
                                 this.Bitk = k;
@@ -601,12 +601,12 @@ namespace SixLabors.ZlibStream
                         z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
                         this.Write = q;
 
-                        if ((r = this.codes.Proc(this, z, r)) != ZlibCompressionState.ZSTREAMEND)
+                        if ((r = this.codes.Proc(this, z, r)) != CompressionState.ZSTREAMEND)
                         {
                             return this.Inflate_flush(z, r);
                         }
 
-                        r = ZlibCompressionState.ZOK;
+                        r = CompressionState.ZOK;
                         InfCodes.Free();
 
                         p = z.NextInIndex; n = z.AvailIn; b = this.Bitb; k = this.Bitk;
@@ -640,7 +640,7 @@ namespace SixLabors.ZlibStream
                         goto case DONE;
 
                     case DONE:
-                        r = ZlibCompressionState.ZSTREAMEND;
+                        r = CompressionState.ZSTREAMEND;
 
                         this.Bitb = b; this.Bitk = k;
                         z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
@@ -648,7 +648,7 @@ namespace SixLabors.ZlibStream
                         return this.Inflate_flush(z, r);
 
                     case BAD:
-                        r = ZlibCompressionState.ZDATAERROR;
+                        r = CompressionState.ZDATAERROR;
 
                         this.Bitb = b; this.Bitk = k;
                         z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
@@ -656,7 +656,7 @@ namespace SixLabors.ZlibStream
                         return this.Inflate_flush(z, r);
 
                     default:
-                        r = ZlibCompressionState.ZSTREAMERROR;
+                        r = CompressionState.ZSTREAMERROR;
 
                         this.Bitb = b; this.Bitk = k;
                         z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
@@ -683,10 +683,10 @@ namespace SixLabors.ZlibStream
 
         // Returns true if inflate is currently at the end of a block generated
         // by Z_SYNC_FLUSH or Z_FULL_FLUSH.
-        internal ZlibCompressionState Sync_point() => this.mode == LENS ? ZlibCompressionState.ZSTREAMEND : ZlibCompressionState.ZOK;
+        internal CompressionState Sync_point() => this.mode == LENS ? CompressionState.ZSTREAMEND : CompressionState.ZOK;
 
         // copy as much as possible from the sliding window to the output area
-        internal ZlibCompressionState Inflate_flush(ZStream z, ZlibCompressionState r)
+        internal CompressionState Inflate_flush(ZStream z, CompressionState r)
         {
             int n;
             int p;
@@ -703,9 +703,9 @@ namespace SixLabors.ZlibStream
                 n = z.AvailOut;
             }
 
-            if (n != 0 && r == ZlibCompressionState.ZBUFERROR)
+            if (n != 0 && r == CompressionState.ZBUFERROR)
             {
-                r = ZlibCompressionState.ZOK;
+                r = CompressionState.ZOK;
             }
 
             // update counters
@@ -740,9 +740,9 @@ namespace SixLabors.ZlibStream
                     n = z.AvailOut;
                 }
 
-                if (n != 0 && r == ZlibCompressionState.ZBUFERROR)
+                if (n != 0 && r == CompressionState.ZBUFERROR)
                 {
-                    r = ZlibCompressionState.ZOK;
+                    r = CompressionState.ZOK;
                 }
 
                 // update counters

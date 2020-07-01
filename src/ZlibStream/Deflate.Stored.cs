@@ -23,7 +23,7 @@ namespace SixLabors.ZlibStream
         /// <param name="flush">The flush strategy.</param>
         /// <returns>The <see cref="int"/>.</returns>
         [MethodImpl(InliningOptions.HotPath)]
-        private int DeflateStored(ZlibFlushStrategy flush)
+        private int DeflateStored(FlushStrategy flush)
         {
             // Smallest worthy block size when not flushing or finishing. By default
             // this is 32K.This can be as small as 507 bytes for memLevel == 1., pending_buf is limited
@@ -38,7 +38,7 @@ namespace SixLabors.ZlibStream
                 if (this.lookahead <= 1)
                 {
                     this.Fill_window();
-                    if (this.lookahead == 0 && flush == ZlibFlushStrategy.ZNOFLUSH)
+                    if (this.lookahead == 0 && flush == FlushStrategy.NoFlush)
                     {
                         return NeedMore;
                     }
@@ -79,10 +79,10 @@ namespace SixLabors.ZlibStream
                 }
             }
 
-            this.Flush_block_only(flush == ZlibFlushStrategy.ZFINISH);
-            return this.strm.AvailOut == 0 ? (flush == ZlibFlushStrategy.ZFINISH)
+            this.Flush_block_only(flush == FlushStrategy.Finish);
+            return this.strm.AvailOut == 0 ? (flush == FlushStrategy.Finish)
                 ? FinishStarted
-                : NeedMore : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
+                : NeedMore : flush == FlushStrategy.Finish ? FinishDone : BlockDone;
         }
     }
 }

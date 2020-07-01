@@ -20,7 +20,7 @@ namespace SixLabors.ZlibStream
         /// <param name="flush">The flush strategy.</param>
         /// <returns>The <see cref="int"/>.</returns>
         [MethodImpl(InliningOptions.HotPath)]
-        internal int DeflateFast(ZlibFlushStrategy flush)
+        internal int DeflateFast(FlushStrategy flush)
         {
             int hash_head; // head of the hash chain
             bool bflush; // set if current block must be flushed
@@ -38,7 +38,7 @@ namespace SixLabors.ZlibStream
                 if (this.lookahead < MINLOOKAHEAD)
                 {
                     this.Fill_window();
-                    if (this.lookahead < MINLOOKAHEAD && flush == ZlibFlushStrategy.ZNOFLUSH)
+                    if (this.lookahead < MINLOOKAHEAD && flush == FlushStrategy.NoFlush)
                     {
                         return NeedMore;
                     }
@@ -64,7 +64,7 @@ namespace SixLabors.ZlibStream
                     // To simplify the code, we prevent matches with the string
                     // of window index 0 (in particular we have to avoid a match
                     // of the string with itself at the start of the input file).
-                    if (this.strategy != ZlibCompressionStrategy.ZHUFFMANONLY)
+                    if (this.strategy != CompressionStrategy.HuffmanOnly)
                     {
                         this.matchLength = this.Longest_match(hash_head);
 
@@ -124,10 +124,10 @@ namespace SixLabors.ZlibStream
                 }
             }
 
-            this.Flush_block_only(flush == ZlibFlushStrategy.ZFINISH);
+            this.Flush_block_only(flush == FlushStrategy.Finish);
             return this.strm.AvailOut == 0
-                ? flush == ZlibFlushStrategy.ZFINISH ? FinishStarted : NeedMore
-                : flush == ZlibFlushStrategy.ZFINISH ? FinishDone : BlockDone;
+                ? flush == FlushStrategy.Finish ? FinishStarted : NeedMore
+                : flush == FlushStrategy.Finish ? FinishDone : BlockDone;
         }
     }
 }

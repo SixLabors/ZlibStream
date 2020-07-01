@@ -1,4 +1,4 @@
-﻿// Copyright (c) Six Labors and contributors.
+// Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
 namespace SixLabors.ZlibStream
@@ -6,7 +6,7 @@ namespace SixLabors.ZlibStream
     /// <summary>
     /// Compression state for zlib.
     /// </summary>
-    public enum ZlibCompressionState
+    internal enum CompressionState
     {
         /// <summary>
         /// Zlib version error.

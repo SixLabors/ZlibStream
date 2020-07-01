@@ -39,7 +39,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="output">The output stream.</param>
         /// <param name="level">The compression level for the data to compress.</param>
-        public ZlibOutputStream(Stream output, ZlibCompressionLevel level)
+        public ZlibOutputStream(Stream output, CompressionLevel level)
         {
             this.BaseStream = output;
             this.InitBlock();
@@ -55,7 +55,7 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Gets or sets the flush mode for this stream.
         /// </summary>
-        public ZlibFlushStrategy FlushMode { get; set; }
+        public FlushStrategy FlushMode { get; set; }
 
         /// <inheritdoc/>
         public override bool CanRead => false;
@@ -97,7 +97,7 @@ namespace SixLabors.ZlibStream
                 return;
             }
 
-            ZlibCompressionState err;
+            CompressionState err;
             this.zStream.INextIn = buffer;
             this.zStream.NextInIndex = offset;
             this.zStream.AvailIn = count;
@@ -108,7 +108,7 @@ namespace SixLabors.ZlibStream
                 this.zStream.AvailOut = BufferSize;
                 err = this.compress ? this.zStream.Deflate(this.FlushMode) : this.zStream.Inflate(this.FlushMode);
 
-                if (err != ZlibCompressionState.ZOK && err != ZlibCompressionState.ZSTREAMEND)
+                if (err != CompressionState.ZOK && err != CompressionState.ZSTREAMEND)
                 {
                     ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Msg);
                 }
@@ -119,7 +119,7 @@ namespace SixLabors.ZlibStream
                     break;
                 }
 
-                if (err == ZlibCompressionState.ZSTREAMEND)
+                if (err == CompressionState.ZSTREAMEND)
                 {
                     break;
                 }
@@ -173,15 +173,15 @@ namespace SixLabors.ZlibStream
         {
             if (!this.isFinished)
             {
-                ZlibCompressionState err;
+                CompressionState err;
                 do
                 {
                     this.zStream.INextOut = this.chunkBuffer;
                     this.zStream.NextOutIndex = 0;
                     this.zStream.AvailOut = BufferSize;
-                    err = this.compress ? this.zStream.Deflate(ZlibFlushStrategy.ZFINISH) : this.zStream.Inflate(ZlibFlushStrategy.ZFINISH);
+                    err = this.compress ? this.zStream.Deflate(FlushStrategy.Finish) : this.zStream.Inflate(FlushStrategy.Finish);
 
-                    if (err != ZlibCompressionState.ZSTREAMEND && err != ZlibCompressionState.ZOK)
+                    if (err != CompressionState.ZSTREAMEND && err != CompressionState.ZOK)
                     {
                         ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Msg);
                     }
@@ -191,7 +191,7 @@ namespace SixLabors.ZlibStream
                         this.BaseStream.Write(this.chunkBuffer, 0, BufferSize - this.zStream.AvailOut);
                     }
 
-                    if (err == ZlibCompressionState.ZSTREAMEND)
+                    if (err == CompressionState.ZSTREAMEND)
                     {
                         break;
                     }
@@ -222,7 +222,7 @@ namespace SixLabors.ZlibStream
 
         private void InitBlock()
         {
-            this.FlushMode = ZlibFlushStrategy.ZNOFLUSH;
+            this.FlushMode = FlushStrategy.NoFlush;
             this.chunkBuffer = ArrayPool<byte>.Shared.Rent(BufferSize);
         }
     }

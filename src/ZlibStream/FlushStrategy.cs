@@ -6,31 +6,31 @@ namespace SixLabors.ZlibStream
     /// <summary>
     /// Provides enumeration of flushing strategies for Zlib.
     /// </summary>
-    public enum ZlibFlushStrategy
+    public enum FlushStrategy
     {
         /// <summary>
         /// No flush.
         /// </summary>
-        ZNOFLUSH,
+        NoFlush,
 
         /// <summary>
         /// Partial flush.
         /// </summary>
-        ZPARTIALFLUSH,
+        PartialFlush,
 
         /// <summary>
         /// Sync flush.
         /// </summary>
-        ZSYNCFLUSH,
+        SyncFlush,
 
         /// <summary>
         /// Full flush.
         /// </summary>
-        ZFULLFLUSH,
+        FullFlush,
 
         /// <summary>
         /// Finish compression or decompression.
         /// </summary>
-        ZFINISH,
+        Finish,
     }
 }

@@ -115,7 +115,7 @@ namespace SixLabors.ZlibStream
 
         private byte dataType; // UNKNOWN, BINARY or ASCII
         private byte method; // STORED (for zip only) or DEFLATED
-        private ZlibFlushStrategy lastFlush; // value of flush param for previous deflate call
+        private FlushStrategy lastFlush; // value of flush param for previous deflate call
 
         // Used by deflate
         private int wSize; // LZ77 window size (32K by default)
@@ -180,8 +180,8 @@ namespace SixLabors.ZlibStream
         // max_insert_length is used only for compression levels <= 3.
         private int maxLazyMatch;
 
-        private ZlibCompressionLevel level; // compression level (1..9)
-        private ZlibCompressionStrategy strategy; // favor or force Huffman coding
+        private CompressionLevel level; // compression level (1..9)
+        private CompressionStrategy strategy; // favor or force Huffman coding
 
         // Use a faster search when the previous match is longer than this
         private int goodMatch;
@@ -1181,29 +1181,29 @@ namespace SixLabors.ZlibStream
             return Math.Min(best_len, this.lookahead);
         }
 
-        internal ZlibCompressionState DeflateInit(ZStream strm, ZlibCompressionLevel level, int bits)
-            => this.DeflateInit2(strm, level, ZDEFLATED, bits, DEFMEMLEVEL, ZlibCompressionStrategy.ZDEFAULTSTRATEGY);
+        internal CompressionState DeflateInit(ZStream strm, CompressionLevel level, int bits)
+            => this.DeflateInit2(strm, level, ZDEFLATED, bits, DEFMEMLEVEL, CompressionStrategy.DefaultStrategy);
 
-        internal ZlibCompressionState DeflateInit(ZStream strm, ZlibCompressionLevel level)
+        internal CompressionState DeflateInit(ZStream strm, CompressionLevel level)
             => this.DeflateInit(strm, level, MAXWBITS);
 
-        internal ZlibCompressionState DeflateInit2(
+        internal CompressionState DeflateInit2(
             ZStream strm,
-            ZlibCompressionLevel level,
+            CompressionLevel level,
             int method,
             int windowBits,
             int memLevel,
-            ZlibCompressionStrategy strategy)
+            CompressionStrategy strategy)
         {
             int noheader = 0;
             strm.Msg = null;
 
-            if (level == ZlibCompressionLevel.ZDEFAULTCOMPRESSION)
+            if (level == CompressionLevel.DefaultCompression)
             {
-                level = ZlibCompressionLevel.Level6;
+                level = CompressionLevel.Level6;
             }
 
-            if (level == ZlibCompressionLevel.ZNOCOMPRESSION)
+            if (level == CompressionLevel.NoCompression)
             {
                 memLevel = DEFNOCOMPRESSIONMEMLEVEL;
             }
@@ -1220,12 +1220,12 @@ namespace SixLabors.ZlibStream
                 || method != ZDEFLATED
                 || windowBits < 9
                 || windowBits > 15
-                || level < ZlibCompressionLevel.ZNOCOMPRESSION
-                || level > ZlibCompressionLevel.ZBESTCOMPRESSION
-                || strategy < ZlibCompressionStrategy.ZDEFAULTSTRATEGY
-                || strategy > ZlibCompressionStrategy.ZRLE)
+                || level < CompressionLevel.NoCompression
+                || level > CompressionLevel.BestCompression
+                || strategy < CompressionStrategy.DefaultStrategy
+                || strategy > CompressionStrategy.Rle)
             {
-                return ZlibCompressionState.ZSTREAMERROR;
+                return CompressionState.ZSTREAMERROR;
             }
 
 #if USE_QUICK
@@ -1277,7 +1277,7 @@ namespace SixLabors.ZlibStream
             return this.DeflateReset(strm);
         }
 
-        private ZlibCompressionState DeflateReset(ZStream strm)
+        private CompressionState DeflateReset(ZStream strm)
         {
             strm.TotalIn = strm.TotalOut = 0;
             strm.Msg = null;
@@ -1294,18 +1294,18 @@ namespace SixLabors.ZlibStream
             this.status = (this.Noheader != 0) ? BUSYSTATE : INITSTATE;
             strm.Adler = Adler32.SeedValue;
 
-            this.lastFlush = ZlibFlushStrategy.ZNOFLUSH;
+            this.lastFlush = FlushStrategy.NoFlush;
 
             this.Tr_init();
             this.Lm_init();
-            return ZlibCompressionState.ZOK;
+            return CompressionState.ZOK;
         }
 
-        internal ZlibCompressionState DeflateEnd()
+        internal CompressionState DeflateEnd()
         {
             if (this.status != INITSTATE && this.status != BUSYSTATE && this.status != FINISHSTATE)
             {
-                return ZlibCompressionState.ZSTREAMERROR;
+                return CompressionState.ZSTREAMERROR;
             }
 
             // Deallocate in reverse order of allocations:
@@ -1341,30 +1341,30 @@ namespace SixLabors.ZlibStream
 
             // free
             // dstate=null;
-            return this.status == BUSYSTATE ? ZlibCompressionState.ZDATAERROR : ZlibCompressionState.ZOK;
+            return this.status == BUSYSTATE ? CompressionState.ZDATAERROR : CompressionState.ZOK;
         }
 
-        internal ZlibCompressionState DeflateParams(ZStream strm, ZlibCompressionLevel level, ZlibCompressionStrategy strategy)
+        internal CompressionState DeflateParams(ZStream strm, CompressionLevel level, CompressionStrategy strategy)
         {
-            ZlibCompressionState err = ZlibCompressionState.ZOK;
+            CompressionState err = CompressionState.ZOK;
 
-            if (level == ZlibCompressionLevel.ZDEFAULTCOMPRESSION)
+            if (level == CompressionLevel.DefaultCompression)
             {
-                level = ZlibCompressionLevel.Level6;
+                level = CompressionLevel.Level6;
             }
 
-            if (level < ZlibCompressionLevel.ZNOCOMPRESSION
-                || level > ZlibCompressionLevel.ZBESTCOMPRESSION
-                || strategy < ZlibCompressionStrategy.ZDEFAULTSTRATEGY
-                || strategy > ZlibCompressionStrategy.ZHUFFMANONLY)
+            if (level < CompressionLevel.NoCompression
+                || level > CompressionLevel.BestCompression
+                || strategy < CompressionStrategy.DefaultStrategy
+                || strategy > CompressionStrategy.HuffmanOnly)
             {
-                return ZlibCompressionState.ZSTREAMERROR;
+                return CompressionState.ZSTREAMERROR;
             }
 
             if (ConfigTable[(int)this.level].Func != ConfigTable[(int)level].Func && strm.TotalIn != 0)
             {
                 // Flush the last buffer:
-                err = strm.Deflate(ZlibFlushStrategy.ZPARTIALFLUSH);
+                err = strm.Deflate(FlushStrategy.PartialFlush);
             }
 
             if (this.level != level)
@@ -1380,21 +1380,21 @@ namespace SixLabors.ZlibStream
             return err;
         }
 
-        internal ZlibCompressionState DeflateSetDictionary(ZStream strm, byte[] dictionary, int dictLength)
+        internal CompressionState DeflateSetDictionary(ZStream strm, byte[] dictionary, int dictLength)
         {
             int length = dictLength;
             int index = 0;
 
             if (dictionary == null || this.status != INITSTATE)
             {
-                return ZlibCompressionState.ZSTREAMERROR;
+                return CompressionState.ZSTREAMERROR;
             }
 
             strm.Adler = Adler32.Calculate(strm.Adler, dictionary.AsSpan(0, dictLength));
 
             if (length < MINMATCH)
             {
-                return ZlibCompressionState.ZOK;
+                return CompressionState.ZOK;
             }
 
             if (length > this.wSize - MINLOOKAHEAD)
@@ -1421,30 +1421,30 @@ namespace SixLabors.ZlibStream
                 this.InsertString(prev, head, window, n);
             }
 
-            return ZlibCompressionState.ZOK;
+            return CompressionState.ZOK;
         }
 
-        internal ZlibCompressionState Compress(ZStream strm, ZlibFlushStrategy flush)
+        internal CompressionState Compress(ZStream strm, FlushStrategy flush)
         {
-            ZlibFlushStrategy old_flush;
+            FlushStrategy old_flush;
 
-            if (flush > ZlibFlushStrategy.ZFINISH || flush < 0)
+            if (flush > FlushStrategy.Finish || flush < 0)
             {
-                return ZlibCompressionState.ZSTREAMERROR;
+                return CompressionState.ZSTREAMERROR;
             }
 
             if (strm.INextOut == null
                 || (strm.INextIn == null && strm.AvailIn != 0)
-                || (this.status == FINISHSTATE && flush != ZlibFlushStrategy.ZFINISH))
+                || (this.status == FINISHSTATE && flush != FlushStrategy.Finish))
             {
-                strm.Msg = ZErrmsg[ZlibCompressionState.ZNEEDDICT - ZlibCompressionState.ZSTREAMERROR];
-                return ZlibCompressionState.ZSTREAMERROR;
+                strm.Msg = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZSTREAMERROR];
+                return CompressionState.ZSTREAMERROR;
             }
 
             if (strm.AvailOut == 0)
             {
-                strm.Msg = ZErrmsg[ZlibCompressionState.ZNEEDDICT - ZlibCompressionState.ZBUFERROR];
-                return ZlibCompressionState.ZBUFERROR;
+                strm.Msg = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
+                return CompressionState.ZBUFERROR;
             }
 
             this.strm = strm; // just in case
@@ -1495,35 +1495,35 @@ namespace SixLabors.ZlibStream
                     // avail_in equal to zero. There won't be anything to do,
                     // but this is not an error situation so make sure we
                     // return OK instead of BUF_ERROR at next call of deflate:
-                    this.lastFlush = (ZlibFlushStrategy)(-1);
-                    return ZlibCompressionState.ZOK;
+                    this.lastFlush = (FlushStrategy)(-1);
+                    return CompressionState.ZOK;
                 }
 
                 // Make sure there is something to do and avoid duplicate consecutive
                 // flushes. For repeated and useless calls with Z_FINISH, we keep
                 // returning Z_STREAM_END instead of Z_BUFF_ERROR.
             }
-            else if (strm.AvailIn == 0 && flush <= old_flush && flush != ZlibFlushStrategy.ZFINISH)
+            else if (strm.AvailIn == 0 && flush <= old_flush && flush != FlushStrategy.Finish)
             {
-                strm.Msg = ZErrmsg[ZlibCompressionState.ZNEEDDICT - ZlibCompressionState.ZBUFERROR];
-                return ZlibCompressionState.ZBUFERROR;
+                strm.Msg = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
+                return CompressionState.ZBUFERROR;
             }
 
             // User must not provide more input after the first FINISH:
             if (this.status == FINISHSTATE && strm.AvailIn != 0)
             {
-                strm.Msg = ZErrmsg[ZlibCompressionState.ZNEEDDICT - ZlibCompressionState.ZBUFERROR];
-                return ZlibCompressionState.ZBUFERROR;
+                strm.Msg = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
+                return CompressionState.ZBUFERROR;
             }
 
             // Start a new block or continue the current one.
             if (strm.AvailIn != 0
                 || this.lookahead != 0
-                || (flush != ZlibFlushStrategy.ZNOFLUSH && this.status != FINISHSTATE))
+                || (flush != FlushStrategy.NoFlush && this.status != FINISHSTATE))
             {
                 int bstate = -1;
 
-                if (this.strategy == ZlibCompressionStrategy.ZRLE)
+                if (this.strategy == CompressionStrategy.Rle)
                 {
                     bstate = this.DeflateRle(flush);
                 }
@@ -1558,10 +1558,10 @@ namespace SixLabors.ZlibStream
                 {
                     if (strm.AvailOut == 0)
                     {
-                        this.lastFlush = (ZlibFlushStrategy)(-1); // avoid BUF_ERROR next call, see above
+                        this.lastFlush = (FlushStrategy)(-1); // avoid BUF_ERROR next call, see above
                     }
 
-                    return ZlibCompressionState.ZOK;
+                    return CompressionState.ZOK;
 
                     // If flush != Z_NO_FLUSH && avail_out == 0, the next call
                     // of deflate should use the same flush parameter to make sure
@@ -1573,7 +1573,7 @@ namespace SixLabors.ZlibStream
 
                 if (bstate == BlockDone)
                 {
-                    if (flush == ZlibFlushStrategy.ZPARTIALFLUSH)
+                    if (flush == FlushStrategy.PartialFlush)
                     {
                         this.Tr_align();
                     }
@@ -1584,7 +1584,7 @@ namespace SixLabors.ZlibStream
 
                         // For a full flush, this empty block will be recognized
                         // as a special marker by inflate_sync().
-                        if (flush == ZlibFlushStrategy.ZFULLFLUSH)
+                        if (flush == FlushStrategy.FullFlush)
                         {
                             // state.head[s.hash_size-1]=0;
                             ushort* head = this.headPointer;
@@ -1599,20 +1599,20 @@ namespace SixLabors.ZlibStream
                     this.Flush_pending(strm);
                     if (strm.AvailOut == 0)
                     {
-                        this.lastFlush = (ZlibFlushStrategy)(-1); // avoid BUF_ERROR at next call, see above
-                        return ZlibCompressionState.ZOK;
+                        this.lastFlush = (FlushStrategy)(-1); // avoid BUF_ERROR at next call, see above
+                        return CompressionState.ZOK;
                     }
                 }
             }
 
-            if (flush != ZlibFlushStrategy.ZFINISH)
+            if (flush != FlushStrategy.Finish)
             {
-                return ZlibCompressionState.ZOK;
+                return CompressionState.ZOK;
             }
 
             if (this.Noheader != 0)
             {
-                return ZlibCompressionState.ZSTREAMEND;
+                return CompressionState.ZSTREAMEND;
             }
 
             // Write the zlib trailer (adler32)
@@ -1623,7 +1623,7 @@ namespace SixLabors.ZlibStream
             // If avail_out is zero, the application will call deflate again
             // to flush the rest.
             this.Noheader = -1; // write the trailer only once!
-            return this.Pending != 0 ? ZlibCompressionState.ZOK : ZlibCompressionState.ZSTREAMEND;
+            return this.Pending != 0 ? CompressionState.ZOK : CompressionState.ZSTREAMEND;
         }
 
         // Flush as much pending output as possible. All deflate() output goes

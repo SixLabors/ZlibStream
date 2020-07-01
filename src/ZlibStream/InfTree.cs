@@ -122,7 +122,7 @@ namespace SixLabors.ZlibStream
 
         private const int MANY = 1440;
 
-        internal static ZlibCompressionState Huft_build(int[] b, int bindex, int n, int s, int[] d, int[] e, int[] t, int[] m, int[] hp, int[] hn, int[] v)
+        internal static CompressionState Huft_build(int[] b, int bindex, int n, int s, int[] d, int[] e, int[] t, int[] m, int[] hp, int[] hn, int[] v)
         {
             // Given a list of code lengths and a maximum table size, make a set of
             // tables to decode that set of codes.  Return Z_OK on success, Z_BUF_ERROR
@@ -165,7 +165,7 @@ namespace SixLabors.ZlibStream
                 // null input--all zero length codes
                 t[0] = -1;
                 m[0] = 0;
-                return ZlibCompressionState.ZOK;
+                return CompressionState.ZOK;
             }
 
             // Find minimum and maximum length, bound *m by those
@@ -205,13 +205,13 @@ namespace SixLabors.ZlibStream
             {
                 if ((y -= c[j]) < 0)
                 {
-                    return ZlibCompressionState.ZDATAERROR;
+                    return CompressionState.ZDATAERROR;
                 }
             }
 
             if ((y -= c[i]) < 0)
             {
-                return ZlibCompressionState.ZDATAERROR;
+                return CompressionState.ZDATAERROR;
             }
 
             c[i] += y;
@@ -295,7 +295,7 @@ namespace SixLabors.ZlibStream
                         if (hn[0] + z > MANY)
                         {
                             // (note: doesn't matter for fixed)
-                            return ZlibCompressionState.ZDATAERROR; // overflow of MANY
+                            return CompressionState.ZDATAERROR; // overflow of MANY
                         }
 
                         u[h] = q = hn[0]; // DEBUG
@@ -361,48 +361,48 @@ namespace SixLabors.ZlibStream
             }
 
             // Return Z_BUF_ERROR if we were given an incomplete table
-            return y != 0 && g != 1 ? ZlibCompressionState.ZBUFERROR : ZlibCompressionState.ZOK;
+            return y != 0 && g != 1 ? CompressionState.ZBUFERROR : CompressionState.ZOK;
         }
 
-        internal static ZlibCompressionState Inflate_trees_bits(int[] c, int[] bb, int[] tb, int[] hp, ZStream z)
+        internal static CompressionState Inflate_trees_bits(int[] c, int[] bb, int[] tb, int[] hp, ZStream z)
         {
-            ZlibCompressionState r;
+            CompressionState r;
             var hn = new int[1]; // hufts used in space
             var v = new int[19]; // work area for huft_build
 
             r = Huft_build(c, 0, 19, 19, null, null, tb, bb, hp, hn, v);
 
-            if (r == ZlibCompressionState.ZDATAERROR)
+            if (r == CompressionState.ZDATAERROR)
             {
                 z.Msg = "oversubscribed dynamic bit lengths tree";
             }
-            else if (r == ZlibCompressionState.ZBUFERROR || bb[0] == 0)
+            else if (r == CompressionState.ZBUFERROR || bb[0] == 0)
             {
                 z.Msg = "incomplete dynamic bit lengths tree";
-                r = ZlibCompressionState.ZDATAERROR;
+                r = CompressionState.ZDATAERROR;
             }
 
             return r;
         }
 
-        internal static ZlibCompressionState Inflate_trees_dynamic(int nl, int nd, int[] c, int[] bl, int[] bd, int[] tl, int[] td, int[] hp, ZStream z)
+        internal static CompressionState Inflate_trees_dynamic(int nl, int nd, int[] c, int[] bl, int[] bd, int[] tl, int[] td, int[] hp, ZStream z)
         {
-            ZlibCompressionState r;
+            CompressionState r;
             var hn = new int[1]; // hufts used in space
             var v = new int[288]; // work area for huft_build
 
             // build literal/length tree
             r = Huft_build(c, 0, nl, 257, Cplens, Cplext, tl, bl, hp, hn, v);
-            if (r != ZlibCompressionState.ZOK || bl[0] == 0)
+            if (r != CompressionState.ZOK || bl[0] == 0)
             {
-                if (r == ZlibCompressionState.ZDATAERROR)
+                if (r == CompressionState.ZDATAERROR)
                 {
                     z.Msg = "oversubscribed literal/length tree";
                 }
-                else if (r != ZlibCompressionState.ZMEMERROR)
+                else if (r != CompressionState.ZMEMERROR)
                 {
                     z.Msg = "incomplete literal/length tree";
-                    r = ZlibCompressionState.ZDATAERROR;
+                    r = CompressionState.ZDATAERROR;
                 }
 
                 return r;
@@ -411,36 +411,36 @@ namespace SixLabors.ZlibStream
             // build distance tree
             r = Huft_build(c, nl, nd, 0, Cpdist, Cpdext, td, bd, hp, hn, v);
 
-            if (r != ZlibCompressionState.ZOK || (bd[0] == 0 && nl > 257))
+            if (r != CompressionState.ZOK || (bd[0] == 0 && nl > 257))
             {
-                if (r == ZlibCompressionState.ZDATAERROR)
+                if (r == CompressionState.ZDATAERROR)
                 {
                     z.Msg = "oversubscribed distance tree";
                 }
-                else if (r == ZlibCompressionState.ZBUFERROR)
+                else if (r == CompressionState.ZBUFERROR)
                 {
                     z.Msg = "incomplete distance tree";
-                    r = ZlibCompressionState.ZDATAERROR;
+                    r = CompressionState.ZDATAERROR;
                 }
-                else if (r != ZlibCompressionState.ZMEMERROR)
+                else if (r != CompressionState.ZMEMERROR)
                 {
                     z.Msg = "empty distance tree with lengths";
-                    r = ZlibCompressionState.ZDATAERROR;
+                    r = CompressionState.ZDATAERROR;
                 }
 
                 return r;
             }
 
-            return ZlibCompressionState.ZOK;
+            return CompressionState.ZOK;
         }
 
-        internal static ZlibCompressionState Inflate_trees_fixed(int[] bl, int[] bd, int[][] tl, int[][] td)
+        internal static CompressionState Inflate_trees_fixed(int[] bl, int[] bd, int[][] tl, int[][] td)
         {
             bl[0] = FixedBl;
             bd[0] = FixedBd;
             tl[0] = FixedTl;
             td[0] = FixedTd;
-            return ZlibCompressionState.ZOK;
+            return CompressionState.ZOK;
         }
     }
 }

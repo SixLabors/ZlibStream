@@ -89,7 +89,7 @@ namespace SixLabors.ZlibStream
         // (the maximum string length) and number of input bytes available
         // at least ten.  The ten bytes are six bytes for the longest length/
         // distance pair plus four bytes for overloading the bit buffer.
-        internal static ZlibCompressionState Inflate_fast(int bl, int bd, int[] tl, int tl_index, int[] td, int td_index, InfBlocks s, ZStream z)
+        internal static CompressionState Inflate_fast(int bl, int bd, int[] tl, int tl_index, int[] td, int td_index, InfBlocks s, ZStream z)
         {
             int t; // temporary pointer
             int[] tp; // temporary pointer
@@ -292,7 +292,7 @@ namespace SixLabors.ZlibStream
                                 z.NextInIndex = p;
                                 s.Write = q;
 
-                                return ZlibCompressionState.ZDATAERROR;
+                                return CompressionState.ZDATAERROR;
                             }
                         }
                         while (true);
@@ -328,7 +328,7 @@ namespace SixLabors.ZlibStream
                         z.NextInIndex = p;
                         s.Write = q;
 
-                        return ZlibCompressionState.ZSTREAMEND;
+                        return CompressionState.ZSTREAMEND;
                     }
                     else
                     {
@@ -347,7 +347,7 @@ namespace SixLabors.ZlibStream
                         z.NextInIndex = p;
                         s.Write = q;
 
-                        return ZlibCompressionState.ZDATAERROR;
+                        return CompressionState.ZDATAERROR;
                     }
                 }
                 while (true);
@@ -368,10 +368,10 @@ namespace SixLabors.ZlibStream
             z.NextInIndex = p;
             s.Write = q;
 
-            return ZlibCompressionState.ZOK;
+            return CompressionState.ZOK;
         }
 
-        internal ZlibCompressionState Proc(InfBlocks s, ZStream z, ZlibCompressionState r)
+        internal CompressionState Proc(InfBlocks s, ZStream z, CompressionState r)
         {
             int j; // temporary storage
 
@@ -418,9 +418,9 @@ namespace SixLabors.ZlibStream
                             q = s.Write;
                             m = q < s.Read ? s.Read - q - 1 : s.End - q;
 
-                            if (r != ZlibCompressionState.ZOK)
+                            if (r != CompressionState.ZOK)
                             {
-                                this.Mode = r == ZlibCompressionState.ZSTREAMEND ? WASH : BADCODE;
+                                this.Mode = r == CompressionState.ZSTREAMEND ? WASH : BADCODE;
                                 break;
                             }
                         }
@@ -439,7 +439,7 @@ namespace SixLabors.ZlibStream
                         {
                             if (n != 0)
                             {
-                                r = ZlibCompressionState.ZOK;
+                                r = CompressionState.ZOK;
                             }
                             else
                             {
@@ -498,7 +498,7 @@ namespace SixLabors.ZlibStream
 
                         this.Mode = BADCODE; // invalid code
                         z.Msg = "invalid literal/length code";
-                        r = ZlibCompressionState.ZDATAERROR;
+                        r = CompressionState.ZDATAERROR;
 
                         s.Bitb = b; s.Bitk = k;
                         z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
@@ -512,7 +512,7 @@ namespace SixLabors.ZlibStream
                         {
                             if (n != 0)
                             {
-                                r = ZlibCompressionState.ZOK;
+                                r = CompressionState.ZOK;
                             }
                             else
                             {
@@ -548,7 +548,7 @@ namespace SixLabors.ZlibStream
                         {
                             if (n != 0)
                             {
-                                r = ZlibCompressionState.ZOK;
+                                r = CompressionState.ZOK;
                             }
                             else
                             {
@@ -591,7 +591,7 @@ namespace SixLabors.ZlibStream
 
                         this.Mode = BADCODE; // invalid code
                         z.Msg = "invalid distance code";
-                        r = ZlibCompressionState.ZDATAERROR;
+                        r = CompressionState.ZDATAERROR;
 
                         s.Bitb = b; s.Bitk = k;
                         z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
@@ -605,7 +605,7 @@ namespace SixLabors.ZlibStream
                         {
                             if (n != 0)
                             {
-                                r = ZlibCompressionState.ZOK;
+                                r = CompressionState.ZOK;
                             }
                             else
                             {
@@ -724,7 +724,7 @@ namespace SixLabors.ZlibStream
                             }
                         }
 
-                        r = ZlibCompressionState.ZOK;
+                        r = CompressionState.ZOK;
 
                         s.Window[q++] = (byte)this.Lit; m--;
 
@@ -758,7 +758,7 @@ namespace SixLabors.ZlibStream
                         goto case END;
 
                     case END:
-                        r = ZlibCompressionState.ZSTREAMEND;
+                        r = CompressionState.ZSTREAMEND;
                         s.Bitb = b; s.Bitk = k;
                         z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
                         s.Write = q;
@@ -766,7 +766,7 @@ namespace SixLabors.ZlibStream
 
                     case BADCODE: // x: got error
 
-                        r = ZlibCompressionState.ZDATAERROR;
+                        r = CompressionState.ZDATAERROR;
 
                         s.Bitb = b; s.Bitk = k;
                         z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
@@ -774,7 +774,7 @@ namespace SixLabors.ZlibStream
                         return s.Inflate_flush(z, r);
 
                     default:
-                        r = ZlibCompressionState.ZSTREAMERROR;
+                        r = CompressionState.ZSTREAMERROR;
 
                         s.Bitb = b; s.Bitk = k;
                         z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;

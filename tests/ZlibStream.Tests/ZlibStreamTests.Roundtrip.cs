@@ -12,17 +12,17 @@ namespace ZlibStream.Tests
     public partial class ZlibStreamTests
     {
         [Theory]
-        [InlineData(ZlibCompressionLevel.ZNOCOMPRESSION)]
-        [InlineData(ZlibCompressionLevel.Level1)]
-        [InlineData(ZlibCompressionLevel.Level2)]
-        [InlineData(ZlibCompressionLevel.Level3)]
-        [InlineData(ZlibCompressionLevel.Level4)]
-        [InlineData(ZlibCompressionLevel.Level5)]
-        [InlineData(ZlibCompressionLevel.Level6)]
-        [InlineData(ZlibCompressionLevel.Level7)]
-        [InlineData(ZlibCompressionLevel.ZBESTCOMPRESSION)]
-        [InlineData(ZlibCompressionLevel.ZDEFAULTCOMPRESSION)]
-        public void EncodeDecode(ZlibCompressionLevel compression)
+        [InlineData(CompressionLevel.NoCompression)]
+        [InlineData(CompressionLevel.Level1)]
+        [InlineData(CompressionLevel.Level2)]
+        [InlineData(CompressionLevel.Level3)]
+        [InlineData(CompressionLevel.Level4)]
+        [InlineData(CompressionLevel.Level5)]
+        [InlineData(CompressionLevel.Level6)]
+        [InlineData(CompressionLevel.Level7)]
+        [InlineData(CompressionLevel.BestCompression)]
+        [InlineData(CompressionLevel.DefaultCompression)]
+        public void EncodeDecode(CompressionLevel compression)
         {
             const int count = 2 * 4096 * 4;
             var expected = GetBuffer(count);
@@ -71,7 +71,7 @@ namespace ZlibStream.Tests
             var expected = GetBuffer(count);
 
             using (var compressed = new MemoryStream())
-            using (var deflate = new ZlibOutputStream(compressed, ZlibCompressionLevel.Level6))
+            using (var deflate = new ZlibOutputStream(compressed, CompressionLevel.Level6))
             {
                 deflate.Write(expected, 0, expected.Length);
             }
@@ -84,7 +84,7 @@ namespace ZlibStream.Tests
             var expected = GetImageBytes(3500, 3500);
 
             using (var compressed = new MemoryStream())
-            using (var deflate = new ZlibOutputStream(compressed, ZlibCompressionLevel.Level1))
+            using (var deflate = new ZlibOutputStream(compressed, CompressionLevel.Level1))
             {
                 deflate.Write(expected, 0, expected.Length);
             }

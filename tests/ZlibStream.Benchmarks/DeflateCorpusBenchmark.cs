@@ -89,7 +89,7 @@ namespace ZlibStream.Benchmarks
         {
             using (var output = new MemoryStream())
             {
-                using (var deflate = new ZlibOutputStream(output, (ZlibCompressionLevel)this.Compression))
+                using (var deflate = new ZlibOutputStream(output, (CompressionLevel)this.Compression))
                 {
                     var buffer = this.data[file];
                     deflate.Write(buffer, 0, buffer.Length);

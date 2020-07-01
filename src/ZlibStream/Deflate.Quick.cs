@@ -17,7 +17,7 @@ namespace SixLabors.ZlibStream
         /// <param name="flush">The flush strategy.</param>
         /// <returns>The <see cref="int"/>.</returns>
         [MethodImpl(InliningOptions.HotPath)]
-        internal int DeflateQuick(ZlibFlushStrategy flush)
+        internal int DeflateQuick(FlushStrategy flush)
         {
             int hash_head; // head of the hash chain
             int dist;
@@ -36,7 +36,7 @@ namespace SixLabors.ZlibStream
                     {
                         // Start new block when we have lookahead data, so that if no
                         // input data is given an empty block will not be written.
-                        last = flush == ZlibFlushStrategy.ZFINISH;
+                        last = flush == FlushStrategy.Finish;
                         this.QuickStartBlock(last);
                     }
 
@@ -45,7 +45,7 @@ namespace SixLabors.ZlibStream
                         if (this.Pending + 12 >= this.pendingBufferSize)
                         {
                             this.Flush_pending(this.strm);
-                            if (this.strm.AvailIn == 0 && flush != ZlibFlushStrategy.ZFINISH)
+                            if (this.strm.AvailIn == 0 && flush != FlushStrategy.Finish)
                             {
                                 // Break to emit end block and return need_more
                                 break;
@@ -55,7 +55,7 @@ namespace SixLabors.ZlibStream
                         if (this.lookahead < MINLOOKAHEAD)
                         {
                             this.Fill_window();
-                            if (this.lookahead < MINLOOKAHEAD && flush == ZlibFlushStrategy.ZNOFLUSH)
+                            if (this.lookahead < MINLOOKAHEAD && flush == FlushStrategy.NoFlush)
                             {
                                 // Always emit end block, in case next call is with Z_FINISH
                                 // and we need to emit start of last block
@@ -72,7 +72,7 @@ namespace SixLabors.ZlibStream
                             {
                                 // Start new block when we have lookahead data, so that if no
                                 // input data is given an empty block will not be written.
-                                last = flush == ZlibFlushStrategy.ZFINISH;
+                                last = flush == FlushStrategy.Finish;
                                 this.QuickStartBlock(last);
                             }
                         }
@@ -107,7 +107,7 @@ namespace SixLabors.ZlibStream
                     }
                     while (this.strm.AvailOut != 0);
 
-                    last = flush == ZlibFlushStrategy.ZFINISH;
+                    last = flush == FlushStrategy.Finish;
                     this.QuickEndBlock(last);
                     this.Flush_pending(this.strm);
 
