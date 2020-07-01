@@ -80,7 +80,6 @@ namespace ZlibStream.Tests
         [Fact]
         public void DeflateMemoryProfileTest()
         {
-            const int count = 1000 * 1000 * 4;
             var expected = GetImageBytes(3500, 3500);
 
             using (var compressed = new MemoryStream())

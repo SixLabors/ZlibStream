@@ -13,7 +13,7 @@ namespace SixLabors.ZlibStream
     /// </summary>
     public sealed class ZlibInputStream : Stream
     {
-        private const int BufferSize = 4096;
+        private readonly int bufferSize;
         private byte[] chunkBuffer;
         private readonly byte[] byteBuffer = new byte[1];
         private readonly bool compress;
@@ -28,10 +28,11 @@ namespace SixLabors.ZlibStream
         /// <param name="input">The input stream.</param>
         public ZlibInputStream(Stream input)
         {
+            this.bufferSize = 4096;
+            this.compress = false;
             this.BaseStream = input;
             this.InitBlock();
             _ = this.zStream.InflateInit();
-            this.compress = false;
             this.zStream.INextIn = this.chunkBuffer;
             this.zStream.NextInIndex = 0;
             this.zStream.AvailIn = 0;
@@ -44,10 +45,11 @@ namespace SixLabors.ZlibStream
         /// <param name="level">The compression level for the data to compress.</param>
         public ZlibInputStream(Stream input, CompressionLevel level)
         {
+            this.bufferSize = 1024;
+            this.compress = true;
             this.BaseStream = input;
             this.InitBlock();
             _ = this.zStream.DeflateInit(level);
-            this.compress = true;
             this.zStream.INextIn = this.chunkBuffer;
             this.zStream.NextInIndex = 0;
             this.zStream.AvailIn = 0;
@@ -116,7 +118,7 @@ namespace SixLabors.ZlibStream
                 {
                     // If buffer is empty and more input is available, refill it
                     this.zStream.NextInIndex = 0;
-                    this.zStream.AvailIn = this.BaseStream.Read(this.chunkBuffer, 0, BufferSize);
+                    this.zStream.AvailIn = this.BaseStream.Read(this.chunkBuffer, 0, this.bufferSize);
 
                     if (this.zStream.AvailIn == -1)
                     {
@@ -199,7 +201,7 @@ namespace SixLabors.ZlibStream
                 {
                     this.zStream.INextOut = this.chunkBuffer;
                     this.zStream.NextOutIndex = 0;
-                    this.zStream.AvailOut = BufferSize;
+                    this.zStream.AvailOut = this.bufferSize;
                     err = this.compress
                         ? this.zStream.Deflate(FlushStrategy.Finish)
                         : this.zStream.Inflate(FlushStrategy.Finish);
@@ -209,9 +211,9 @@ namespace SixLabors.ZlibStream
                         throw new ZlibStreamException((this.compress ? "de" : "in") + "flating: " + this.zStream.Msg);
                     }
 
-                    if (BufferSize - this.zStream.AvailOut > 0)
+                    if (this.bufferSize - this.zStream.AvailOut > 0)
                     {
-                        this.BaseStream.Write(this.chunkBuffer, 0, BufferSize - this.zStream.AvailOut);
+                        this.BaseStream.Write(this.chunkBuffer, 0, this.bufferSize - this.zStream.AvailOut);
                     }
 
                     if (err == CompressionState.ZSTREAMEND)
@@ -239,7 +241,7 @@ namespace SixLabors.ZlibStream
         private void InitBlock()
         {
             this.FlushMode = FlushStrategy.NoFlush;
-            this.chunkBuffer = ArrayPool<byte>.Shared.Rent(BufferSize);
+            this.chunkBuffer = ArrayPool<byte>.Shared.Rent(this.bufferSize);
         }
     }
 }
