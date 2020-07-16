@@ -151,6 +151,7 @@ namespace SixLabors.ZlibStream
         private int hashSize; // number of elements in hash table
         private int hashBits; // log2(hashSize)
         private uint hashMask; // hashSize - 1
+        private uint strMask; // Used to mask inserted strings to improve compression at higher levels.
 
         // Window position at the beginning of the current output block. Gets
         // negative when the window is moved backwards.
@@ -1246,6 +1247,9 @@ namespace SixLabors.ZlibStream
             this.hashSize = 1 << this.hashBits;
             this.hashMask = (uint)this.hashSize - 1;
 
+            // TODO: Do more thorough testing with this.
+            this.strMask = level > CompressionLevel.Level5 ? 0xFFFF0000 : 0xFFFFFFFF;
+
             this.windowBuffer = ArrayPool<byte>.Shared.Rent(this.wSize * 2);
             this.windowHandle = new Memory<byte>(this.windowBuffer).Pin();
             this.windowPointer = (byte*)this.windowHandle.Pointer;
@@ -1667,7 +1671,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="val">The input byte.</param>
         [MethodImpl(InliningOptions.ShortMethod)]
-        private uint UpdateHash(uint val) => (val * 2654435761U) >> (32 - this.hashBits);
+        private uint UpdateHash(uint val) => ((val & this.strMask) * 2654435761U) >> (32 - this.hashBits);
 
         /// <summary>
         /// Insert string str in the dictionary and set match_head to the previous head
