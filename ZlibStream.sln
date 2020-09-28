@@ -20,7 +20,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ZlibStream.Tests", "tests\Z
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ZlibStream.Benchmarks", "tests\ZlibStream.Benchmarks\ZlibStream.Benchmarks.csproj", "{15FE1586-DED2-41F4-9292-6BE8787A60C4}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F450D162-1FE5-4295-BDB8-8F78F6B51672}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_root", "_root", "{F450D162-1FE5-4295-BDB8-8F78F6B51672}"
 	ProjectSection(SolutionItems) = preProject
 		Directory.Build.props = Directory.Build.props
 		Directory.Build.targets = Directory.Build.targets

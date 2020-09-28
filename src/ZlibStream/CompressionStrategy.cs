@@ -6,26 +6,26 @@ namespace SixLabors.ZlibStream
     /// <summary>
     /// Compression strategy for zlib.
     /// </summary>
-    public enum CompressionStrategy
+    public enum CompressionStrategy : int
     {
         /// <summary>
         /// The default compression strategy.
         /// </summary>
-        DefaultStrategy,
+        DefaultStrategy = 0,
 
         /// <summary>
         /// Filtered compression strategy.
         /// </summary>
-        Filtered,
+        Filtered = 1,
 
         /// <summary>
         /// Huffman compression strategy.
         /// </summary>
-        HuffmanOnly,
+        HuffmanOnly = 2,
 
         /// <summary>
         /// Run Length Encoded
         /// </summary>
-        Rle
+        Rle = 3
     }
 }
