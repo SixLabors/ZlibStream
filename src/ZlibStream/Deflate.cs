@@ -1115,6 +1115,7 @@ namespace SixLabors.ZlibStream
             int best_len = this.prevLength; // best match length so far
             int limit = this.strStart > (this.wSize - MINLOOKAHEAD) ? this.strStart - (this.wSize - MINLOOKAHEAD) : 0;
             int nice_match = this.niceMatch;
+            int matchStrt = this.matchStart;
 
             // Stop when cur_match becomes <= limit. To simplify the code,
             // we prevent matches with the string of window index 0.
@@ -1167,7 +1168,7 @@ namespace SixLabors.ZlibStream
 
                 if (len > best_len)
                 {
-                    this.matchStart = cur_match;
+                    matchStrt = cur_match;
                     best_len = len;
                     if (len >= nice_match)
                     {
@@ -1179,6 +1180,7 @@ namespace SixLabors.ZlibStream
             }
             while ((cur_match = prev[cur_match & wmask]) > limit && --chain_length != 0);
 
+            this.matchStart = matchStrt;
             return Math.Min(best_len, this.lookahead);
         }
 

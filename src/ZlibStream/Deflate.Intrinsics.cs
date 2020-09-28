@@ -211,7 +211,7 @@ namespace SixLabors.ZlibStream
             }
             while (n > 0);
 
-            n = this.wSize;
+            n = wsize;
             p = &prev[n] - 16;
             do
             {
@@ -244,7 +244,7 @@ namespace SixLabors.ZlibStream
             }
             while (n > 0);
 
-            n = this.wSize;
+            n = wsize;
             p = &prev[n] - 8;
             do
             {
@@ -262,22 +262,23 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
         private void SlideHashScalar(ushort* head, ushort* prev)
         {
+            int wsize = this.wSize;
             int n = this.hashSize;
             int p = n;
             int m;
             do
             {
                 m = head[--p];
-                head[p] = (ushort)(m >= this.wSize ? (m - this.wSize) : 0);
+                head[p] = (ushort)(m >= wsize ? (m - wsize) : 0);
             }
             while (--n != 0);
 
-            n = this.wSize;
+            n = wsize;
             p = n;
             do
             {
                 m = prev[--p];
-                prev[p] = (ushort)(m >= this.wSize ? (m - this.wSize) : 0);
+                prev[p] = (ushort)(m >= wsize ? (m - wsize) : 0);
 
                 // If n is not on any hash chain, prev[n] is garbage but
                 // its value will never be used.
