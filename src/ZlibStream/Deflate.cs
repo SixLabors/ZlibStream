@@ -203,15 +203,19 @@ namespace SixLabors.ZlibStream
         private MemoryHandle bltreeHandle;
         private readonly ushort* blTreePointer;
 
-        private readonly Tree lDesc = new Tree(); // desc for literal tree
-        private readonly Tree dDesc = new Tree(); // desc for distance tree
-        private readonly Tree blDesc = new Tree(); // desc for bit length tree
+        private readonly Trees lDesc = new Trees(); // desc for literal tree
+        private readonly Trees dDesc = new Trees(); // desc for distance tree
+        private readonly Trees blDesc = new Trees(); // desc for bit length tree
 
-        // number of codes at each bit length for an optimal tree
+        // Pinned implementation of the staticLTree for fast access.
+        private MemoryHandle staticLtreeHandle;
+        private readonly ushort* staticLTreePointer;
+
+        // Number of codes at each bit length for an optimal tree
         private readonly ushort[] blCountBuffer;
         private MemoryHandle blCountHandle;
 
-        // heap used to build the Huffman trees
+        // Heap used to build the Huffman trees
         private readonly int[] heapBuffer;
         private MemoryHandle heapHandle;
 
@@ -292,6 +296,8 @@ namespace SixLabors.ZlibStream
             this.blTreeBuffer = ArrayPool<ushort>.Shared.Rent(((2 * BLCODES) + 1) * 2); // Huffman tree for bit lengths
             this.bltreeHandle = new Memory<ushort>(this.blTreeBuffer).Pin();
             this.blTreePointer = (ushort*)this.bltreeHandle.Pointer;
+
+            // TODO: Potentially pin the static trees here.
         }
 
         internal int Pending { get; set; } // nb of bytes in the pending buffer
@@ -355,13 +361,13 @@ namespace SixLabors.ZlibStream
         private void Tr_init()
         {
             this.lDesc.DynTree = this.dynLtreeBuffer;
-            this.lDesc.StatDesc = StaticTree.StaticLDesc;
+            this.lDesc.StatDesc = Trees.StaticLDesc;
 
             this.dDesc.DynTree = this.dynDtreeBuffer;
-            this.dDesc.StatDesc = StaticTree.StaticDDesc;
+            this.dDesc.StatDesc = Trees.StaticDDesc;
 
             this.blDesc.DynTree = this.blTreeBuffer;
-            this.blDesc.StatDesc = StaticTree.StaticBlDesc;
+            this.blDesc.StatDesc = Trees.StaticBlDesc;
 
             this.biBuf = 0;
             this.biValid = 0;
@@ -411,6 +417,7 @@ namespace SixLabors.ZlibStream
         {
             int* heap = this.HeapPointer;
             byte* depth = this.DepthPointer;
+
             int v = heap[k];
             int heapLen = this.HeapLen;
             int j = k << 1; // left son of k
@@ -536,7 +543,7 @@ namespace SixLabors.ZlibStream
             ushort* blTree = this.blTreePointer;
             for (max_blindex = BLCODES - 1; max_blindex >= 3; max_blindex--)
             {
-                if (blTree[(Tree.BlOrder[max_blindex] * 2) + 1] != 0)
+                if (blTree[(Trees.BlOrder[max_blindex] * 2) + 1] != 0)
                 {
                     break;
                 }
@@ -560,7 +567,7 @@ namespace SixLabors.ZlibStream
             this.Send_bits(blcodes - 4, 4); // not -3 as stated in appnote.txt
             for (rank = 0; rank < blcodes; rank++)
             {
-                this.Send_bits(blTree[(Tree.BlOrder[rank] * 2) + 1], 3);
+                this.Send_bits(blTree[(Trees.BlOrder[rank] * 2) + 1], 3);
             }
 
             this.Send_tree(this.dynLtreePointer, lcodes - 1); // literal tree
@@ -676,7 +683,7 @@ namespace SixLabors.ZlibStream
 
         [MethodImpl(InliningOptions.ShortMethod)]
         private void Send_code(int c, ushort[] tree)
-            => this.Send_bits(tree[c * 2], tree[(c * 2) + 1]);
+            => this.Send_bits(tree.DangerousGetReferenceAt(c * 2), tree.DangerousGetReferenceAt((c * 2) + 1));
 
         [MethodImpl(InliningOptions.ShortMethod)]
         private void Send_bits(int value, int length)
@@ -746,8 +753,8 @@ namespace SixLabors.ZlibStream
 
             // Here, lc is the match length - MINMATCH
             dist--; // dist = match distance - 1
-            this.dynLtreePointer[(Tree.LengthCode[len] + LITERALS + 1) * 2]++;
-            this.dynDtreePointer[Tree.D_code(dist) * 2]++;
+            this.dynLtreePointer[(Trees.LengthCode[len] + LITERALS + 1) * 2]++;
+            this.dynDtreePointer[Trees.D_code(dist) * 2]++;
 
             return this.lastLit == this.litBufsize - 1;
         }
@@ -936,24 +943,24 @@ namespace SixLabors.ZlibStream
             // code is the code to send
             // extra is number of extra bits to send
             // Here, lc is the match length - MINMATCH
-            int code = Tree.LengthCode[lc];
+            int code = Trees.LengthCode[lc];
 
             this.Send_code(code + LITERALS + 1, ltree); // send the length code
-            int extra = Tree.ExtraLbits[code];
+            int extra = Trees.ExtraLbits[code];
             if (extra != 0)
             {
-                lc -= Tree.BaseLength[code];
+                lc -= Trees.BaseLength[code];
                 this.Send_bits(lc, extra); // send the extra length bits
             }
 
             dist--; // dist is now the match distance - 1
-            code = Tree.D_code(dist);
+            code = Trees.D_code(dist);
 
             this.Send_code(code, dtree); // send the distance code
-            extra = Tree.ExtraDbits[code];
+            extra = Trees.ExtraDbits[code];
             if (extra != 0)
             {
-                dist -= Tree.BaseDist[code];
+                dist -= Trees.BaseDist[code];
                 this.Send_bits(dist, extra); // send the extra distance bits
             }
         }

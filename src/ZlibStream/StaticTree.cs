@@ -1,10 +1,25 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
+using System;
+using System.Runtime.InteropServices;
+
 namespace SixLabors.ZlibStream
 {
     internal sealed class StaticTree
     {
+        private const int MAXBITS = 15;
+        private const int BLCODES = 19;
+        private const int DCODES = 30;
+        private const int LITERALS = 256;
+        private const int LENGTHCODES = 29;
+
+        // Bit length codes must not exceed MAX_BL_BITS bits
+        private const int MAXBLBITS = 7;
+        private const int LCODES = LITERALS + 1 + LENGTHCODES;
+
+        public static CodeData[] static_ltree = new CodeData[LCODES + 2];
+
         internal static readonly ushort[] StaticLtree =
         {
             12, 8, 140, 8, 76, 8, 204, 8, 44, 8, 172, 8, 108, 8, 236, 8, 28, 8, 156, 8, 92,
@@ -44,21 +59,11 @@ namespace SixLabors.ZlibStream
             29, 5, 3, 5, 19, 5, 11, 5, 27, 5, 7, 5, 23, 5,
         };
 
-        internal static readonly StaticTree StaticLDesc = new StaticTree(StaticLtree, Tree.ExtraLbits, LITERALS + 1, LCODES, MAXBITS);
+        internal static readonly StaticTree StaticLDesc = new StaticTree(StaticLtree, Trees.ExtraLbits, LITERALS + 1, LCODES, MAXBITS);
 
-        internal static readonly StaticTree StaticDDesc = new StaticTree(StaticDtree, Tree.ExtraDbits, 0, DCODES, MAXBITS);
+        internal static readonly StaticTree StaticDDesc = new StaticTree(StaticDtree, Trees.ExtraDbits, 0, DCODES, MAXBITS);
 
-        internal static readonly StaticTree StaticBlDesc = new StaticTree(null, Tree.ExtraBlbits, 0, BLCODES, MAXBLBITS);
-
-        private const int MAXBITS = 15;
-        private const int BLCODES = 19;
-        private const int DCODES = 30;
-        private const int LITERALS = 256;
-        private const int LENGTHCODES = 29;
-
-        // Bit length codes must not exceed MAX_BL_BITS bits
-        private const int MAXBLBITS = 7;
-        private const int LCODES = LITERALS + 1 + LENGTHCODES;
+        internal static readonly StaticTree StaticBlDesc = new StaticTree(null, Trees.ExtraBlbits, 0, BLCODES, MAXBLBITS);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="StaticTree"/> class.
@@ -68,7 +73,12 @@ namespace SixLabors.ZlibStream
         /// <param name="extra_base">extra base.</param>
         /// <param name="elems">elements?.</param>
         /// <param name="max_length">max length.</param>
-        private StaticTree(ushort[] static_tree, int[] extra_bits, int extra_base, int elems, int max_length)
+        private StaticTree(
+            ushort[] static_tree,
+            int[] extra_bits,
+            int extra_base,
+            int elems,
+            int max_length)
         {
             this.StaticTreeValue = static_tree;
             this.ExtraBits = extra_bits;
@@ -86,5 +96,99 @@ namespace SixLabors.ZlibStream
         internal int Elems { get; } // max number of elements in the tree
 
         internal int MaxLength { get; } // max bit length for the codes
+
+        private static void BuildTrees()
+        {
+            // The number of codes at each bit length for an optimal tree
+            Span<ushort> bl_count = stackalloc ushort[MAXBITS + 1];
+
+            // Construct the codes of the static literal tree.
+            int n = 0;
+            while (n <= 143)
+            {
+                static_ltree[n++].CodeOrLength = 8;
+                bl_count[8]++;
+            }
+
+            while (n <= 255)
+            {
+                static_ltree[n++].CodeOrLength = 9;
+                bl_count[9]++;
+            }
+
+            while (n <= 279)
+            {
+                static_ltree[n++].CodeOrLength = 7;
+                bl_count[7]++;
+            }
+
+            // Codes 286 and 287 do not exist, but we must include them in the tree construction
+            // to get a canonical Huffman tree(longest code all ones)
+            while (n <= 287)
+            {
+                static_ltree[n++].CodeOrLength = 8;
+                bl_count[8]++;
+            }
+
+            // TODO: Gen Codes.
+            Span<ushort> next_code = stackalloc ushort[MAXBITS + 1];
+
+            // The distribution counts are first used to generate the code values
+            // without bit reversal.
+            uint code = 0;
+            int bits;
+            for (bits = 1; bits <= MAXBITS; bits++)
+            {
+                code = (code + bl_count[bits - 1]) << 1;
+                next_code[bits] = (ushort)code;
+            }
+
+            for (n = 0; n <= LCODES + 1; n++)
+            {
+                int len = static_ltree[n].CodeOrLength;
+                if (len == 0)
+                {
+                    continue;
+                }
+
+                // Now reverse the bits
+                static_ltree[n].FrequencyOrNode = (ushort)bi_reverse(next_code[len]++, len);
+            }
+        }
+
+        private static uint bi_reverse(uint code, int len)
+        {
+            /* code: the value to invert */
+            /* len: its bit length */
+            uint res = 0;
+            do
+            {
+                res |= code & 1;
+                code >>= 1;
+                res <<= 1;
+
+            } while (--len > 0);
+
+            return res >> 1;
+        }
+
+        /// <summary>
+        /// A data structure describing a single value and its code string.
+        /// A single struct is used to represent different types to allow for single method calls
+        /// since union types are not possible in C#.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct CodeData
+        {
+            /// <summary>
+            /// Gets the frequency count or the father node in the Huffman tree.
+            /// </summary>
+            public ushort FrequencyOrNode;
+
+            /// <summary>
+            /// Gets the bit string or the length of the bit string.
+            /// </summary>
+            public ushort CodeOrLength;
+        }
     }
 }

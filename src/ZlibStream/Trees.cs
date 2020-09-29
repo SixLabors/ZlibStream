@@ -2,12 +2,11 @@
 // See LICENSE for more details.
 
 using System;
-using System.Buffers;
 using System.Runtime.CompilerServices;
 
 namespace SixLabors.ZlibStream
 {
-    internal sealed unsafe class Tree
+    internal sealed unsafe partial class Trees
     {
         // Bit length codes must not exceed MAX_BL_BITS bits
         internal const int MAXBLBITS = 7;
@@ -33,27 +32,32 @@ namespace SixLabors.ZlibStream
         internal const int DISTCODELEN = 512;
 
         // extra bits for each length code
-        internal static readonly int[] ExtraLbits = {
+        internal static readonly int[] ExtraLbits =
+        {
             0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3,
             3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0,
         };
 
         // extra bits for each distance code
-        internal static readonly int[] ExtraDbits = {
+        internal static readonly int[] ExtraDbits =
+        {
             0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7,
             8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13,
         };
 
         // extra bits for each bit length code
-        internal static readonly int[] ExtraBlbits = {
+        internal static readonly int[] ExtraBlbits =
+        {
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 7,
         };
 
-        internal static readonly byte[] BlOrder = {
+        internal static readonly byte[] BlOrder =
+        {
             16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
         };
 
-        internal static readonly byte[] DistCode = {
+        internal static readonly byte[] DistCode =
+        {
             0, 1, 2, 3, 4, 4, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8,
             9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
             10, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
@@ -84,7 +88,8 @@ namespace SixLabors.ZlibStream
             29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29,
         };
 
-        internal static readonly byte[] LengthCode = {
+        internal static readonly byte[] LengthCode =
+        {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 12, 13,
             13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16,
             16, 17, 17, 17, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 18, 18, 18, 19,
@@ -102,21 +107,22 @@ namespace SixLabors.ZlibStream
             28,
         };
 
-        internal static readonly int[] BaseLength = {
+        internal static readonly int[] BaseLength =
+        {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56,
             64, 80, 96, 112, 128, 160, 192, 224, 0,
         };
 
-        internal static readonly int[] BaseDist = {
+        internal static readonly int[] BaseDist =
+        {
             0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384,
             512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384,
             24576,
         };
 
         private const int MAXBITS = 15;
-
-        // private const int BLCODES = 19;
-        // private const int DCODES = 30;
+        private const int BLCODES = 19;
+        private const int DCODES = 30;
         private const int LITERALS = 256;
         private const int LENGTHCODES = 29;
         private const int LCODES = LITERALS + 1 + LENGTHCODES;
@@ -126,7 +132,7 @@ namespace SixLabors.ZlibStream
 
         internal int MaxCode { get; private set; } // largest code with non zero frequency
 
-        internal StaticTree StatDesc { get; set; } // the corresponding static tree
+        internal StaticTreeDesc StatDesc { get; set; } // the corresponding static tree
 
         // Mapping from a distance to a distance code. dist is the distance - 1 and
         // must not have side effects. _dist_code[256] and _dist_code[257] are never
@@ -205,13 +211,14 @@ namespace SixLabors.ZlibStream
         //     not null.
         private void Gen_bitlen(Deflate s)
         {
-            using (MemoryHandle treeHandle = this.DynTree.AsMemory().Pin())
-            using (MemoryHandle streeHandle = this.StatDesc.StaticTreeValue.AsMemory().Pin())
-            using (MemoryHandle extraHandle = this.StatDesc.ExtraBits.AsMemory().Pin())
+            fixed (ushort* treePtr = &this.DynTree.DangerousGetReference())
+            fixed (CodeData* streePtr = &this.StatDesc.StaticTreeValue.DangerousGetReference())
+            fixed (int* extraPtr = &this.StatDesc.ExtraBits.DangerousGetReference())
             {
-                ushort* tree = (ushort*)treeHandle.Pointer;
-                ushort* stree = (ushort*)streeHandle.Pointer;
-                int* extra = (int*)extraHandle.Pointer;
+                ushort* tree = treePtr;
+                CodeData* stree = streePtr;
+                int* extra = extraPtr;
+
                 int base_Renamed = this.StatDesc.ExtraBase;
                 int max_length = this.StatDesc.MaxLength;
                 int h; // heap index
@@ -261,7 +268,7 @@ namespace SixLabors.ZlibStream
                     s.OptLen += f * (bits + xbits);
                     if (stree != null)
                     {
-                        s.StaticLen += f * (stree[(n * 2) + 1] + xbits);
+                        s.StaticLen += f * (stree[n].Len + xbits);
                     }
                 }
 
@@ -321,11 +328,12 @@ namespace SixLabors.ZlibStream
         //     also updated if stree is not null. The field max_code is set.
         internal void Build_tree(Deflate s)
         {
-            using (MemoryHandle treeHandle = this.DynTree.AsMemory().Pin())
-            using (MemoryHandle streeHandle = this.StatDesc.StaticTreeValue.AsMemory().Pin())
+            fixed (ushort* treePtr = &this.DynTree.DangerousGetReference())
+            fixed (CodeData* streePtr = &this.StatDesc.StaticTreeValue.DangerousGetReference())
             {
-                ushort* tree = (ushort*)treeHandle.Pointer;
-                ushort* stree = (ushort*)streeHandle.Pointer;
+                ushort* tree = treePtr;
+                CodeData* stree = streePtr;
+
                 int elems = this.StatDesc.Elems;
                 int n, m; // iterate over heap elements
                 var max_code = -1; // largest code with non zero frequency
@@ -359,13 +367,16 @@ namespace SixLabors.ZlibStream
                 // two codes of non zero frequency.
                 while (s.HeapLen < 2)
                 {
-                    node = heap[++s.HeapLen] = max_code < 2 ? ++max_code : 0;
+                    node = heap[++s.HeapLen] = max_code < 2
+                        ? ++max_code
+                        : 0;
+
                     tree[node * 2] = 1;
                     depth[node] = 0;
                     s.OptLen--;
                     if (stree != null)
                     {
-                        s.StaticLen -= stree[(node * 2) + 1];
+                        s.StaticLen -= stree[node].Len;
                     }
 
                     // node is 0 or 1 so it does not have extra bits
