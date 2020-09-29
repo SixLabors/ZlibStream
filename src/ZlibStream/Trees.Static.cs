@@ -1,7 +1,6 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace SixLabors.ZlibStream
@@ -49,9 +48,8 @@ namespace SixLabors.ZlibStream
 
         private static void MakeStaticTrees()
         {
-            // TODO: A lot of other arrays are created before we create the static trees.
-            fixed (CodeData* staticLTreePtr = &StaticLTree.DangerousGetReference())
-            fixed (CodeData* staticDTreePtr = &StaticDTtree.DangerousGetReference())
+            fixed (CodeData* staticLTreePtr = StaticLTree)
+            fixed (CodeData* staticDTreePtr = StaticDTtree)
             {
                 CodeData* static_ltree = staticLTreePtr;
                 CodeData* static_dtree = staticDTreePtr;
@@ -99,44 +97,6 @@ namespace SixLabors.ZlibStream
         }
 
         /// <summary>
-        /// Generate the codes for a given tree and bit counts (which need not be
-        /// optimal).
-        /// IN assertion: the array bl_count contains the bit length statistics for
-        /// the given tree and the field len is set for all tree elements.
-        /// OUT assertion: the field code is set for all tree elements of non zero code length.
-        /// </summary>
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private static void Gen_codes(CodeData* tree, int max_code, ushort* bl_count)
-        {
-            ushort* next_code = stackalloc ushort[MAXBITS + 1]; // next code value for each bit length
-
-            ushort code = 0; // running code value
-            int bits; // bit index
-            int n; // code index
-
-            // The distribution counts are first used to generate the code values
-            // without bit reversal.
-            for (bits = 1; bits <= MAXBITS; bits++)
-            {
-                next_code[bits] = code = (ushort)((code + bl_count[bits - 1]) << 1);
-            }
-
-            // Check that the bit counts in bl_count are consistent. The last code
-            // must be all ones.
-            for (n = 0; n <= max_code; n++)
-            {
-                int len = tree[n].Len;
-                if (len == 0)
-                {
-                    continue;
-                }
-
-                // Now reverse the bits
-                tree[n].Code = (ushort)Bi_reverse(next_code[len]++, len);
-            }
-        }
-
-        /// <summary>
         /// A data structure describing a single value and its code string.
         /// A single struct with explicit offsets is used to represent different union properties.
         /// </summary>
@@ -173,6 +133,8 @@ namespace SixLabors.ZlibStream
         /// </summary>
         public class StaticTreeDesc
         {
+            private readonly CodeData[] staticTree;
+
             /// <summary>
             /// Initializes a new instance of the <see cref="StaticTreeDesc"/> class.
             /// </summary>
@@ -188,7 +150,7 @@ namespace SixLabors.ZlibStream
                 int elems,
                 int max_length)
             {
-                this.StaticTreeValue = static_tree;
+                this.staticTree = static_tree;
                 this.ExtraBits = extra_bits;
                 this.ExtraBase = extra_base;
                 this.Elems = elems;
@@ -198,7 +160,7 @@ namespace SixLabors.ZlibStream
             /// <summary>
             /// Gets the static tree or null.
             /// </summary>
-            public CodeData[] StaticTreeValue { get; }
+            public ref CodeData Ref => ref this.staticTree.DangerousGetReference();
 
             /// <summary>
             /// Gets the extra bits for each code or null.

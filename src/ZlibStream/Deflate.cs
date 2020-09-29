@@ -45,14 +45,14 @@ namespace SixLabors.ZlibStream
         // The deflate compression method
         private const int ZDEFLATED = 8;
 
-        private const int STOREDBLOCK = 0;
-        private const int STATICTREES = 1;
-        private const int DYNTREES = 2;
+        public const int STOREDBLOCK = 0;
+        public const int STATICTREES = 1;
+        public const int DYNTREES = 2;
 
         // The three kinds of block type
-        private const int ZBINARY = 0;
-        private const int ZASCII = 1;
-        private const int ZUNKNOWN = 2;
+        public const int ZBINARY = 0;
+        public const int ZASCII = 1;
+        public const int ZUNKNOWN = 2;
 
         // repeat previous bit length 3-6 times (2 bits of repeat count)
         private const int REP36 = 16;
@@ -111,9 +111,9 @@ namespace SixLabors.ZlibStream
         private int pendingBufferSize; // size of pending_buf
         private byte[] pendingBuffer; // output still pending
         private MemoryHandle pendingHandle;
-        private byte* pendingPointer;
+        internal byte* pendingPointer;
 
-        private byte dataType; // UNKNOWN, BINARY or ASCII
+        internal byte dataType; // UNKNOWN, BINARY or ASCII
         private byte method; // STORED (for zip only) or DEFLATED
         private FlushStrategy lastFlush; // value of flush param for previous deflate call
 
@@ -181,7 +181,7 @@ namespace SixLabors.ZlibStream
         // max_insert_length is used only for compression levels <= 3.
         private int maxLazyMatch;
 
-        private CompressionLevel level; // compression level (1..9)
+        internal CompressionLevel level; // compression level (1..9)
         private CompressionStrategy strategy; // favor or force Huffman coding
 
         // Use a faster search when the previous match is longer than this
@@ -190,22 +190,17 @@ namespace SixLabors.ZlibStream
         // Stop searching when current match exceeds this
         private int niceMatch;
 
-        // Used by trees.
-        private readonly ushort[] dynLtreeBuffer; // literal and length tree
-        private MemoryHandle dynLtreeHandle;
-        private readonly ushort* dynLtreePointer;
+        // literal and length tree
+        // desc for literal tree
+        internal readonly Trees.DynamicTreeDesc dynLTree = new Trees.DynamicTreeDesc(HEAPSIZE);
 
-        private readonly ushort[] dynDtreeBuffer; // distance tree
-        private MemoryHandle dynDtreeHandle;
-        private readonly ushort* dynDtreePointer;
+        // distance tree
+        // desc for distance tree
+        internal readonly Trees.DynamicTreeDesc dynDTree = new Trees.DynamicTreeDesc((2 * DCODES) + 1);
 
-        private readonly ushort[] blTreeBuffer; // Huffman tree for bit lengths
-        private MemoryHandle bltreeHandle;
-        private readonly ushort* blTreePointer;
-
-        private readonly Trees lDesc = new Trees(); // desc for literal tree
-        private readonly Trees dDesc = new Trees(); // desc for distance tree
-        private readonly Trees blDesc = new Trees(); // desc for bit length tree
+        // Huffman tree for bit lengths
+        // desc for bit length tree
+        internal readonly Trees.DynamicTreeDesc dynBLTree = new Trees.DynamicTreeDesc((2 * BLCODES) + 1);
 
         // Pinned implementation of the staticLTree for fast access.
         private MemoryHandle staticLtreeHandle;
@@ -223,19 +218,19 @@ namespace SixLabors.ZlibStream
         private readonly byte[] depthBuffer;
         private MemoryHandle depthHandle;
 
-        private int matches; // number of string matches in current block
+        internal int matches; // number of string matches in current block
 
-        private int lastEobLen;  // bit length of EOB code for last block
+        internal int lastEobLen;  // bit length of EOB code for last block
 
         // Output buffer. bits are inserted starting at the bottom (least
         // significant bits).
-        private ushort biBuf;
+        internal ushort biBuf;
 
         // Number of valid bits in bi_buf.  All bits above the last valid bit
         // are always zero.
-        private int biValid;
+        internal int biValid;
 
-        private int lBuf; // index for literals or lengths */
+        internal int lBuf; // index for literals or lengths */
 
         // Size of match buffer for literals/lengths.  There are 4 reasons for
         // limiting lit_bufsize to 64K:
@@ -256,17 +251,17 @@ namespace SixLabors.ZlibStream
         //   - I can't count above 4
         private int litBufsize;
 
-        private int lastLit; // running index in l_buf
+        internal int lastLit; // running index in l_buf
 
         // Buffer for distances. To simplify the code, d_buf and l_buf have
         // the same number of elements. To use different lengths, an extra flag
         // array would be necessary.
-        private int dBuf; // index of pendig_buf
+        internal int dBuf; // index of pendig_buf
 
         // Whether or not a block is currently open for the QUICK deflation scheme.
         // This is set to true if there is an active block, or false if the block was just
         // closed.
-        private bool blockOpen;
+        internal bool blockOpen;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Deflate"/> class.
@@ -284,20 +279,6 @@ namespace SixLabors.ZlibStream
             this.depthBuffer = ArrayPool<byte>.Shared.Rent((2 * LCODES) + 1);
             this.depthHandle = new Memory<byte>(this.depthBuffer).Pin();
             this.DepthPointer = (byte*)this.depthHandle.Pointer;
-
-            this.dynLtreeBuffer = ArrayPool<ushort>.Shared.Rent(HEAPSIZE * 2); // literal and length tree
-            this.dynLtreeHandle = new Memory<ushort>(this.dynLtreeBuffer).Pin();
-            this.dynLtreePointer = (ushort*)this.dynLtreeHandle.Pointer;
-
-            this.dynDtreeBuffer = ArrayPool<ushort>.Shared.Rent(((2 * DCODES) + 1) * 2); // Distance tree
-            this.dynDtreeHandle = new Memory<ushort>(this.dynDtreeBuffer).Pin();
-            this.dynDtreePointer = (ushort*)this.dynDtreeHandle.Pointer;
-
-            this.blTreeBuffer = ArrayPool<ushort>.Shared.Rent(((2 * BLCODES) + 1) * 2); // Huffman tree for bit lengths
-            this.bltreeHandle = new Memory<ushort>(this.blTreeBuffer).Pin();
-            this.blTreePointer = (ushort*)this.bltreeHandle.Pointer;
-
-            // TODO: Potentially pin the static trees here.
         }
 
         internal int Pending { get; set; } // nb of bytes in the pending buffer
@@ -357,53 +338,6 @@ namespace SixLabors.ZlibStream
             this.matchAvailable = 0;
         }
 
-        // Initialize the tree data structures for a new zlib stream.
-        private void Tr_init()
-        {
-            this.lDesc.DynTree = this.dynLtreeBuffer;
-            this.lDesc.StatDesc = Trees.StaticLDesc;
-
-            this.dDesc.DynTree = this.dynDtreeBuffer;
-            this.dDesc.StatDesc = Trees.StaticDDesc;
-
-            this.blDesc.DynTree = this.blTreeBuffer;
-            this.blDesc.StatDesc = Trees.StaticBlDesc;
-
-            this.biBuf = 0;
-            this.biValid = 0;
-            this.lastEobLen = 8; // enough lookahead for inflate
-
-            // Initialize the first block of the first file:
-            this.Init_block();
-        }
-
-        private void Init_block()
-        {
-            // Initialize the trees.
-            ushort* dynLtree = this.dynLtreePointer;
-            ushort* dynDtree = this.dynDtreePointer;
-            ushort* blTree = this.blTreePointer;
-
-            for (int i = 0; i < LCODES; i++)
-            {
-                dynLtree[i * 2] = 0;
-            }
-
-            for (int i = 0; i < DCODES; i++)
-            {
-                dynDtree[i * 2] = 0;
-            }
-
-            for (int i = 0; i < BLCODES; i++)
-            {
-                blTree[i * 2] = 0;
-            }
-
-            dynLtree[ENDBLOCK * 2] = 1;
-            this.OptLen = this.StaticLen = 0;
-            this.lastLit = this.matches = 0;
-        }
-
         /// <summary>
         /// Restore the heap property by moving down the tree starting at node k,
         /// exchanging a node with the smallest of its two sons if necessary, stopping
@@ -446,211 +380,6 @@ namespace SixLabors.ZlibStream
             heap[k] = v;
         }
 
-        /// <summary>
-        /// Scan a literal or distance tree to determine the frequencies of the codes
-        /// in the bit length tree.
-        /// </summary>
-        /// <param name="tree">The tree to be scanned.</param>
-        /// <param name="max_code">And its largest code of non zero frequency</param>
-        private void Scan_tree(ushort* tree, int max_code)
-        {
-            int n; // iterates over all tree elements
-            int prevlen = -1; // last emitted length
-            int curlen; // length of current code
-            int nextlen = tree[(0 * 2) + 1]; // length of next code
-            int count = 0; // repeat count of the current code
-            int max_count = 7; // max repeat count
-            int min_count = 4; // min repeat count
-            ushort* blTree = this.blTreePointer;
-
-            if (nextlen == 0)
-            {
-                max_count = 138;
-                min_count = 3;
-            }
-
-            tree[((max_code + 1) * 2) + 1] = ushort.MaxValue; // guard
-
-            for (n = 0; n <= max_code; n++)
-            {
-                curlen = nextlen;
-                nextlen = tree[((n + 1) * 2) + 1];
-                if (++count < max_count && curlen == nextlen)
-                {
-                    continue;
-                }
-                else if (count < min_count)
-                {
-                    blTree[curlen * 2] = (ushort)(blTree[curlen * 2] + count);
-                }
-                else if (curlen != 0)
-                {
-                    if (curlen != prevlen)
-                    {
-                        blTree[curlen * 2]++;
-                    }
-
-                    blTree[REP36 * 2]++;
-                }
-                else if (count <= 10)
-                {
-                    blTree[REPZ310 * 2]++;
-                }
-                else
-                {
-                    blTree[REPZ11138 * 2]++;
-                }
-
-                count = 0;
-                prevlen = curlen;
-                if (nextlen == 0)
-                {
-                    max_count = 138;
-                    min_count = 3;
-                }
-                else if (curlen == nextlen)
-                {
-                    max_count = 6;
-                    min_count = 3;
-                }
-                else
-                {
-                    max_count = 7;
-                    min_count = 4;
-                }
-            }
-        }
-
-        // Construct the Huffman tree for the bit lengths and return the index in
-        // bl_order of the last bit length code to send.
-        private int Build_bl_tree()
-        {
-            int max_blindex; // index of last bit length code of non zero freq
-
-            // Determine the bit length frequencies for literal and distance trees
-            this.Scan_tree(this.dynLtreePointer, this.lDesc.MaxCode);
-            this.Scan_tree(this.dynDtreePointer, this.dDesc.MaxCode);
-
-            // Build the bit length tree:
-            this.blDesc.Build_tree(this);
-
-            // opt_len now includes the length of the tree representations, except
-            // the lengths of the bit lengths codes and the 5+5+4 bits for the counts.
-
-            // Determine the number of bit length codes to send. The pkzip format
-            // requires that at least 4 bit length codes be sent. (appnote.txt says
-            // 3 but the actual value used is 4.)
-            ushort* blTree = this.blTreePointer;
-            for (max_blindex = BLCODES - 1; max_blindex >= 3; max_blindex--)
-            {
-                if (blTree[(Trees.BlOrder[max_blindex] * 2) + 1] != 0)
-                {
-                    break;
-                }
-            }
-
-            // Update opt_len to include the bit length tree and counts
-            this.OptLen += (3 * (max_blindex + 1)) + 5 + 5 + 4;
-
-            return max_blindex;
-        }
-
-        // Send the header for a block using dynamic Huffman trees: the counts, the
-        // lengths of the bit length codes, the literal tree and the distance tree.
-        // IN assertion: lcodes >= 257, dcodes >= 1, blcodes >= 4.
-        private void Send_all_trees(int lcodes, int dcodes, int blcodes)
-        {
-            int rank; // index in bl_order
-            ushort* blTree = this.blTreePointer;
-            this.Send_bits(lcodes - 257, 5); // not +255 as stated in appnote.txt
-            this.Send_bits(dcodes - 1, 5);
-            this.Send_bits(blcodes - 4, 4); // not -3 as stated in appnote.txt
-            for (rank = 0; rank < blcodes; rank++)
-            {
-                this.Send_bits(blTree[(Trees.BlOrder[rank] * 2) + 1], 3);
-            }
-
-            this.Send_tree(this.dynLtreePointer, lcodes - 1); // literal tree
-            this.Send_tree(this.dynDtreePointer, dcodes - 1); // distance tree
-        }
-
-        // Send a literal or distance tree in compressed form, using the codes in
-        // bl_tree.
-        private void Send_tree(ushort* tree, int max_code)
-        {
-            ushort* blTree = this.blTreePointer;
-            int n; // iterates over all tree elements
-            int prevlen = -1; // last emitted length
-            int curlen; // length of current code
-            int nextlen = tree[(0 * 2) + 1]; // length of next code
-            int count = 0; // repeat count of the current code
-            int max_count = 7; // max repeat count
-            int min_count = 4; // min repeat count
-
-            if (nextlen == 0)
-            {
-                max_count = 138;
-                min_count = 3;
-            }
-
-            for (n = 0; n <= max_code; n++)
-            {
-                curlen = nextlen;
-                nextlen = tree[((n + 1) * 2) + 1];
-                if (++count < max_count && curlen == nextlen)
-                {
-                    continue;
-                }
-                else if (count < min_count)
-                {
-                    do
-                    {
-                        this.Send_code(curlen, blTree);
-                    }
-                    while (--count != 0);
-                }
-                else if (curlen != 0)
-                {
-                    if (curlen != prevlen)
-                    {
-                        this.Send_code(curlen, blTree);
-                        count--;
-                    }
-
-                    this.Send_code(REP36, blTree);
-                    this.Send_bits(count - 3, 2);
-                }
-                else if (count <= 10)
-                {
-                    this.Send_code(REPZ310, blTree);
-                    this.Send_bits(count - 3, 3);
-                }
-                else
-                {
-                    this.Send_code(REPZ11138, blTree);
-                    this.Send_bits(count - 11, 7);
-                }
-
-                count = 0;
-                prevlen = curlen;
-                if (nextlen == 0)
-                {
-                    max_count = 138;
-                    min_count = 3;
-                }
-                else if (curlen == nextlen)
-                {
-                    max_count = 6;
-                    min_count = 3;
-                }
-                else
-                {
-                    max_count = 7;
-                    min_count = 4;
-                }
-            }
-        }
-
         // Output a byte on the stream.
         // IN assertion: there is enough room in pending_buf.
         [MethodImpl(InliningOptions.ShortMethod)]
@@ -678,15 +407,11 @@ namespace SixLabors.ZlibStream
         }
 
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void Send_code(int c, ushort* tree)
-            => this.Send_bits(tree[c * 2], tree[(c * 2) + 1]);
+        public void Send_code(int c, Trees.CodeData* tree)
+            => this.Send_bits(tree[c].Code, tree[c].Len);
 
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void Send_code(int c, ushort[] tree)
-            => this.Send_bits(tree.DangerousGetReferenceAt(c * 2), tree.DangerousGetReferenceAt((c * 2) + 1));
-
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private void Send_bits(int value, int length)
+        public void Send_bits(int value, int length)
         {
             if (this.biValid > BufSize - length)
             {
@@ -700,37 +425,6 @@ namespace SixLabors.ZlibStream
                 this.biBuf |= (ushort)(value << this.biValid);
                 this.biValid += length;
             }
-        }
-
-        // Send one empty static block to give enough lookahead for inflate.
-        // This takes 10 bits, of which 7 may remain in the bit buffer.
-        // The current inflate code requires 9 bits of lookahead. If the
-        // last two codes for the previous block (real code plus EOB) were coded
-        // on 5 bits or less, inflate may have only 5+3 bits of lookahead to decode
-        // the last real code. In this case we send two empty static blocks instead
-        // of one. (There are no problems if the previous block is stored or fixed.)
-        // To simplify the code, we assume the worst case of last real code encoded
-        // on one bit only.
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private void Tr_align()
-        {
-            this.Tr_emit_tree(STATICTREES, false);
-            this.Tr_emit_end_block(StaticTree.StaticLtree, false);
-
-            this.Bi_flush();
-
-            // Of the 10 bits for the empty block, we have already sent
-            // (10 - bi_valid) bits. The lookahead for the last real code (before
-            // the EOB of the previous block) was thus at least one plus the length
-            // of the EOB plus what we have just sent of the empty static block.
-            if (1 + this.lastEobLen + 10 - this.biValid < 9)
-            {
-                this.Tr_emit_tree(STATICTREES, false);
-                this.Tr_emit_end_block(StaticTree.StaticLtree, false);
-                this.Bi_flush();
-            }
-
-            this.lastEobLen = 7;
         }
 
         /// <summary>
@@ -753,8 +447,8 @@ namespace SixLabors.ZlibStream
 
             // Here, lc is the match length - MINMATCH
             dist--; // dist = match distance - 1
-            this.dynLtreePointer[(Trees.LengthCode[len] + LITERALS + 1) * 2]++;
-            this.dynDtreePointer[Trees.D_code(dist) * 2]++;
+            this.dynLTree[Trees.LengthCode[len] + LITERALS + 1].Freq++;
+            this.dynDTree[Trees.D_code(dist)].Freq++;
 
             return this.lastLit == this.litBufsize - 1;
         }
@@ -776,83 +470,14 @@ namespace SixLabors.ZlibStream
             pending[this.lBuf + this.lastLit++] = c;
 
             // lc is the unmatched char
-            this.dynLtreePointer[c * 2]++;
+            this.dynLTree[c].Freq++;
 
             return this.lastLit == this.litBufsize - 1;
         }
 
-        // Send the block data compressed using the given Huffman trees
-        [MethodImpl(InliningOptions.HotPath)]
-        private void Compress_block(ushort* ltree, ushort* dtree)
-        {
-            int dist; // distance of matched string
-            int lc; // match length or unmatched char (if dist == 0)
-            int lx = 0; // running index in l_buf
-
-            if (this.lastLit != 0)
-            {
-                byte* pending = this.pendingPointer;
-
-                do
-                {
-                    dist = ((pending[this.dBuf + (lx * 2)] << 8) & 0xFF00) | pending[this.dBuf + (lx * 2) + 1];
-                    lc = pending[this.lBuf + lx];
-                    lx++;
-
-                    if (dist == 0)
-                    {
-                        this.Send_code(lc, ltree); // send a literal byte
-                    }
-                    else
-                    {
-                        this.Tr_emit_distance(ltree, dtree, lc, dist);
-                    } // literal or match pair ?
-
-                    // Check that the overlay between pending_buf and d_buf+l_buf is ok:
-                }
-                while (lx < this.lastLit);
-            }
-
-            this.Send_code(ENDBLOCK, ltree);
-            this.lastEobLen = ltree[(ENDBLOCK * 2) + 1];
-            this.blockOpen = false;
-        }
-
-        // Set the data type to ASCII or BINARY, using a crude approximation:
-        // binary if more than 20% of the bytes are <= 6 or >= 128, ascii otherwise.
-        // IN assertion: the fields freq of dyn_ltree are set and the total of all
-        // frequencies does not exceed 64K (to fit in an int on 16 bit machines).
-        private void Set_data_type()
-        {
-            int n = 0;
-            int ascii_freq = 0;
-            int bin_freq = 0;
-            ushort* dynLtree = this.dynLtreePointer;
-
-            while (n < 7)
-            {
-                bin_freq += dynLtree[n * 2];
-                n++;
-            }
-
-            while (n < 128)
-            {
-                ascii_freq += dynLtree[n * 2];
-                n++;
-            }
-
-            while (n < LITERALS)
-            {
-                bin_freq += dynLtree[n * 2];
-                n++;
-            }
-
-            this.dataType = (byte)(bin_freq > (ascii_freq >> 2) ? ZBINARY : ZASCII);
-        }
-
         // Flush the bit buffer, keeping at most 7 bits in it.
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void Bi_flush()
+        public void Bi_flush()
         {
             if (this.biValid == 16)
             {
@@ -870,7 +495,7 @@ namespace SixLabors.ZlibStream
 
         // Flush the bit buffer and align the output on a byte boundary
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void Bi_windup()
+        public void Bi_windup()
         {
             if (this.biValid > 8)
             {
@@ -888,7 +513,7 @@ namespace SixLabors.ZlibStream
         // Copy a stored block, storing first the length and its
         // one's complement if requested.
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void Copy_block(int buf, int len, bool header)
+        public void Copy_block(int buf, int len, bool header)
         {
             this.Bi_windup(); // align on byte boundary
             this.lastEobLen = 8; // enough lookahead for inflate
@@ -905,146 +530,9 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         private void Flush_block_only(bool eof)
         {
-            this.Tr_flush_block(this.blockStart >= 0 ? this.blockStart : -1, this.strStart - this.blockStart, eof);
+            Trees.Tr_flush_block(this, this.blockStart >= 0 ? this.blockStart : -1, this.strStart - this.blockStart, eof);
             this.blockStart = this.strStart;
             this.Flush_pending(this.strm);
-        }
-
-        // Send a stored block
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private void Tr_stored_block(int buf, int stored_len, bool eof)
-        {
-            this.Tr_emit_tree(STOREDBLOCK, eof);
-            this.Copy_block(buf, stored_len, true); // with header
-        }
-
-        // Send the start of a block
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private void Tr_emit_tree(int type, bool eof)
-        {
-            this.Send_bits((type << 1) + (eof ? 1 : 0), 3); // send block type
-        }
-
-        // Send the end of a block
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private void Tr_emit_end_block(ushort[] tree, bool last)
-        {
-            this.Send_code(ENDBLOCK, tree);
-            if (last)
-            {
-                this.Bi_windup();
-            }
-        }
-
-        // Emit match dist/length code.
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private void Tr_emit_distance(ushort* ltree, ushort* dtree, int lc, int dist)
-        {
-            // code is the code to send
-            // extra is number of extra bits to send
-            // Here, lc is the match length - MINMATCH
-            int code = Trees.LengthCode[lc];
-
-            this.Send_code(code + LITERALS + 1, ltree); // send the length code
-            int extra = Trees.ExtraLbits[code];
-            if (extra != 0)
-            {
-                lc -= Trees.BaseLength[code];
-                this.Send_bits(lc, extra); // send the extra length bits
-            }
-
-            dist--; // dist is now the match distance - 1
-            code = Trees.D_code(dist);
-
-            this.Send_code(code, dtree); // send the distance code
-            extra = Trees.ExtraDbits[code];
-            if (extra != 0)
-            {
-                dist -= Trees.BaseDist[code];
-                this.Send_bits(dist, extra); // send the extra distance bits
-            }
-        }
-
-        // Determine the best encoding for the current block: dynamic trees, static
-        // trees or store, and output the encoded block to the zip file.
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
-        private void Tr_flush_block(int buf, int stored_len, bool eof)
-        {
-            int opt_lenb, static_lenb; // opt_len and static_len in bytes
-            int max_blindex = 0; // index of last bit length code of non zero freq
-
-            // Build the Huffman trees unless a stored block is forced
-            if (this.level > 0)
-            {
-                // Check if the file is ascii or binary
-                if (this.dataType == ZUNKNOWN)
-                {
-                    this.Set_data_type();
-                }
-
-                // Construct the literal and distance trees
-                this.lDesc.Build_tree(this);
-
-                this.dDesc.Build_tree(this);
-
-                // At this point, opt_len and static_len are the total bit lengths of
-                // the compressed block data, excluding the tree representations.
-
-                // Build the bit length tree for the above two trees, and get the index
-                // in bl_order of the last bit length code to send.
-                max_blindex = this.Build_bl_tree();
-
-                // Determine the best encoding. Compute first the block length in bytes
-                opt_lenb = (this.OptLen + 3 + 7) >> 3;
-                static_lenb = (this.StaticLen + 3 + 7) >> 3;
-
-                if (static_lenb <= opt_lenb)
-                {
-                    opt_lenb = static_lenb;
-                }
-            }
-            else
-            {
-                opt_lenb = static_lenb = stored_len + 5; // force a stored block
-            }
-
-            if (stored_len + 4 <= opt_lenb && buf != -1)
-            {
-                // 4: two words for the lengths
-                // The test buf != NULL is only necessary if LIT_BUFSIZE > WSIZE.
-                // Otherwise we can't have processed more than WSIZE input bytes since
-                // the last block flush, because compression would have been
-                // successful. If LIT_BUFSIZE <= WSIZE, it is never too late to
-                // transform a block into a stored block.
-                this.Tr_stored_block(buf, stored_len, eof);
-            }
-            else if (static_lenb == opt_lenb)
-            {
-                this.Tr_emit_tree(STATICTREES, eof);
-
-                fixed (ushort* ltree = StaticTree.StaticLtree)
-                {
-                    fixed (ushort* dtree = StaticTree.StaticDtree)
-                    {
-                        this.Compress_block(ltree, dtree);
-                    }
-                }
-            }
-            else
-            {
-                this.Tr_emit_tree(DYNTREES, eof);
-                this.Send_all_trees(this.lDesc.MaxCode + 1, this.dDesc.MaxCode + 1, max_blindex + 1);
-                this.Compress_block(this.dynLtreePointer, this.dynDtreePointer);
-            }
-
-            // The above check is made mod 2^32, for files larger than 512 MB
-            // and uLong implemented on 32 bits.
-            this.Init_block();
-
-            if (eof)
-            {
-                this.Bi_windup();
-            }
         }
 
         // Fill the window when the lookahead becomes insufficient.
@@ -1309,7 +797,7 @@ namespace SixLabors.ZlibStream
 
             this.lastFlush = FlushStrategy.NoFlush;
 
-            this.Tr_init();
+            Trees.Tr_init(this);
             this.Lm_init();
             return CompressionState.ZOK;
         }
@@ -1334,14 +822,9 @@ namespace SixLabors.ZlibStream
             this.windowHandle.Dispose();
             ArrayPool<byte>.Shared.Return(this.windowBuffer);
 
-            this.bltreeHandle.Dispose();
-            ArrayPool<ushort>.Shared.Return(this.blTreeBuffer);
-
-            this.dynDtreeHandle.Dispose();
-            ArrayPool<ushort>.Shared.Return(this.dynDtreeBuffer);
-
-            this.dynLtreeHandle.Dispose();
-            ArrayPool<ushort>.Shared.Return(this.dynLtreeBuffer);
+            this.dynLTree.Dispose();
+            this.dynDTree.Dispose();
+            this.dynBLTree.Dispose();
 
             this.depthHandle.Dispose();
             ArrayPool<byte>.Shared.Return(this.depthBuffer);
@@ -1588,12 +1071,12 @@ namespace SixLabors.ZlibStream
                 {
                     if (flush == FlushStrategy.PartialFlush)
                     {
-                        this.Tr_align();
+                        Trees.Tr_align(this);
                     }
                     else
                     {
                         // FULL_FLUSH or SYNC_FLUSH
-                        this.Tr_stored_block(0, 0, false);
+                        Trees.Tr_stored_block(this, 0, 0, false);
 
                         // For a full flush, this empty block will be recognized
                         // as a special marker by inflate_sync().
