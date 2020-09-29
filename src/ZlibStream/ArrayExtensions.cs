@@ -23,7 +23,6 @@ namespace SixLabors.ZlibStream
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T DangerousGetReference<T>(this T[] array)
         {
-#if SUPPORTS_MODERN_CLR
             if (array is null)
             {
                 unsafe
@@ -32,6 +31,7 @@ namespace SixLabors.ZlibStream
                 }
             }
 
+#if SUPPORTS_MODERN_CLR
             RawArrayData arrayData = Unsafe.As<RawArrayData>(array);
             ref T r0 = ref Unsafe.As<byte, T>(ref arrayData.Data);
 
