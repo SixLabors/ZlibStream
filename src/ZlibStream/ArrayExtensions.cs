@@ -23,14 +23,6 @@ namespace SixLabors.ZlibStream
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T DangerousGetReference<T>(this T[] array)
         {
-            if (array is null)
-            {
-                unsafe
-                {
-                    return ref Unsafe.AsRef<T>(null);
-                }
-            }
-
 #if SUPPORTS_MODERN_CLR
             RawArrayData arrayData = Unsafe.As<RawArrayData>(array);
             ref T r0 = ref Unsafe.As<byte, T>(ref arrayData.Data);
@@ -51,6 +43,36 @@ namespace SixLabors.ZlibStream
                 return ref Unsafe.AsRef<T>(null);
             }
 #pragma warning restore SA1131
+#endif
+        }
+
+        /// <summary>
+        /// Returns a reference to an element at a specified index within a given <typeparamref name="T"/> array, with no bounds checks.
+        /// </summary>
+        /// <typeparam name="T">The type of elements in the input <typeparamref name="T"/> array instance.</typeparam>
+        /// <param name="array">The input <typeparamref name="T"/> array instance.</param>
+        /// <param name="i">The index of the element to retrieve within <paramref name="array"/>.</param>
+        /// <returns>A reference to the element within <paramref name="array"/> at the index specified by <paramref name="i"/>.</returns>
+        /// <remarks>This method doesn't do any bounds checks, therefore it is responsibility of the caller to ensure the <paramref name="i"/> parameter is valid.</remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref T DangerousGetReferenceAt<T>(this T[] array, int i)
+        {
+#if SUPPORTS_MODERN_CLR
+            RawArrayData arrayData = Unsafe.As<RawArrayData>(array);
+            ref T r0 = ref Unsafe.As<byte, T>(ref arrayData.Data);
+            ref T ri = ref Unsafe.Add(ref r0, i);
+
+            return ref ri;
+#else
+            if ((uint)i < (uint)array.Length)
+            {
+                return ref array[i];
+            }
+
+            unsafe
+            {
+                return ref Unsafe.AsRef<T>(null);
+            }
 #endif
         }
 

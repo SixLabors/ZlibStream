@@ -217,7 +217,7 @@ namespace SixLabors.ZlibStream
             ushort count = 0; // repeat count of the current code
             int max_count = 7; // max repeat count
             int min_count = 4; // min repeat count
-            DynamicTreeDesc blTree = s.dynBLTree;
+            DynamicTreeDesc blTree = s.DynBLTree;
 
             if (nextlen == 0)
             {
@@ -284,11 +284,11 @@ namespace SixLabors.ZlibStream
             int max_blindex; // index of last bit length code of non zero freq
 
             // Determine the bit length frequencies for literal and distance trees
-            Scan_tree(s, s.dynLTree, s.dynLTree.MaxCode);
-            Scan_tree(s, s.dynDTree, s.dynDTree.MaxCode);
+            Scan_tree(s, s.DynLTree, s.DynLTree.MaxCode);
+            Scan_tree(s, s.DynDTree, s.DynDTree.MaxCode);
 
             // Build the bit length tree:
-            Build_tree(s, s.dynBLTree);
+            Build_tree(s, s.DynBLTree);
 
             // opt_len now includes the length of the tree representations, except
             // the lengths of the bit lengths codes and the 5+5+4 bits for the counts.
@@ -296,7 +296,7 @@ namespace SixLabors.ZlibStream
             // Determine the number of bit length codes to send. The pkzip format
             // requires that at least 4 bit length codes be sent. (appnote.txt says
             // 3 but the actual value used is 4.)
-            DynamicTreeDesc blTree = s.dynBLTree;
+            DynamicTreeDesc blTree = s.DynBLTree;
             for (max_blindex = BLCODES - 1; max_blindex >= 3; max_blindex--)
             {
                 if (blTree[BlOrder[max_blindex]].Len != 0)
@@ -323,104 +323,100 @@ namespace SixLabors.ZlibStream
         /// <param name="desc">The dynamic tree descriptor.</param>
         public static void Build_tree(Deflate s, DynamicTreeDesc desc)
         {
-            fixed (CodeData* streePtr = &desc.StatDesc.Ref)
+            DynamicTreeDesc tree = desc;
+            StaticTreeDesc stree = tree.StatDesc;
+            int elems = desc.StatDesc.Elems;
+            int n, m; // iterate over heap elements
+            var max_code = -1; // largest code with non zero frequency
+            int node; // new node being created
+            ushort* blCount = s.BlCountPointer;
+            int* heap = s.HeapPointer;
+            byte* depth = s.DepthPointer;
+
+            // Construct the initial heap, with least frequent element in
+            // heap[1]. The sons of heap[n] are heap[2*n] and heap[2*n+1].
+            // heap[0] is not used.
+            s.HeapLen = 0;
+            s.HeapMax = HEAPSIZE;
+
+            for (n = 0; n < elems; n++)
             {
-                DynamicTreeDesc tree = desc;
-                CodeData* stree = streePtr;
-
-                int elems = desc.StatDesc.Elems;
-                int n, m; // iterate over heap elements
-                var max_code = -1; // largest code with non zero frequency
-                int node; // new node being created
-                ushort* blCount = s.BlCountPointer;
-                int* heap = s.HeapPointer;
-                byte* depth = s.DepthPointer;
-
-                // Construct the initial heap, with least frequent element in
-                // heap[1]. The sons of heap[n] are heap[2*n] and heap[2*n+1].
-                // heap[0] is not used.
-                s.HeapLen = 0;
-                s.HeapMax = HEAPSIZE;
-
-                for (n = 0; n < elems; n++)
+                if (tree[n].Freq != 0)
                 {
-                    if (tree[n].Freq != 0)
-                    {
-                        heap[++s.HeapLen] = max_code = n;
-                        depth[n] = 0;
-                    }
-                    else
-                    {
-                        tree[n].Len = 0;
-                    }
+                    heap[++s.HeapLen] = max_code = n;
+                    depth[n] = 0;
                 }
-
-                // The pkzip format requires that at least one distance code exists,
-                // and that at least one bit should be sent even if there is only one
-                // possible code. So to avoid special checks later on we force at least
-                // two codes of non zero frequency.
-                while (s.HeapLen < 2)
+                else
                 {
-                    node = heap[++s.HeapLen] = max_code < 2
-                        ? ++max_code
-                        : 0;
-
-                    tree[node].Freq = 1;
-                    depth[node] = 0;
-                    s.OptLen--;
-                    if (stree != null)
-                    {
-                        s.StaticLen -= stree[node].Len;
-                    }
-
-                    // node is 0 or 1 so it does not have extra bits
+                    tree[n].Len = 0;
                 }
-
-                desc.MaxCode = max_code;
-
-                // The elements heap[heap_len/2+1 .. heap_len] are leaves of the tree,
-                // establish sub-heaps of increasing lengths:
-                for (n = s.HeapLen / 2; n >= 1; n--)
-                {
-                    Pqdownheap(s, tree, n);
-                }
-
-                // Construct the Huffman tree by repeatedly combining the least two
-                // frequent nodes.
-                node = elems; // next internal node of the tree
-                do
-                {
-                    // TODO: PQRemove?
-
-                    // n = node of least frequency
-                    n = heap[1];
-                    heap[1] = heap[s.HeapLen--];
-                    Pqdownheap(s, tree, 1);
-                    m = heap[1]; // m = node of next least frequency
-
-                    heap[--s.HeapMax] = n; // keep the nodes sorted by frequency
-                    heap[--s.HeapMax] = m;
-
-                    // Create a new node father of n and m
-                    tree[node].Freq = (ushort)(tree[n].Freq + tree[m].Freq);
-                    depth[node] = (byte)(Math.Max(depth[n], depth[m]) + 1);
-                    tree[n].Dad = tree[m].Dad = (ushort)node;
-
-                    // and insert the new node in the heap
-                    heap[1] = node++;
-                    Pqdownheap(s, tree, 1);
-                }
-                while (s.HeapLen >= 2);
-
-                heap[--s.HeapMax] = heap[1];
-
-                // At this point, the fields freq and dad are set. We can now
-                // generate the bit lengths.
-                Gen_bitlen(s, tree);
-
-                // The field len is now set, we can generate the bit codes
-                Gen_codes(tree.Pointer, max_code, blCount);
             }
+
+            // The pkzip format requires that at least one distance code exists,
+            // and that at least one bit should be sent even if there is only one
+            // possible code. So to avoid special checks later on we force at least
+            // two codes of non zero frequency.
+            while (s.HeapLen < 2)
+            {
+                node = heap[++s.HeapLen] = max_code < 2
+                    ? ++max_code
+                    : 0;
+
+                tree[node].Freq = 1;
+                depth[node] = 0;
+                s.OptLen--;
+                if (stree.HasTree)
+                {
+                    s.StaticLen -= stree[node].Len;
+                }
+
+                // node is 0 or 1 so it does not have extra bits
+            }
+
+            desc.MaxCode = max_code;
+
+            // The elements heap[heap_len/2+1 .. heap_len] are leaves of the tree,
+            // establish sub-heaps of increasing lengths:
+            for (n = s.HeapLen / 2; n >= 1; n--)
+            {
+                Pqdownheap(s, tree, n);
+            }
+
+            // Construct the Huffman tree by repeatedly combining the least two
+            // frequent nodes.
+            node = elems; // next internal node of the tree
+            do
+            {
+                // TODO: PQRemove?
+
+                // n = node of least frequency
+                n = heap[1];
+                heap[1] = heap[s.HeapLen--];
+                Pqdownheap(s, tree, 1);
+                m = heap[1]; // m = node of next least frequency
+
+                heap[--s.HeapMax] = n; // keep the nodes sorted by frequency
+                heap[--s.HeapMax] = m;
+
+                // Create a new node father of n and m
+                tree[node].Freq = (ushort)(tree[n].Freq + tree[m].Freq);
+                depth[node] = (byte)(Math.Max(depth[n], depth[m]) + 1);
+                tree[n].Dad = tree[m].Dad = (ushort)node;
+
+                // and insert the new node in the heap
+                heap[1] = node++;
+                Pqdownheap(s, tree, 1);
+            }
+            while (s.HeapLen >= 2);
+
+            heap[--s.HeapMax] = heap[1];
+
+            // At this point, the fields freq and dad are set. We can now
+            // generate the bit lengths.
+            Gen_bitlen(s, tree);
+
+            // The field len is now set, we can generate the bit codes
+            Gen_codes(tree.Pointer, max_code, blCount);
         }
 
         /// <summary>
@@ -483,11 +479,10 @@ namespace SixLabors.ZlibStream
         //     not null.
         public static void Gen_bitlen(Deflate s, DynamicTreeDesc descr)
         {
-            fixed (CodeData* streePtr = &descr.StatDesc.Ref)
-            fixed (int* extraPtr = &descr.StatDesc.ExtraBits.DangerousGetReference())
+            fixed (int* extraPtr = descr.StatDesc.ExtraBits)
             {
                 DynamicTreeDesc tree = descr;
-                CodeData* stree = streePtr;
+                StaticTreeDesc stree = tree.StatDesc;
                 int* extra = extraPtr;
                 int extra_base = descr.StatDesc.ExtraBase;
                 int max_code = descr.MaxCode;
@@ -537,7 +532,7 @@ namespace SixLabors.ZlibStream
 
                     f = tree[n].Freq;
                     s.OptLen += f * (bits + xbits);
-                    if (stree != null)
+                    if (stree.HasTree)
                     {
                         s.StaticLen += f * (stree[n].Len + xbits);
                     }
@@ -656,9 +651,9 @@ namespace SixLabors.ZlibStream
                 }
 
                 // Construct the literal and distance trees
-                Build_tree(s, s.dynLTree);
+                Build_tree(s, s.DynLTree);
 
-                Build_tree(s, s.dynDTree);
+                Build_tree(s, s.DynDTree);
 
                 // At this point, opt_len and static_len are the total bit lengths of
                 // the compressed block data, excluding the tree representations.
@@ -704,8 +699,8 @@ namespace SixLabors.ZlibStream
             else
             {
                 Tr_emit_tree(s, Deflate.DYNTREES, eof);
-                Send_all_trees(s, s.dynLTree.MaxCode + 1, s.dynDTree.MaxCode + 1, max_blindex + 1);
-                Compress_block(s, s.dynLTree.Pointer, s.dynDTree.Pointer);
+                Send_all_trees(s, s.DynLTree.MaxCode + 1, s.DynDTree.MaxCode + 1, max_blindex + 1);
+                Compress_block(s, s.DynLTree.Pointer, s.DynDTree.Pointer);
             }
 
             // The above check is made mod 2^32, for files larger than 512 MB
@@ -730,10 +725,10 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         public static void Tr_align(Deflate s)
         {
-            fixed (CodeData* staticLTree = &StaticLTree.DangerousGetReference())
+            fixed (CodeData* ltree = &StaticLTree.DangerousGetReference())
             {
                 Tr_emit_tree(s, Deflate.STATICTREES, false);
-                Tr_emit_end_block(s, staticLTree, false);
+                Tr_emit_end_block(s, ltree, false);
 
                 s.Bi_flush();
 
@@ -744,7 +739,7 @@ namespace SixLabors.ZlibStream
                 if (1 + s.lastEobLen + 10 - s.biValid < 9)
                 {
                     Tr_emit_tree(s, Deflate.STATICTREES, false);
-                    Tr_emit_end_block(s, staticLTree, false);
+                    Tr_emit_end_block(s, ltree, false);
                     s.Bi_flush();
                 }
 
@@ -810,11 +805,6 @@ namespace SixLabors.ZlibStream
         // Initialize the tree data structures for a new zlib stream.
         public static void Tr_init(Deflate s)
         {
-            // TODO: Why can we not assign these properties via a constructor?
-            s.dynLTree.StatDesc = StaticLDesc;
-            s.dynDTree.StatDesc = StaticDDesc;
-            s.dynBLTree.StatDesc = StaticBlDesc;
-
             s.biBuf = 0;
             s.biValid = 0;
             s.lastEobLen = 8; // enough lookahead for inflate
@@ -826,9 +816,9 @@ namespace SixLabors.ZlibStream
         private static void Init_block(Deflate s)
         {
             // Initialize the trees.
-            Trees.DynamicTreeDesc dynLtree = s.dynLTree;
-            Trees.DynamicTreeDesc dynDtree = s.dynDTree;
-            Trees.DynamicTreeDesc blTree = s.dynBLTree;
+            Trees.DynamicTreeDesc dynLtree = s.DynLTree;
+            Trees.DynamicTreeDesc dynDtree = s.DynDTree;
+            Trees.DynamicTreeDesc blTree = s.DynBLTree;
 
             for (int i = 0; i < LCODES; i++)
             {
@@ -859,7 +849,7 @@ namespace SixLabors.ZlibStream
             int n = 0;
             int ascii_freq = 0;
             int bin_freq = 0;
-            var dynLtree = s.dynLTree;
+            var dynLtree = s.DynLTree;
 
             while (n < 7)
             {
@@ -890,7 +880,7 @@ namespace SixLabors.ZlibStream
         private static void Send_all_trees(Deflate s, int lcodes, int dcodes, int blcodes)
         {
             int rank; // index in bl_order
-            CodeData* blTree = s.dynBLTree.Pointer;
+            CodeData* blTree = s.DynBLTree.Pointer;
             s.Send_bits(lcodes - 257, 5); // not +255 as stated in appnote.txt
             s.Send_bits(dcodes - 1, 5);
             s.Send_bits(blcodes - 4, 4); // not -3 as stated in appnote.txt
@@ -899,8 +889,8 @@ namespace SixLabors.ZlibStream
                 s.Send_bits(blTree[BlOrder[rank]].Len, 3);
             }
 
-            Send_tree(s, s.dynLTree.Pointer, lcodes - 1); // literal tree
-            Send_tree(s, s.dynDTree.Pointer, dcodes - 1); // distance tree
+            Send_tree(s, s.DynLTree.Pointer, lcodes - 1); // literal tree
+            Send_tree(s, s.DynDTree.Pointer, dcodes - 1); // distance tree
         }
 
         /// <summary>
@@ -912,7 +902,7 @@ namespace SixLabors.ZlibStream
         /// <param name="max_code">The max_code and its largest code of non zero frequency.</param>
         private static void Send_tree(Deflate s, CodeData* tree, int max_code)
         {
-            CodeData* blTree = s.dynBLTree.Pointer;
+            CodeData* blTree = s.DynBLTree.Pointer;
             int n; // iterates over all tree elements
             int prevlen = -1; // last emitted length
             int curlen; // length of current code

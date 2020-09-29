@@ -1,6 +1,7 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace SixLabors.ZlibStream
@@ -32,17 +33,17 @@ namespace SixLabors.ZlibStream
         public static CodeData[] StaticDTtree { get; } = new CodeData[DCODES];
 
         /// <summary>
-        /// Gets the StaticLTree descriptor.
+        /// Gets the static literal tree descriptor.
         /// </summary>
         public static StaticTreeDesc StaticLDesc { get; }
 
         /// <summary>
-        /// Gets the StaticDTree descriptor.
+        /// Gets the static distance tree descriptor.
         /// </summary>
         public static StaticTreeDesc StaticDDesc { get; }
 
         /// <summary>
-        /// Gets the StaticBTree descriptor.
+        /// Gets the static bit length tree descriptor.
         /// </summary>
         public static StaticTreeDesc StaticBlDesc { get; }
 
@@ -151,6 +152,7 @@ namespace SixLabors.ZlibStream
                 int max_length)
             {
                 this.staticTree = static_tree;
+                this.HasTree = static_tree != null;
                 this.ExtraBits = extra_bits;
                 this.ExtraBase = extra_base;
                 this.Elems = elems;
@@ -158,17 +160,17 @@ namespace SixLabors.ZlibStream
             }
 
             /// <summary>
-            /// Gets the static tree or null.
+            /// Gets a value indicating whether the descriptor has a tree.
             /// </summary>
-            public ref CodeData Ref => ref this.staticTree.DangerousGetReference();
+            public bool HasTree { get; }
 
             /// <summary>
-            /// Gets the extra bits for each code or null.
+            /// Gets the extra bits for each code.
             /// </summary>
             public int[] ExtraBits { get; }
 
             /// <summary>
-            /// Gets the  base index for extra_bits.
+            /// Gets the base index for extra_bits.
             /// </summary>
             public int ExtraBase { get; }
 
@@ -181,6 +183,13 @@ namespace SixLabors.ZlibStream
             /// Gets the max bit length for the codes
             /// </summary>
             public int MaxLength { get; }
+
+            public ref CodeData this[int i]
+            {
+                // TODO: Check HasTree property.
+                [MethodImpl(InliningOptions.ShortMethod)]
+                get { return ref this.staticTree.DangerousGetReferenceAt(i); }
+            }
         }
     }
 }

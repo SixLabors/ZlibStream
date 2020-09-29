@@ -3,6 +3,7 @@
 
 using System;
 using System.Buffers;
+using System.Runtime.CompilerServices;
 
 namespace SixLabors.ZlibStream
 {
@@ -21,31 +22,37 @@ namespace SixLabors.ZlibStream
             /// Initializes a new instance of the <see cref="DynamicTreeDesc"/> class.
             /// </summary>
             /// <param name="size">The size of the tree.</param>
-            public DynamicTreeDesc(int size)
+            /// <param name="staticTreeDesc">The static tree descriptor</param>
+            public DynamicTreeDesc(int size, StaticTreeDesc staticTreeDesc)
             {
+                this.StatDesc = staticTreeDesc;
                 this.dynTreeBuffer = ArrayPool<CodeData>.Shared.Rent(size);
                 this.dynTreeHandle = new Memory<CodeData>(this.dynTreeBuffer).Pin();
                 this.Pointer = (CodeData*)this.dynTreeHandle.Pointer;
             }
 
             /// <summary>
-            /// Gets or sets the corresponding static tree.
+            /// Gets the corresponding static tree.
             /// </summary>
-            public StaticTreeDesc StatDesc { get; set; }
+            public StaticTreeDesc StatDesc { get; }
 
             /// <summary>
             /// Gets the pointer to the tree code data.
             /// </summary>
-            public CodeData* Pointer { get; }
+            public CodeData* Pointer
+            {
+                [MethodImpl(InliningOptions.ShortMethod)]
+                get;
+            }
 
             /// <summary>
             /// Gets or sets the largest code with non zero frequency.
             /// </summary>
             public int MaxCode { get; set; }
 
-            // TODO: This might need refactoring.
             public ref CodeData this[int i]
             {
+                [MethodImpl(InliningOptions.ShortMethod)]
                 get { return ref this.Pointer[i]; }
             }
 

@@ -7,6 +7,9 @@
 using System;
 using System.Buffers;
 using System.Runtime.CompilerServices;
+#if SUPPORTS_RUNTIME_INTRINSICS
+using System.Runtime.Intrinsics.X86;
+#endif
 
 namespace SixLabors.ZlibStream
 {
@@ -151,7 +154,6 @@ namespace SixLabors.ZlibStream
         private int hashSize; // number of elements in hash table
         private int hashBits; // log2(hashSize)
         private uint hashMask; // hashSize - 1
-        private uint strMask; // Used to mask inserted strings to improve compression at higher levels.
 
         // Window position at the beginning of the current output block. Gets
         // negative when the window is moved backwards.
@@ -192,19 +194,15 @@ namespace SixLabors.ZlibStream
 
         // literal and length tree
         // desc for literal tree
-        internal readonly Trees.DynamicTreeDesc dynLTree = new Trees.DynamicTreeDesc(HEAPSIZE);
+        internal readonly Trees.DynamicTreeDesc DynLTree = new Trees.DynamicTreeDesc(HEAPSIZE, Trees.StaticLDesc);
 
         // distance tree
         // desc for distance tree
-        internal readonly Trees.DynamicTreeDesc dynDTree = new Trees.DynamicTreeDesc((2 * DCODES) + 1);
+        internal readonly Trees.DynamicTreeDesc DynDTree = new Trees.DynamicTreeDesc((2 * DCODES) + 1, Trees.StaticDDesc);
 
         // Huffman tree for bit lengths
         // desc for bit length tree
-        internal readonly Trees.DynamicTreeDesc dynBLTree = new Trees.DynamicTreeDesc((2 * BLCODES) + 1);
-
-        // Pinned implementation of the staticLTree for fast access.
-        private MemoryHandle staticLtreeHandle;
-        private readonly ushort* staticLTreePointer;
+        internal readonly Trees.DynamicTreeDesc DynBLTree = new Trees.DynamicTreeDesc((2 * BLCODES) + 1, Trees.StaticBlDesc);
 
         // Number of codes at each bit length for an optimal tree
         private readonly ushort[] blCountBuffer;
@@ -447,8 +445,8 @@ namespace SixLabors.ZlibStream
 
             // Here, lc is the match length - MINMATCH
             dist--; // dist = match distance - 1
-            this.dynLTree[Trees.LengthCode[len] + LITERALS + 1].Freq++;
-            this.dynDTree[Trees.D_code(dist)].Freq++;
+            this.DynLTree[Trees.LengthCode[len] + LITERALS + 1].Freq++;
+            this.DynDTree[Trees.D_code(dist)].Freq++;
 
             return this.lastLit == this.litBufsize - 1;
         }
@@ -470,7 +468,7 @@ namespace SixLabors.ZlibStream
             pending[this.lBuf + this.lastLit++] = c;
 
             // lc is the unmatched char
-            this.dynLTree[c].Freq++;
+            this.DynLTree[c].Freq++;
 
             return this.lastLit == this.litBufsize - 1;
         }
@@ -744,9 +742,6 @@ namespace SixLabors.ZlibStream
             this.hashSize = 1 << this.hashBits;
             this.hashMask = (uint)this.hashSize - 1;
 
-            // TODO: Do more thorough testing with this.
-            this.strMask = level > CompressionLevel.Level5 ? 0xFFFF0000 : 0xFFFFFFFF;
-
             this.windowBuffer = ArrayPool<byte>.Shared.Rent(this.wSize * 2);
             this.windowHandle = new Memory<byte>(this.windowBuffer).Pin();
             this.windowPointer = (byte*)this.windowHandle.Pointer;
@@ -822,9 +817,9 @@ namespace SixLabors.ZlibStream
             this.windowHandle.Dispose();
             ArrayPool<byte>.Shared.Return(this.windowBuffer);
 
-            this.dynLTree.Dispose();
-            this.dynDTree.Dispose();
-            this.dynBLTree.Dispose();
+            this.DynLTree.Dispose();
+            this.DynDTree.Dispose();
+            this.DynBLTree.Dispose();
 
             this.depthHandle.Dispose();
             ArrayPool<byte>.Shared.Return(this.depthBuffer);
@@ -1154,16 +1149,6 @@ namespace SixLabors.ZlibStream
                 this.PendingOut = 0;
             }
         }
-
-        /// <summary>
-        /// Update a hash value with the given input byte
-        /// IN  assertion: all calls to UPDATE_HASH are made with consecutive input
-        /// characters, so that a running hash key can be computed from the previous
-        /// key instead of complete recalculation each time.
-        /// </summary>
-        /// <param name="val">The input byte.</param>
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private uint UpdateHash(uint val) => ((val & this.strMask) * 2654435761U) >> (32 - this.hashBits);
 
         /// <summary>
         /// Insert string str in the dictionary and set match_head to the previous head
