@@ -285,5 +285,27 @@ namespace SixLabors.ZlibStream
             }
             while (--n != 0);
         }
+
+        /// <summary>
+        /// Update a hash value with the given input byte
+        /// IN  assertion: all calls to UPDATE_HASH are made with consecutive input
+        /// characters, so that a running hash key can be computed from the previous
+        /// key instead of complete recalculation each time.
+        /// </summary>
+        /// <param name="val">The input byte.</param>
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private uint UpdateHash(uint val)
+        {
+#if SUPPORTS_RUNTIME_INTRINSICS
+            if (Sse42.IsSupported)
+            {
+                return Sse42.Crc32(0U, val);
+            }
+            else
+#endif
+            {
+                return (val * 2654435761U) >> 16;
+            }
+        }
     }
 }
