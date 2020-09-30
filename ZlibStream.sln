@@ -43,6 +43,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Corpus", "Corpus", "{7211DB
 		tests\corpus\xargs.1 = tests\corpus\xargs.1
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{42C81331-D4CA-432D-95ED-92FB1A121267}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{AA25F9A0-775E-4184-8086-02BAE1C1F941}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\codeql-analysis.yml = .github\workflows\codeql-analysis.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -70,6 +77,8 @@ Global
 		{01E63166-CDBA-450F-A597-DE096B05A052} = {CB611663-07F2-4419-B83D-7AED9B406865}
 		{15FE1586-DED2-41F4-9292-6BE8787A60C4} = {CB611663-07F2-4419-B83D-7AED9B406865}
 		{7211DB62-F3C8-419C-846B-89949EBD1EAC} = {CB611663-07F2-4419-B83D-7AED9B406865}
+		{42C81331-D4CA-432D-95ED-92FB1A121267} = {F450D162-1FE5-4295-BDB8-8F78F6B51672}
+		{AA25F9A0-775E-4184-8086-02BAE1C1F941} = {42C81331-D4CA-432D-95ED-92FB1A121267}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {AE022F12-D088-439B-8AD2-EAAF2FE7C6C0}
