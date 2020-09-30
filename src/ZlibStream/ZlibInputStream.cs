@@ -29,7 +29,7 @@ namespace SixLabors.ZlibStream
         /// <param name="input">The input stream.</param>
         public ZlibInputStream(Stream input)
         {
-            this.bufferSize = 4096;
+            this.bufferSize = 8192;
             this.compress = false;
             this.BaseStream = input;
             this.InitBlock();
@@ -46,7 +46,7 @@ namespace SixLabors.ZlibStream
         /// <param name="level">The compression level for the data to compress.</param>
         public ZlibInputStream(Stream input, CompressionLevel level)
         {
-            this.bufferSize = 1024;
+            this.bufferSize = 8192;
             this.compress = true;
             this.BaseStream = input;
             this.InitBlock();

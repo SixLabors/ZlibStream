@@ -28,7 +28,7 @@ namespace SixLabors.ZlibStream
         /// <param name="output">The output stream.</param>
         public ZlibOutputStream(Stream output)
         {
-            this.bufferSize = 4096;
+            this.bufferSize = 8192;
             this.compress = false;
             this.BaseStream = output;
             this.InitBlock();
@@ -42,7 +42,7 @@ namespace SixLabors.ZlibStream
         /// <param name="level">The compression level for the data to compress.</param>
         public ZlibOutputStream(Stream output, CompressionLevel level)
         {
-            this.bufferSize = 1024;
+            this.bufferSize = 8192;
             this.compress = true;
             this.BaseStream = output;
             this.InitBlock();
@@ -119,7 +119,9 @@ namespace SixLabors.ZlibStream
                 this.zStream.INextOut = this.chunkBuffer;
                 this.zStream.NextOutIndex = 0;
                 this.zStream.AvailOut = this.bufferSize;
-                err = this.compress ? this.zStream.Deflate(this.FlushMode) : this.zStream.Inflate(this.FlushMode);
+                err = this.compress
+                    ? this.zStream.Deflate(this.FlushMode)
+                    : this.zStream.Inflate(this.FlushMode);
 
                 if (err != CompressionState.ZOK && err != CompressionState.ZSTREAMEND)
                 {
