@@ -51,7 +51,8 @@ namespace SixLabors.ZlibStream
 
         // The three kinds of block type
         public const int ZBINARY = 0;
-        public const int ZASCII = 1;
+        public const int ZTEXT = 1;
+        public const int ZASCII = ZTEXT; // for compatibility with 1.2.2 and earlier
         public const int ZUNKNOWN = 2;
 
         // repeat previous bit length 3-6 times (2 bits of repeat count)

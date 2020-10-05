@@ -512,7 +512,7 @@ namespace SixLabors.ZlibStream
                 // Check if the file is ascii or binary
                 if (s.dataType == Deflate.ZUNKNOWN)
                 {
-                    Set_data_type(s);
+                    Detect_data_type(s);
                 }
 
                 // Construct the literal and distance trees
@@ -730,38 +730,53 @@ namespace SixLabors.ZlibStream
             s.lastLit = s.matches = 0;
         }
 
-        // Set the data type to ASCII or BINARY, using a crude approximation:
-        // binary if more than 20% of the bytes are <= 6 or >= 128, ascii otherwise.
-        // IN assertion: the fields freq of dyn_ltree are set and the total of all
-        // frequencies does not exceed 64K (to fit in an int on 16 bit machines).
-        private static void Set_data_type(Deflate s)
+        /// <summary>
+        /// Detect and set the data type. This method can make a good guess about
+        /// the input data type (Z_BINARY or Z_TEXT).  If in doubt, the data is
+        /// considered binary.
+        /// This field is only for information purposes and does not
+        /// affect the compression algorithm in any manner.
+        /// </summary>
+        /// <param name="s">The deflate compressor.</param>
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private static void Detect_data_type(Deflate s)
         {
-            int n = 0;
-            int ascii_freq = 0;
-            int bin_freq = 0;
-            DynamicTreeDesc dynLtree = s.DynLTree;
+            /* black_mask is the bit mask of black-listed bytes
+             * set bits 0..6, 14..25, and 28..31
+             */
+            ulong black_mask = 0b11110011111111111100000001111111UL;
+            int n;
 
-            while (n < 7)
+            /* Check for non-textual ("black-listed") bytes. */
+            for (n = 0; n <= 31; n++, black_mask >>= 1)
             {
-                bin_freq += dynLtree[n].Freq;
-                n++;
+                if ((black_mask & 1) != 0 && (s.DynLTree[n].Freq != 0))
+                {
+                    s.dataType = Deflate.ZBINARY;
+                    return;
+                }
             }
 
-            while (n < 128)
+            /* Check for textual ("white-listed") bytes. */
+            if (s.DynLTree[9].Freq != 0 || s.DynLTree[10].Freq != 0 || s.DynLTree[13].Freq != 0)
             {
-                ascii_freq += dynLtree[n].Freq;
-                n++;
+                s.dataType = Deflate.ZTEXT;
+                return;
             }
 
-            while (n < LITERALS)
+            for (n = 32; n < LITERALS; n++)
             {
-                bin_freq += dynLtree[n].Freq;
-                n++;
+                if (s.DynLTree[n].Freq != 0)
+                {
+                    s.dataType = Deflate.ZTEXT;
+                    return;
+                }
             }
 
-            s.dataType = (byte)(bin_freq > (ascii_freq >> 2)
-                ? Deflate.ZBINARY
-                : Deflate.ZASCII);
+            /* There are no "black-listed" or "white-listed" bytes:
+             * this stream either is empty or has tolerated ("gray-listed") bytes only.
+             */
+            s.dataType = Deflate.ZBINARY;
         }
 
         // Send the header for a block using dynamic Huffman trees: the counts, the
