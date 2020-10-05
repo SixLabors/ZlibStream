@@ -7,9 +7,6 @@
 using System;
 using System.Buffers;
 using System.Runtime.CompilerServices;
-#if SUPPORTS_RUNTIME_INTRINSICS
-using System.Runtime.Intrinsics.X86;
-#endif
 
 namespace SixLabors.ZlibStream
 {
@@ -54,7 +51,8 @@ namespace SixLabors.ZlibStream
 
         // The three kinds of block type
         public const int ZBINARY = 0;
-        public const int ZASCII = 1;
+        public const int ZTEXT = 1;
+        public const int ZASCII = ZTEXT; // for compatibility with 1.2.2 and earlier
         public const int ZUNKNOWN = 2;
 
         // repeat previous bit length 3-6 times (2 bits of repeat count)
@@ -102,8 +100,15 @@ namespace SixLabors.ZlibStream
 
         private static readonly string[] ZErrmsg = new string[]
         {
-            "need dictionary", "stream end", string.Empty, "file error", "stream error",
-            "data error", "insufficient memory", "buffer error", "incompatible version",
+            "need dictionary",
+            "stream end",
+            string.Empty,
+            "file error",
+            "stream error",
+            "data error",
+            "insufficient memory",
+            "buffer error",
+            "incompatible version",
             string.Empty,
         };
 
@@ -191,18 +196,6 @@ namespace SixLabors.ZlibStream
 
         // Stop searching when current match exceeds this
         private int niceMatch;
-
-        // literal and length tree
-        // desc for literal tree
-        internal readonly Trees.DynamicTreeDesc DynLTree = new Trees.DynamicTreeDesc(HEAPSIZE, Trees.StaticLDesc);
-
-        // distance tree
-        // desc for distance tree
-        internal readonly Trees.DynamicTreeDesc DynDTree = new Trees.DynamicTreeDesc((2 * DCODES) + 1, Trees.StaticDDesc);
-
-        // Huffman tree for bit lengths
-        // desc for bit length tree
-        internal readonly Trees.DynamicTreeDesc DynBLTree = new Trees.DynamicTreeDesc((2 * BLCODES) + 1, Trees.StaticBlDesc);
 
         // Number of codes at each bit length for an optimal tree
         private readonly ushort[] blCountBuffer;
@@ -304,386 +297,25 @@ namespace SixLabors.ZlibStream
 
         internal int StaticLen { get; set; } // bit length of current block with static trees
 
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private static bool Smaller(ushort* tree, int n, int m, byte* depth)
-        {
-            int n2 = 2 * n;
-            int m2 = 2 * m;
-            return tree[n2] < tree[m2] || (tree[n2] == tree[m2] && depth[n] <= depth[m]);
-        }
-
-        private void Lm_init()
-        {
-            this.windowSize = 2 * this.wSize;
-            ushort* head = this.headPointer;
-
-            head[this.hashSize - 1] = 0;
-            for (int i = 0; i < this.hashSize - 1; i++)
-            {
-                head[i] = 0;
-            }
-
-            // Set the default configuration parameters:
-            this.maxLazyMatch = ConfigTable[(int)this.level].MaxLazy;
-            this.goodMatch = ConfigTable[(int)this.level].GoodLength;
-            this.niceMatch = ConfigTable[(int)this.level].NiceLength;
-            this.maxChainLength = ConfigTable[(int)this.level].MaxChain;
-
-            this.strStart = 0;
-            this.blockStart = 0;
-            this.lookahead = 0;
-            this.matchLength = this.prevLength = MINMATCH - 1;
-            this.matchAvailable = 0;
-        }
+        /// <summary>
+        /// Gets the huffman tree literal and length tree description.
+        /// </summary>
+        internal Trees.DynamicTreeDesc DynLTree { get; } = new Trees.DynamicTreeDesc(HEAPSIZE, Trees.StaticLDesc);
 
         /// <summary>
-        /// Restore the heap property by moving down the tree starting at node k,
-        /// exchanging a node with the smallest of its two sons if necessary, stopping
-        /// when the heap property is re-established (each father smaller than its
-        /// two sons).
+        /// Gets the huffman tree bit length tree description.
         /// </summary>
-        /// <param name="tree">The tree to restore.</param>
-        /// <param name="k">The node to move down.</param>
-        [MethodImpl(InliningOptions.ShortMethod)]
-        public void Pqdownheap(ushort* tree, int k)
-        {
-            int* heap = this.HeapPointer;
-            byte* depth = this.DepthPointer;
-
-            int v = heap[k];
-            int heapLen = this.HeapLen;
-            int j = k << 1; // left son of k
-            while (j <= heapLen)
-            {
-                // Set j to the smallest of the two sons:
-                if (j < heapLen && Smaller(tree, heap[j + 1], heap[j], depth))
-                {
-                    j++;
-                }
-
-                // Exit if v is smaller than both sons
-                if (Smaller(tree, v, heap[j], depth))
-                {
-                    break;
-                }
-
-                // Exchange v with the smallest son
-                heap[k] = heap[j];
-                k = j;
-
-                // And continue down the tree, setting j to the left son of k
-                j <<= 1;
-            }
-
-            heap[k] = v;
-        }
-
-        // Output a byte on the stream.
-        // IN assertion: there is enough room in pending_buf.
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private void PutByte(byte[] p, int start, int len)
-        {
-            Buffer.BlockCopy(p, start, this.pendingBuffer, this.Pending, len);
-            this.Pending += len;
-        }
-
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private void PutByte(byte c) => this.pendingPointer[this.Pending++] = c;
-
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private void PutShort(int w)
-        {
-            *(ushort*)&this.pendingPointer[this.Pending] = (ushort)w;
-            this.Pending += 2;
-        }
-
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private void PutShortMSB(int b)
-        {
-            this.PutByte((byte)(b >> 8));
-            this.PutByte((byte)b);
-        }
-
-        [MethodImpl(InliningOptions.ShortMethod)]
-        public void Send_code(int c, Trees.CodeData* tree)
-            => this.Send_bits(tree[c].Code, tree[c].Len);
-
-        [MethodImpl(InliningOptions.ShortMethod)]
-        public void Send_bits(int value, int length)
-        {
-            if (this.biValid > BufSize - length)
-            {
-                this.biBuf |= (ushort)(value << this.biValid);
-                this.PutShort(this.biBuf);
-                this.biBuf = (ushort)(value >> (BufSize - this.biValid));
-                this.biValid += length - BufSize;
-            }
-            else
-            {
-                this.biBuf |= (ushort)(value << this.biValid);
-                this.biValid += length;
-            }
-        }
+        internal Trees.DynamicTreeDesc DynBLTree { get; } = new Trees.DynamicTreeDesc((2 * BLCODES) + 1, Trees.StaticBlDesc);
 
         /// <summary>
-        /// Save the match info and tally the frequency counts. Return true if
-        /// the current block must be flushed.
+        /// Gets the huffman tree distance tree description.
         /// </summary>
-        /// <param name="dist">The distance of matched string.</param>
-        /// <param name="len">The match length-MINMATCH.</param>
-        /// <returns>The <see cref="bool"/>.</returns>
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private bool Tr_tally_dist(int dist, int len)
-        {
-            byte* pending = this.pendingPointer;
-            int dbuffindex = this.dBuf + (this.lastLit * 2);
+        internal Trees.DynamicTreeDesc DynDTree { get; } = new Trees.DynamicTreeDesc((2 * DCODES) + 1, Trees.StaticDDesc);
 
-            pending[dbuffindex++] = (byte)(dist >> 8);
-            pending[dbuffindex] = (byte)dist;
-            pending[this.lBuf + this.lastLit++] = (byte)len;
-            this.matches++;
-
-            // Here, lc is the match length - MINMATCH
-            dist--; // dist = match distance - 1
-            this.DynLTree[Trees.LengthCode[len] + LITERALS + 1].Freq++;
-            this.DynDTree[Trees.D_code(dist)].Freq++;
-
-            return this.lastLit == this.litBufsize - 1;
-        }
-
-        /// <summary>
-        /// Save the match info and tally the frequency counts. Return true if
-        /// the current block must be flushed.
-        /// </summary>
-        /// <param name="c">The unmatched byte.</param>
-        /// <returns>The <see cref="bool"/>.</returns>
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private bool Tr_tally_lit(byte c)
-        {
-            byte* pending = this.pendingPointer;
-            int dbuffindex = this.dBuf + (this.lastLit * 2);
-
-            pending[dbuffindex++] = 0;
-            pending[dbuffindex] = 0;
-            pending[this.lBuf + this.lastLit++] = c;
-
-            // lc is the unmatched char
-            this.DynLTree[c].Freq++;
-
-            return this.lastLit == this.litBufsize - 1;
-        }
-
-        // Flush the bit buffer, keeping at most 7 bits in it.
-        [MethodImpl(InliningOptions.ShortMethod)]
-        public void Bi_flush()
-        {
-            if (this.biValid == 16)
-            {
-                this.PutShort(this.biBuf);
-                this.biBuf = 0;
-                this.biValid = 0;
-            }
-            else if (this.biValid >= 8)
-            {
-                this.PutByte((byte)this.biBuf);
-                this.biBuf = (ushort)(this.biBuf >> 8);
-                this.biValid -= 8;
-            }
-        }
-
-        // Flush the bit buffer and align the output on a byte boundary
-        [MethodImpl(InliningOptions.ShortMethod)]
-        public void Bi_windup()
-        {
-            if (this.biValid > 8)
-            {
-                this.PutShort(this.biBuf);
-            }
-            else if (this.biValid > 0)
-            {
-                this.PutByte((byte)this.biBuf);
-            }
-
-            this.biBuf = 0;
-            this.biValid = 0;
-        }
-
-        // Copy a stored block, storing first the length and its
-        // one's complement if requested.
-        [MethodImpl(InliningOptions.ShortMethod)]
-        public void Copy_block(int buf, int len, bool header)
-        {
-            this.Bi_windup(); // align on byte boundary
-            this.lastEobLen = 8; // enough lookahead for inflate
-
-            if (header)
-            {
-                this.PutShort((ushort)len);
-                this.PutShort((ushort)~len);
-            }
-
-            this.PutByte(this.windowBuffer, buf, len);
-        }
-
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private void Flush_block_only(bool eof)
-        {
-            Trees.Tr_flush_block(this, this.blockStart >= 0 ? this.blockStart : -1, this.strStart - this.blockStart, eof);
-            this.blockStart = this.strStart;
-            this.Flush_pending(this.strm);
-        }
-
-        // Fill the window when the lookahead becomes insufficient.
-        // Updates strstart and lookahead.
-        //
-        // IN assertion: lookahead < MIN_LOOKAHEAD
-        // OUT assertions: strstart <= window_size-MIN_LOOKAHEAD
-        //    At least one byte has been read, or avail_in == 0; reads are
-        //    performed for at least two bytes (required for the zip translate_eol
-        //    option -- not supported here).
-        [MethodImpl(InliningOptions.HotPath)]
-        private void Fill_window()
-        {
-            int n;
-            int more; // Amount of free space at the end of the window.
-
-            byte* window = this.windowPointer;
-            ushort* head = this.headPointer;
-            ushort* prev = this.prevPointer;
-
-            do
-            {
-                more = this.windowSize - this.lookahead - this.strStart;
-
-                if (this.strStart >= this.wSize + this.wSize - MINLOOKAHEAD)
-                {
-                    Buffer.BlockCopy(this.windowBuffer, this.wSize, this.windowBuffer, 0, this.wSize);
-                    this.matchStart -= this.wSize;
-                    this.strStart -= this.wSize; // we now have strstart >= MAX_DIST
-                    this.blockStart -= this.wSize;
-
-                    this.SlideHash(head, prev);
-                    more += this.wSize;
-                }
-
-                if (this.strm.AvailIn == 0)
-                {
-                    return;
-                }
-
-                // If there was no sliding:
-                //    strstart <= WSIZE+MAX_DIST-1 && lookahead <= MIN_LOOKAHEAD - 1 &&
-                //    more == window_size - lookahead - strstart
-                // => more >= window_size - (MIN_LOOKAHEAD-1 + WSIZE + MAX_DIST-1)
-                // => more >= window_size - 2*WSIZE + 2
-                // In the BIG_MEM or MMAP case (not yet supported),
-                //   window_size == input_size + MIN_LOOKAHEAD  &&
-                //   strstart + s->lookahead <= input_size => more >= MIN_LOOKAHEAD.
-                // Otherwise, window_size == 2*WSIZE so more >= 2.
-                // If there was sliding, more >= WSIZE. So in all cases, more >= 2.
-                n = this.strm.Read_buf(this.windowBuffer, this.strStart + this.lookahead, more);
-                this.lookahead += n;
-
-                // Initialize the hash value now that we have some input:
-                if (this.lookahead >= MINMATCH)
-                {
-                    this.InsertString(prev, head, window, this.strStart + 1);
-                }
-
-                // If the whole input has less than MINMATCH bytes, ins_h is garbage,
-                // but this is not important since only literal bytes will be emitted.
-            }
-            while (this.lookahead < MINLOOKAHEAD && this.strm.AvailIn != 0);
-        }
-
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
-        private int Longest_match(int cur_match)
-        {
-            byte* window = this.windowPointer;
-
-            int chain_length = this.maxChainLength; // max hash chain length
-            byte* scan = &window[this.strStart]; // current string
-            byte* match; // matched string
-            int len; // length of current match
-            int best_len = this.prevLength; // best match length so far
-            int limit = this.strStart > (this.wSize - MINLOOKAHEAD) ? this.strStart - (this.wSize - MINLOOKAHEAD) : 0;
-            int nice_match = this.niceMatch;
-            int matchStrt = this.matchStart;
-
-            // Stop when cur_match becomes <= limit. To simplify the code,
-            // we prevent matches with the string of window index 0.
-            int wmask = this.wMask;
-
-            if (best_len == 0)
-            {
-                best_len = 1;
-            }
-
-            ushort scan_start = *(ushort*)scan;
-            ushort scan_end = *(ushort*)&scan[best_len - 1];
-
-            // The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
-            // It is easy to get rid of this optimization if necessary.
-
-            // Do not waste too much time if we already have a good match:
-            if (this.prevLength >= this.goodMatch)
-            {
-                chain_length >>= 2;
-            }
-
-            // Do not look for matches beyond the end of the input. This is necessary
-            // to make deflate deterministic.
-            if (nice_match > this.lookahead)
-            {
-                nice_match = this.lookahead;
-            }
-
-            ushort* prev = this.prevPointer;
-
-            do
-            {
-                if (cur_match >= this.strStart)
-                {
-                    break;
-                }
-
-                match = &window[cur_match];
-
-                // Skip to next match if the match length cannot increase
-                // or if the match length is less than 2:
-                if (*(ushort*)&match[best_len - 1] != scan_end
-                    || *(ushort*)match != scan_start)
-                {
-                    continue;
-                }
-
-                len = Compare256(scan + 2, match + 2) + 2;
-
-                if (len > best_len)
-                {
-                    matchStrt = cur_match;
-                    best_len = len;
-                    if (len >= nice_match)
-                    {
-                        break;
-                    }
-
-                    scan_end = *(ushort*)&scan[best_len - 1];
-                }
-            }
-            while ((cur_match = prev[cur_match & wmask]) > limit && --chain_length != 0);
-
-            this.matchStart = matchStrt;
-            return Math.Min(best_len, this.lookahead);
-        }
-
-        internal CompressionState DeflateInit(ZStream strm, CompressionLevel level, int bits)
+        public CompressionState DeflateInit(ZStream strm, CompressionLevel level, int bits)
             => this.DeflateInit2(strm, level, ZDEFLATED, bits, DEFMEMLEVEL, CompressionStrategy.DefaultStrategy);
 
-        internal CompressionState DeflateInit(ZStream strm, CompressionLevel level)
-            => this.DeflateInit(strm, level, MAXWBITS);
-
-        internal CompressionState DeflateInit2(
+        public CompressionState DeflateInit2(
             ZStream strm,
             CompressionLevel level,
             int method,
@@ -773,31 +405,7 @@ namespace SixLabors.ZlibStream
             return this.DeflateReset(strm);
         }
 
-        private CompressionState DeflateReset(ZStream strm)
-        {
-            strm.TotalIn = strm.TotalOut = 0;
-            strm.Msg = null;
-            strm.DataType = ZUNKNOWN;
-
-            this.Pending = 0;
-            this.PendingOut = 0;
-
-            if (this.Noheader < 0)
-            {
-                this.Noheader = 0; // was set to -1 by deflate(..., Z_FINISH);
-            }
-
-            this.status = (this.Noheader != 0) ? BUSYSTATE : INITSTATE;
-            strm.Adler = Adler32.SeedValue;
-
-            this.lastFlush = FlushStrategy.NoFlush;
-
-            Trees.Tr_init(this);
-            this.Lm_init();
-            return CompressionState.ZOK;
-        }
-
-        internal CompressionState DeflateEnd()
+        public CompressionState DeflateEnd()
         {
             if (this.status != INITSTATE && this.status != BUSYSTATE && this.status != FINISHSTATE)
             {
@@ -835,7 +443,7 @@ namespace SixLabors.ZlibStream
             return this.status == BUSYSTATE ? CompressionState.ZDATAERROR : CompressionState.ZOK;
         }
 
-        internal CompressionState DeflateParams(ZStream strm, CompressionLevel level, CompressionStrategy strategy)
+        public CompressionState DeflateParams(ZStream strm, CompressionLevel level, CompressionStrategy strategy)
         {
             CompressionState err = CompressionState.ZOK;
 
@@ -871,7 +479,7 @@ namespace SixLabors.ZlibStream
             return err;
         }
 
-        internal CompressionState DeflateSetDictionary(ZStream strm, byte[] dictionary, int dictLength)
+        public CompressionState DeflateSetDictionary(ZStream strm, byte[] dictionary, int dictLength)
         {
             int length = dictLength;
             int index = 0;
@@ -915,7 +523,7 @@ namespace SixLabors.ZlibStream
             return CompressionState.ZOK;
         }
 
-        internal CompressionState Compress(ZStream strm, FlushStrategy flush)
+        public CompressionState Compress(ZStream strm, FlushStrategy flush)
         {
             FlushStrategy old_flush;
 
@@ -1117,12 +725,135 @@ namespace SixLabors.ZlibStream
             return this.Pending != 0 ? CompressionState.ZOK : CompressionState.ZSTREAMEND;
         }
 
+        // Flush the bit buffer, keeping at most 7 bits in it.
+        [MethodImpl(InliningOptions.ShortMethod)]
+        public void Bi_flush()
+        {
+            if (this.biValid == 16)
+            {
+                this.PutShort(this.biBuf);
+                this.biBuf = 0;
+                this.biValid = 0;
+            }
+            else if (this.biValid >= 8)
+            {
+                this.PutByte((byte)this.biBuf);
+                this.biBuf = (ushort)(this.biBuf >> 8);
+                this.biValid -= 8;
+            }
+        }
+
+        // Flush the bit buffer and align the output on a byte boundary
+        [MethodImpl(InliningOptions.ShortMethod)]
+        public void Bi_windup()
+        {
+            if (this.biValid > 8)
+            {
+                this.PutShort(this.biBuf);
+            }
+            else if (this.biValid > 0)
+            {
+                this.PutByte((byte)this.biBuf);
+            }
+
+            this.biBuf = 0;
+            this.biValid = 0;
+        }
+
+        // Copy a stored block, storing first the length and its
+        // one's complement if requested.
+        [MethodImpl(InliningOptions.ShortMethod)]
+        public void Copy_block(int buf, int len, bool header)
+        {
+            this.Bi_windup(); // align on byte boundary
+            this.lastEobLen = 8; // enough lookahead for inflate
+
+            if (header)
+            {
+                this.PutShort((ushort)len);
+                this.PutShort((ushort)~len);
+            }
+
+            this.PutByte(this.windowBuffer, buf, len);
+        }
+
+        private void Lm_init()
+        {
+            this.windowSize = 2 * this.wSize;
+            ushort* head = this.headPointer;
+
+            head[this.hashSize - 1] = 0;
+            for (int i = 0; i < this.hashSize - 1; i++)
+            {
+                head[i] = 0;
+            }
+
+            // Set the default configuration parameters:
+            this.maxLazyMatch = ConfigTable[(int)this.level].MaxLazy;
+            this.goodMatch = ConfigTable[(int)this.level].GoodLength;
+            this.niceMatch = ConfigTable[(int)this.level].NiceLength;
+            this.maxChainLength = ConfigTable[(int)this.level].MaxChain;
+
+            this.strStart = 0;
+            this.blockStart = 0;
+            this.lookahead = 0;
+            this.matchLength = this.prevLength = MINMATCH - 1;
+            this.matchAvailable = 0;
+        }
+
+        // Output a byte on the stream.
+        // IN assertion: there is enough room in pending_buf.
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void PutByte(byte[] p, int start, int len)
+        {
+            Buffer.BlockCopy(p, start, this.pendingBuffer, this.Pending, len);
+            this.Pending += len;
+        }
+
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void PutByte(byte c) => this.pendingPointer[this.Pending++] = c;
+
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void PutShort(int w)
+        {
+            *(ushort*)&this.pendingPointer[this.Pending] = (ushort)w;
+            this.Pending += 2;
+        }
+
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void PutShortMSB(int b)
+        {
+            this.PutByte((byte)(b >> 8));
+            this.PutByte((byte)b);
+        }
+
+        [MethodImpl(InliningOptions.ShortMethod)]
+        public void Send_code(int c, Trees.CodeData* tree)
+            => this.Send_bits(tree[c].Code, tree[c].Len);
+
+        [MethodImpl(InliningOptions.ShortMethod)]
+        public void Send_bits(int value, int length)
+        {
+            if (this.biValid > BufSize - length)
+            {
+                this.biBuf |= (ushort)(value << this.biValid);
+                this.PutShort(this.biBuf);
+                this.biBuf = (ushort)(value >> (BufSize - this.biValid));
+                this.biValid += length - BufSize;
+            }
+            else
+            {
+                this.biBuf |= (ushort)(value << this.biValid);
+                this.biValid += length;
+            }
+        }
+
         // Flush as much pending output as possible. All deflate() output goes
         // through this function so some applications may wish to modify it
         // to avoid allocating a large strm->next_out buffer and copying into it.
         // (See also read_buf()).
         [MethodImpl(InliningOptions.ShortMethod)]
-        internal void Flush_pending(ZStream strm)
+        public void Flush_pending(ZStream strm)
         {
             this.Bi_flush();
             int len = this.Pending;
@@ -1171,6 +902,230 @@ namespace SixLabors.ZlibStream
             }
 
             return cur;
+        }
+
+        private CompressionState DeflateReset(ZStream strm)
+        {
+            strm.TotalIn = strm.TotalOut = 0;
+            strm.Msg = null;
+            strm.DataType = ZUNKNOWN;
+
+            this.Pending = 0;
+            this.PendingOut = 0;
+
+            if (this.Noheader < 0)
+            {
+                this.Noheader = 0; // was set to -1 by deflate(..., Z_FINISH);
+            }
+
+            this.status = (this.Noheader != 0) ? BUSYSTATE : INITSTATE;
+            strm.Adler = Adler32.SeedValue;
+
+            this.lastFlush = FlushStrategy.NoFlush;
+
+            Trees.Tr_init(this);
+            this.Lm_init();
+            return CompressionState.ZOK;
+        }
+
+        /// <summary>
+        /// Save the match info and tally the frequency counts. Return true if
+        /// the current block must be flushed.
+        /// </summary>
+        /// <param name="dist">The distance of matched string.</param>
+        /// <param name="len">The match length-MINMATCH.</param>
+        /// <returns>The <see cref="bool"/>.</returns>
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private bool Tr_tally_dist(int dist, int len)
+        {
+            byte* pending = this.pendingPointer;
+            int dbuffindex = this.dBuf + (this.lastLit * 2);
+
+            pending[dbuffindex++] = (byte)(dist >> 8);
+            pending[dbuffindex] = (byte)dist;
+            pending[this.lBuf + this.lastLit++] = (byte)len;
+            this.matches++;
+
+            // Here, lc is the match length - MINMATCH
+            dist--; // dist = match distance - 1
+            this.DynLTree[Trees.GetLengthCode(len) + LITERALS + 1].Freq++;
+            this.DynDTree[Trees.GetDistanceCode(dist)].Freq++;
+
+            return this.lastLit == this.litBufsize - 1;
+        }
+
+        /// <summary>
+        /// Save the match info and tally the frequency counts. Return true if
+        /// the current block must be flushed.
+        /// </summary>
+        /// <param name="c">The unmatched byte.</param>
+        /// <returns>The <see cref="bool"/>.</returns>
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private bool Tr_tally_lit(byte c)
+        {
+            byte* pending = this.pendingPointer;
+            int dbuffindex = this.dBuf + (this.lastLit * 2);
+
+            pending[dbuffindex++] = 0;
+            pending[dbuffindex] = 0;
+            pending[this.lBuf + this.lastLit++] = c;
+
+            // lc is the unmatched char
+            this.DynLTree[c].Freq++;
+
+            return this.lastLit == this.litBufsize - 1;
+        }
+
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void Flush_block_only(bool eof)
+        {
+            Trees.Tr_flush_block(this, this.blockStart >= 0 ? this.blockStart : -1, this.strStart - this.blockStart, eof);
+            this.blockStart = this.strStart;
+            this.Flush_pending(this.strm);
+        }
+
+        // Fill the window when the lookahead becomes insufficient.
+        // Updates strstart and lookahead.
+        //
+        // IN assertion: lookahead < MIN_LOOKAHEAD
+        // OUT assertions: strstart <= window_size-MIN_LOOKAHEAD
+        //    At least one byte has been read, or avail_in == 0; reads are
+        //    performed for at least two bytes (required for the zip translate_eol
+        //    option -- not supported here).
+        [MethodImpl(InliningOptions.HotPath)]
+        private void Fill_window()
+        {
+            int n;
+            int more; // Amount of free space at the end of the window.
+
+            byte* window = this.windowPointer;
+            ushort* head = this.headPointer;
+            ushort* prev = this.prevPointer;
+
+            do
+            {
+                more = this.windowSize - this.lookahead - this.strStart;
+
+                if (this.strStart >= this.wSize + this.wSize - MINLOOKAHEAD)
+                {
+                    Buffer.BlockCopy(this.windowBuffer, this.wSize, this.windowBuffer, 0, this.wSize);
+                    this.matchStart -= this.wSize;
+                    this.strStart -= this.wSize; // we now have strstart >= MAX_DIST
+                    this.blockStart -= this.wSize;
+
+                    this.SlideHash(head, prev);
+                    more += this.wSize;
+                }
+
+                if (this.strm.AvailIn == 0)
+                {
+                    return;
+                }
+
+                // If there was no sliding:
+                //    strstart <= WSIZE+MAX_DIST-1 && lookahead <= MIN_LOOKAHEAD - 1 &&
+                //    more == window_size - lookahead - strstart
+                // => more >= window_size - (MIN_LOOKAHEAD-1 + WSIZE + MAX_DIST-1)
+                // => more >= window_size - 2*WSIZE + 2
+                // In the BIG_MEM or MMAP case (not yet supported),
+                //   window_size == input_size + MIN_LOOKAHEAD  &&
+                //   strstart + s->lookahead <= input_size => more >= MIN_LOOKAHEAD.
+                // Otherwise, window_size == 2*WSIZE so more >= 2.
+                // If there was sliding, more >= WSIZE. So in all cases, more >= 2.
+                n = this.strm.Read_buf(this.windowBuffer, this.strStart + this.lookahead, more);
+                this.lookahead += n;
+
+                // Initialize the hash value now that we have some input:
+                if (this.lookahead >= MINMATCH)
+                {
+                    this.InsertString(prev, head, window, this.strStart + 1);
+                }
+
+                // If the whole input has less than MINMATCH bytes, ins_h is garbage,
+                // but this is not important since only literal bytes will be emitted.
+            }
+            while (this.lookahead < MINLOOKAHEAD && this.strm.AvailIn != 0);
+        }
+
+        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        private int Longest_match(int cur_match)
+        {
+            byte* window = this.windowPointer;
+
+            int chain_length = this.maxChainLength; // max hash chain length
+            byte* scan = &window[this.strStart]; // current string
+            byte* match; // matched string
+            int len; // length of current match
+            int best_len = this.prevLength; // best match length so far
+            int limit = this.strStart > (this.wSize - MINLOOKAHEAD) ? this.strStart - (this.wSize - MINLOOKAHEAD) : 0;
+            int nice_match = this.niceMatch;
+            int matchStrt = this.matchStart;
+
+            // Stop when cur_match becomes <= limit. To simplify the code,
+            // we prevent matches with the string of window index 0.
+            int wmask = this.wMask;
+
+            if (best_len == 0)
+            {
+                best_len = 1;
+            }
+
+            ushort scan_start = *(ushort*)scan;
+            ushort scan_end = *(ushort*)&scan[best_len - 1];
+
+            // The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
+            // It is easy to get rid of this optimization if necessary.
+
+            // Do not waste too much time if we already have a good match:
+            if (this.prevLength >= this.goodMatch)
+            {
+                chain_length >>= 2;
+            }
+
+            // Do not look for matches beyond the end of the input. This is necessary
+            // to make deflate deterministic.
+            if (nice_match > this.lookahead)
+            {
+                nice_match = this.lookahead;
+            }
+
+            ushort* prev = this.prevPointer;
+
+            do
+            {
+                if (cur_match >= this.strStart)
+                {
+                    break;
+                }
+
+                match = &window[cur_match];
+
+                // Skip to next match if the match length cannot increase
+                // or if the match length is less than 2:
+                if (*(ushort*)&match[best_len - 1] != scan_end
+                    || *(ushort*)match != scan_start)
+                {
+                    continue;
+                }
+
+                len = Compare256(scan + 2, match + 2) + 2;
+
+                if (len > best_len)
+                {
+                    matchStrt = cur_match;
+                    best_len = len;
+                    if (len >= nice_match)
+                    {
+                        break;
+                    }
+
+                    scan_end = *(ushort*)&scan[best_len - 1];
+                }
+            }
+            while ((cur_match = prev[cur_match & wmask]) > limit && --chain_length != 0);
+
+            this.matchStart = matchStrt;
+            return Math.Min(best_len, this.lookahead);
         }
 
         private struct Config
