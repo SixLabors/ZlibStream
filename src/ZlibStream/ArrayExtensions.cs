@@ -23,7 +23,7 @@ namespace SixLabors.ZlibStream
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T DangerousGetReference<T>(this T[] array)
         {
-#if SUPPORTS_MODERN_CLR
+#if SUPPORTS_CORE_CLR
             RawArrayData arrayData = Unsafe.As<RawArrayData>(array);
             ref T r0 = ref Unsafe.As<byte, T>(ref arrayData.Data);
 
@@ -57,7 +57,7 @@ namespace SixLabors.ZlibStream
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T DangerousGetReferenceAt<T>(this T[] array, int i)
         {
-#if SUPPORTS_MODERN_CLR
+#if SUPPORTS_CORE_CLR
             RawArrayData arrayData = Unsafe.As<RawArrayData>(array);
             ref T r0 = ref Unsafe.As<byte, T>(ref arrayData.Data);
             ref T ri = ref Unsafe.Add(ref r0, i);
@@ -76,7 +76,7 @@ namespace SixLabors.ZlibStream
 #endif
         }
 
-#if SUPPORTS_MODERN_CLR
+#if SUPPORTS_CORE_CLR
         // Description taken from CoreCLR: see https://source.dot.net/#System.Private.CoreLib/src/System/Runtime/CompilerServices/RuntimeHelpers.CoreCLR.cs,285.
         // CLR arrays are laid out in memory as follows (multidimensional array bounds are optional):
         // [ sync block || pMethodTable || num components || MD array bounds || array data .. ]
