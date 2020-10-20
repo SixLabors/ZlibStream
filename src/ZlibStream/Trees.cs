@@ -650,7 +650,7 @@ namespace SixLabors.ZlibStream
             int code = GetLengthCode(lc);
 
             s.Send_code(code + LITERALS + 1, ltree); // send the length code
-            int extra = ExtraLbits[code];
+            int extra = ExtraLbits.DangerousGetReferenceAt(code);
             if (extra != 0)
             {
                 lc -= BaseLength.DangerousGetReferenceAt(code);
@@ -661,7 +661,7 @@ namespace SixLabors.ZlibStream
             code = GetDistanceCode(dist);
 
             s.Send_code(code, dtree); // send the distance code
-            extra = ExtraDbits[code];
+            extra = ExtraDbits.DangerousGetReferenceAt(code);
             if (extra != 0)
             {
                 dist -= BaseDist.DangerousGetReferenceAt(code);

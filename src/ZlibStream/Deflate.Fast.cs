@@ -87,7 +87,7 @@ namespace SixLabors.ZlibStream
                         do
                         {
                             this.strStart++;
-                            hash_head = this.InsertString(prev, head, window, this.strStart);
+                            this.InsertString(prev, head, window, this.strStart);
 
                             // strstart never exceeds WSIZE-MAX_MATCH, so there are
                             // always MINMATCH bytes ahead.
