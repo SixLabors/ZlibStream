@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace SixLabors.ZlibStream
 {
@@ -104,10 +105,30 @@ namespace SixLabors.ZlibStream
         };
 
         /// <summary>
-        /// Distance codes. The first 256 values correspond to the distances 3 .. 258,
+        /// The first normalized length for each code (0 = MIN_MATCH)
+        /// </summary>
+        private static readonly int[] BaseLength =
+        {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56,
+            64, 80, 96, 112, 128, 160, 192, 224, 0,
+        };
+
+        /// <summary>
+        /// The first normalized distance for each code (0 = distance of 1)
+        /// </summary>
+        private static readonly int[] BaseDist =
+        {
+            0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384,
+            512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384,
+            24576,
+        };
+
+        /// <summary>
+        /// Gets the distance codes.
+        /// The first 256 values correspond to the distances 3 .. 258,
         /// the last 256 values correspond to the top 8 bits of the 15 bit distances.
         /// </summary>
-        private static readonly byte[] DistCode =
+        private static ReadOnlySpan<byte> DistCode => new byte[]
         {
             0, 1, 2, 3, 4, 4, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8,
             9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
@@ -140,9 +161,9 @@ namespace SixLabors.ZlibStream
         };
 
         /// <summary>
-        /// The length code for each normalized match length (0 == MIN_MATCH)
+        /// Gets the length code for each normalized match length (0 == MIN_MATCH)
         /// </summary>
-        private static readonly byte[] LengthCode =
+        private static ReadOnlySpan<byte> LengthCode => new byte[]
         {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 12, 13,
             13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16,
@@ -162,25 +183,6 @@ namespace SixLabors.ZlibStream
         };
 
         /// <summary>
-        /// The first normalized length for each code (0 = MIN_MATCH)
-        /// </summary>
-        private static readonly int[] BaseLength =
-        {
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56,
-            64, 80, 96, 112, 128, 160, 192, 224, 0,
-        };
-
-        /// <summary>
-        /// The first normalized distance for each code (0 = distance of 1)
-        /// </summary>
-        private static readonly int[] BaseDist =
-        {
-            0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384,
-            512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384,
-            24576,
-        };
-
-        /// <summary>
         /// Gets the mapping from a distance to a distance code.
         /// dist is the distance - 1 and must not have side effects.
         /// _dist_code[256] and _dist_code[257] are never used.
@@ -190,8 +192,8 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         public static int GetDistanceCode(int dist)
             => dist < 256
-            ? DistCode.DangerousGetReferenceAt(dist)
-            : DistCode.DangerousGetReferenceAt(256 + (dist >> 7));
+            ? Unsafe.Add(ref MemoryMarshal.GetReference(DistCode), dist)
+            : Unsafe.Add(ref MemoryMarshal.GetReference(DistCode), 256 + (dist >> 7));
 
         /// <summary>
         /// Gets the length code for each normalized match length (0 == MIN_MATCH)
@@ -200,7 +202,7 @@ namespace SixLabors.ZlibStream
         /// <returns>The <see cref="byte"/>.</returns>
         [MethodImpl(InliningOptions.ShortMethod)]
         public static int GetLengthCode(int match)
-            => LengthCode.DangerousGetReferenceAt(match);
+            => Unsafe.Add(ref MemoryMarshal.GetReference(LengthCode), match);
 
         /// <summary>
         /// Reverse the first len bits of a code, using straightforward code (a faster
@@ -1080,6 +1082,5 @@ namespace SixLabors.ZlibStream
                 tree[n].Code = (ushort)Bi_reverse(next_code[len]++, len);
             }
         }
-
     }
 }

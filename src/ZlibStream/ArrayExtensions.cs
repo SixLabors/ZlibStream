@@ -57,6 +57,7 @@ namespace SixLabors.ZlibStream
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T DangerousGetReferenceAt<T>(this T[] array, int i)
         {
+            // TODO: NET5 WIll use MemoryMarshal.GetArrayDataReference
 #if SUPPORTS_CORE_CLR
             RawArrayData arrayData = Unsafe.As<RawArrayData>(array);
             ref T r0 = ref Unsafe.As<byte, T>(ref arrayData.Data);
