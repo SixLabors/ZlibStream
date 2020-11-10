@@ -10,12 +10,12 @@ using System.Runtime.Intrinsics.X86;
 
 namespace SixLabors.ZlibStream
 {
-    /// <summary>
-    /// Contains methods backs with intrinsics.
-    /// </summary>
+    /// <content>
+    /// Contains methods backed with intrinsics.
+    /// </content>
     internal sealed unsafe partial class Deflate
     {
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private static int Compare256(byte* src0, byte* src1)
         {
 #if SUPPORTS_RUNTIME_INTRINSICS
@@ -27,15 +27,15 @@ namespace SixLabors.ZlibStream
             {
                 return Compare256Sse2(src0, src1);
             }
-
-            return Compare256Scalar(src0, src1);
-#else
-            return Compare256Scalar(src0, src1);
+            else
 #endif
+            {
+                return Compare256Scalar(src0, src1);
+            }
         }
 
 #if SUPPORTS_RUNTIME_INTRINSICS
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private static int Compare256Avx2(byte* src0, byte* src1)
         {
             int len = 0;
@@ -76,7 +76,7 @@ namespace SixLabors.ZlibStream
             return 256;
         }
 
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private static int Compare256Sse2(byte* src0, byte* src1)
         {
             int len = 0;
@@ -118,7 +118,7 @@ namespace SixLabors.ZlibStream
         }
 #endif
 
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private static int Compare256Scalar(byte* src0, byte* src1)
         {
             int len = 0;
@@ -170,29 +170,27 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="head">Heads of the hash chains or NIL.</param>
         /// <param name="prev">Link to older string with same hash index.</param>
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private void SlideHash(ushort* head, ushort* prev)
         {
 #if SUPPORTS_RUNTIME_INTRINSICS
             if (Avx2.IsSupported)
             {
                 this.SlideHashAvx2(head, prev);
-                return;
             }
             else if (Sse2.IsSupported)
             {
                 this.SlideHashSse2(head, prev);
-                return;
             }
-
-            this.SlideHashScalar(head, prev);
-#else
-            this.SlideHashScalar(head, prev);
+            else
 #endif
+            {
+                this.SlideHashScalar(head, prev);
+            }
         }
 
 #if SUPPORTS_RUNTIME_INTRINSICS
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private void SlideHashAvx2(ushort* head, ushort* prev)
         {
             ushort wsize = (ushort)this.wSize;
@@ -225,7 +223,7 @@ namespace SixLabors.ZlibStream
             while (n > 0);
         }
 
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private void SlideHashSse2(ushort* head, ushort* prev)
         {
             ushort wsize = (ushort)this.wSize;
@@ -259,7 +257,7 @@ namespace SixLabors.ZlibStream
         }
 #endif
 
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private void SlideHashScalar(ushort* head, ushort* prev)
         {
             int wsize = this.wSize;
