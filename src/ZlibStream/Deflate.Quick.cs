@@ -121,7 +121,7 @@ namespace SixLabors.ZlibStream
             }
         }
 
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private static int Compare258(byte* src0, byte* src1)
         {
             if (*(ushort*)src0 != *(ushort*)src1)

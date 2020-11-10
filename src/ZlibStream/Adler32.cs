@@ -56,7 +56,7 @@ namespace SixLabors.ZlibStream
         /// <param name="adler">The input Adler32 value.</param>
         /// <param name="buffer">The readonly span of bytes.</param>
         /// <returns>The <see cref="uint"/>.</returns>
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         public static uint Calculate(uint adler, ReadOnlySpan<byte> buffer)
         {
             if (buffer.IsEmpty)
@@ -83,7 +83,7 @@ namespace SixLabors.ZlibStream
 
         // Based on https://github.com/chromium/chromium/blob/master/third_party/zlib/adler32_simd.c
 #if SUPPORTS_RUNTIME_INTRINSICS
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private static unsafe uint CalculateAvx2(uint adler, ReadOnlySpan<byte> buffer)
         {
             uint s1 = adler & 0xFFFF;
@@ -210,7 +210,7 @@ namespace SixLabors.ZlibStream
             }
         }
 
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private static unsafe uint CalculateSse3(uint adler, ReadOnlySpan<byte> buffer)
         {
             uint s1 = adler & 0xFFFF;
@@ -340,7 +340,7 @@ namespace SixLabors.ZlibStream
         }
 #endif
 
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private static unsafe uint CalculateScalar(uint adler, ReadOnlySpan<byte> buffer)
         {
             uint s1 = adler & 0xFFFF;

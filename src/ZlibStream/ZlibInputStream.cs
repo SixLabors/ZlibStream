@@ -96,14 +96,14 @@ namespace SixLabors.ZlibStream
         }
 
         /// <inheritdoc/>
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         public override int ReadByte()
             => this.Read(this.byteBuffer, 0, 1) == -1
             ? -1
             : this.byteBuffer[0] & 0xFF;
 
         /// <inheritdoc/>
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         public override int Read(byte[] buffer, int offset, int count)
         {
             if (count == 0)

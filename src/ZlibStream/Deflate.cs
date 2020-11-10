@@ -1047,7 +1047,7 @@ namespace SixLabors.ZlibStream
             while (this.lookahead < MINLOOKAHEAD && this.strm.AvailIn != 0);
         }
 
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private int Longest_match(int cur_match)
         {
             byte* window = this.windowPointer;

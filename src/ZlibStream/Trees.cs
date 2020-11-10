@@ -502,7 +502,7 @@ namespace SixLabors.ZlibStream
         /// <param name="buf">The input block.</param>
         /// <param name="stored_len">The length of the input block</param>
         /// <param name="eof">Whether this is the last block for the file.</param>
-        [MethodImpl(InliningOptions.HotPath | InliningOptions.ShortMethod)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         public static void Tr_flush_block(Deflate s, int buf, int stored_len, bool eof)
         {
             int opt_lenb, static_lenb; // opt_len and static_len in bytes
