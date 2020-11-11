@@ -27,8 +27,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="ZlibStream.Benchmarks" PublicKey="$(SixLaborsPublicKey)" />
-    <InternalsVisibleTo Include="ZlibStream.Tests" PublicKey="$(SixLaborsPublicKey)" />
+    <InternalsVisibleTo Include="ZlibStream.Benchmarks" Key="$(SixLaborsPublicKey)" />
+    <InternalsVisibleTo Include="ZlibStream.Tests" Key="$(SixLaborsPublicKey)" />
   </ItemGroup>
 
 
