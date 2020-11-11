@@ -300,17 +300,17 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Gets the huffman tree literal and length tree description.
         /// </summary>
-        internal Trees.DynamicTreeDesc DynLTree { get; } = new Trees.DynamicTreeDesc(HEAPSIZE, Trees.StaticLDesc);
+        internal Trees.DynamicTreeDesc DynLTree { get; } = new Trees.DynamicTreeDesc(HEAPSIZE);
 
         /// <summary>
         /// Gets the huffman tree bit length tree description.
         /// </summary>
-        internal Trees.DynamicTreeDesc DynBLTree { get; } = new Trees.DynamicTreeDesc((2 * BLCODES) + 1, Trees.StaticBlDesc);
+        internal Trees.DynamicTreeDesc DynBLTree { get; } = new Trees.DynamicTreeDesc((2 * BLCODES) + 1);
 
         /// <summary>
         /// Gets the huffman tree distance tree description.
         /// </summary>
-        internal Trees.DynamicTreeDesc DynDTree { get; } = new Trees.DynamicTreeDesc((2 * DCODES) + 1, Trees.StaticDDesc);
+        internal Trees.DynamicTreeDesc DynDTree { get; } = new Trees.DynamicTreeDesc((2 * DCODES) + 1);
 
         public CompressionState DeflateInit(ZStream strm, CompressionLevel level, int bits)
             => this.DeflateInit2(strm, level, ZDEFLATED, bits, DEFMEMLEVEL, CompressionStrategy.DefaultStrategy);

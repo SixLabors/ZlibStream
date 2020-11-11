@@ -1,6 +1,7 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
+using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -11,14 +12,7 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Initializes static members of the <see cref="Trees"/> class.
         /// </summary>
-        static Trees()
-        {
-            MakeStaticTrees();
-
-            StaticLDesc = new StaticTreeDesc(StaticLTree, ExtraLbits, LITERALS + 1, LCODES, MAXBITS);
-            StaticDDesc = new StaticTreeDesc(StaticLTree, ExtraDbits, 0, DCODES, MAXBITS);
-            StaticBlDesc = new StaticTreeDesc(null, ExtraBlbits, 0, BLCODES, MAXBLBITS);
-        }
+        static Trees() => MakeStaticTrees();
 
         /// <summary>
         /// Gets the static literal tree. Since the bit lengths are imposed, there is no
@@ -35,17 +29,17 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Gets the static literal tree descriptor.
         /// </summary>
-        public static StaticTreeDesc StaticLDesc { get; }
+        public static StaticTreeDesc StaticLDesc => new StaticTreeDesc(StaticLTree, ExtraLbits, LITERALS + 1, LCODES, MAXBITS);
 
         /// <summary>
         /// Gets the static distance tree descriptor.
         /// </summary>
-        public static StaticTreeDesc StaticDDesc { get; }
+        public static StaticTreeDesc StaticDDesc => new StaticTreeDesc(StaticLTree, ExtraDbits, 0, DCODES, MAXBITS);
 
         /// <summary>
         /// Gets the static bit length tree descriptor.
         /// </summary>
-        public static StaticTreeDesc StaticBlDesc { get; }
+        public static StaticTreeDesc StaticBlDesc => new StaticTreeDesc(null, ExtraBlbits, 0, BLCODES, MAXBLBITS);
 
         private static void MakeStaticTrees()
         {
@@ -132,42 +126,38 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// A static tree descriptor.
         /// </summary>
-        public class StaticTreeDesc
+        public ref struct StaticTreeDesc
         {
-            private readonly CodeData[] staticTree;
+            private readonly ReadOnlySpan<CodeData> staticTree;
+            private readonly ReadOnlySpan<int> extraBits;
 
             /// <summary>
-            /// Initializes a new instance of the <see cref="StaticTreeDesc"/> class.
+            /// Initializes a new instance of the <see cref="StaticTreeDesc"/> struct.
             /// </summary>
-            /// <param name="static_tree">static tree.</param>
-            /// <param name="extra_bits">extra bits.</param>
-            /// <param name="extra_base">extra base.</param>
-            /// <param name="elems">emax lements.</param>
-            /// <param name="max_length">max length.</param>
+            /// <param name="staticTree">static tree.</param>
+            /// <param name="extraBits">extra bits.</param>
+            /// <param name="extraBase">extra base.</param>
+            /// <param name="maxElements">max elements.</param>
+            /// <param name="maxLength">max length.</param>
             public StaticTreeDesc(
-                CodeData[] static_tree,
-                int[] extra_bits,
-                int extra_base,
-                int elems,
-                int max_length)
+                CodeData[] staticTree,
+                int[] extraBits,
+                int extraBase,
+                int maxElements,
+                int maxLength)
             {
-                this.staticTree = static_tree;
-                this.HasTree = static_tree != null;
-                this.ExtraBits = extra_bits;
-                this.ExtraBase = extra_base;
-                this.Elems = elems;
-                this.MaxLength = max_length;
+                this.staticTree = staticTree;
+                this.HasTree = staticTree != null;
+                this.extraBits = extraBits;
+                this.ExtraBase = extraBase;
+                this.MaxElements = maxElements;
+                this.MaxBitLength = maxLength;
             }
 
             /// <summary>
             /// Gets a value indicating whether the descriptor has a tree.
             /// </summary>
             public bool HasTree { get; }
-
-            /// <summary>
-            /// Gets the extra bits for each code.
-            /// </summary>
-            public int[] ExtraBits { get; }
 
             /// <summary>
             /// Gets the base index for extra_bits.
@@ -177,19 +167,28 @@ namespace SixLabors.ZlibStream
             /// <summary>
             /// Gets the max number of elements in the tree
             /// </summary>
-            public int Elems { get; }
+            public int MaxElements { get; }
 
             /// <summary>
             /// Gets the max bit length for the codes
             /// </summary>
-            public int MaxLength { get; }
+            public int MaxBitLength { get; }
 
-            public ref CodeData this[int i]
-            {
-                // TODO: Check HasTree property.
-                [MethodImpl(InliningOptions.ShortMethod)]
-                get { return ref this.staticTree.DangerousGetReferenceAt(i); }
-            }
+            /// <summary>
+            /// Returns a readonly reference to the span of code data at index 0.
+            /// </summary>
+            /// <returns>A reference to the <see cref="CodeData"/> at index 0.</returns>
+            [MethodImpl(InliningOptions.ShortMethod)]
+            public readonly ref CodeData GetCodeDataReference()
+                => ref MemoryMarshal.GetReference(this.staticTree);
+
+            /// <summary>
+            /// Returns a readonly reference to the span of extra bit lengths at index 0.
+            /// </summary>
+            /// <returns>A reference to the <see cref="int"/> at index 0.</returns>
+            [MethodImpl(InliningOptions.ShortMethod)]
+            public readonly ref int GetExtraBitsReference()
+                => ref MemoryMarshal.GetReference(this.extraBits);
         }
     }
 }

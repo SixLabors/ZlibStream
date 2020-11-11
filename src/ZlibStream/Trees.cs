@@ -96,15 +96,6 @@ namespace SixLabors.ZlibStream
         };
 
         /// <summary>
-        /// The lengths of the bit length codes are sent in order of decreasing
-        /// probability, to avoid transmitting the lengths for unused bit length codes.
-        /// </summary>
-        private static readonly byte[] BlOrder =
-        {
-            16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
-        };
-
-        /// <summary>
         /// The first normalized length for each code (0 = MIN_MATCH)
         /// </summary>
         private static readonly int[] BaseLength =
@@ -121,6 +112,15 @@ namespace SixLabors.ZlibStream
             0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384,
             512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384,
             24576,
+        };
+
+        /// <summary>
+        /// Gets the lengths of the bit length codes that are sent in order of decreasing
+        /// probability, to avoid transmitting the lengths for unused bit length codes.
+        /// </summary>
+        private static ReadOnlySpan<byte> BlOrder => new byte[]
+        {
+            16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
         };
 
         /// <summary>
@@ -203,6 +203,14 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         public static int GetLengthCode(int match)
             => Unsafe.Add(ref MemoryMarshal.GetReference(LengthCode), match);
+
+        /// <summary>
+        /// Gets the length of the bit length code at the given index.
+        /// </summary>
+        /// <param name="i">The index to</param>
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private static byte GetBitLength(int i)
+            => Unsafe.Add(ref MemoryMarshal.GetReference(BlOrder), i);
 
         /// <summary>
         /// Reverse the first len bits of a code, using straightforward code (a faster
@@ -313,7 +321,7 @@ namespace SixLabors.ZlibStream
             Scan_tree(s, s.DynDTree, s.DynDTree.MaxCode);
 
             // Build the bit length tree:
-            Build_tree(s, s.DynBLTree);
+            Build_tree(s, s.DynBLTree, StaticBlDesc);
 
             // opt_len now includes the length of the tree representations, except
             // the lengths of the bit lengths codes and the 5+5+4 bits for the counts.
@@ -324,7 +332,7 @@ namespace SixLabors.ZlibStream
             DynamicTreeDesc blTree = s.DynBLTree;
             for (max_blindex = BLCODES - 1; max_blindex >= 3; max_blindex--)
             {
-                if (blTree[BlOrder[max_blindex]].Len != 0)
+                if (blTree[GetBitLength(max_blindex)].Len != 0)
                 {
                     break;
                 }
@@ -345,12 +353,11 @@ namespace SixLabors.ZlibStream
         /// also updated if stree is not null. The field max_code is set.
         /// </summary>
         /// <param name="s">The data compressor.</param>
-        /// <param name="desc">The dynamic tree descriptor.</param>
-        public static void Build_tree(Deflate s, DynamicTreeDesc desc)
+        /// <param name="tree">The dynamic tree descriptor.</param>
+        /// <param name="stree">The static tree descriptor.</param>
+        public static void Build_tree(Deflate s, DynamicTreeDesc tree, StaticTreeDesc stree)
         {
-            DynamicTreeDesc tree = desc;
-            StaticTreeDesc stree = tree.StatDesc;
-            int elems = desc.StatDesc.Elems;
+            int elems = stree.MaxElements;
             int n, m; // iterate over heap elements
             var max_code = -1; // largest code with non zero frequency
             int node; // new node being created
@@ -381,6 +388,8 @@ namespace SixLabors.ZlibStream
             // and that at least one bit should be sent even if there is only one
             // possible code. So to avoid special checks later on we force at least
             // two codes of non zero frequency.
+            ref CodeData streeCodeRef = ref stree.GetCodeDataReference();
+            bool hasTree = stree.HasTree;
             while (s.HeapLen < 2)
             {
                 node = heap[++s.HeapLen] = max_code < 2
@@ -390,15 +399,16 @@ namespace SixLabors.ZlibStream
                 tree[node].Freq = 1;
                 depth[node] = 0;
                 s.OptLen--;
-                if (stree.HasTree)
+
+                if (hasTree)
                 {
-                    s.StaticLen -= stree[node].Len;
+                    s.StaticLen -= Unsafe.Add(ref streeCodeRef, node).Len;
                 }
 
                 // node is 0 or 1 so it does not have extra bits
             }
 
-            desc.MaxCode = max_code;
+            tree.MaxCode = max_code;
 
             // The elements heap[heap_len/2+1 .. heap_len] are leaves of the tree,
             // establish sub-heaps of increasing lengths:
@@ -438,7 +448,7 @@ namespace SixLabors.ZlibStream
 
             // At this point, the fields freq and dad are set. We can now
             // generate the bit lengths.
-            Gen_bitlen(s, tree);
+            Gen_bitlen(s, tree, stree);
 
             // The field len is now set, we can generate the bit codes
             Gen_codes(tree.Pointer, max_code, blCount);
@@ -518,9 +528,9 @@ namespace SixLabors.ZlibStream
                 }
 
                 // Construct the literal and distance trees
-                Build_tree(s, s.DynLTree);
+                Build_tree(s, s.DynLTree, StaticLDesc);
 
-                Build_tree(s, s.DynDTree);
+                Build_tree(s, s.DynDTree, StaticDDesc);
 
                 // At this point, opt_len and static_len are the total bit lengths of
                 // the compressed block data, excluding the tree representations.
@@ -793,7 +803,7 @@ namespace SixLabors.ZlibStream
             s.Send_bits(blcodes - 4, 4); // not -3 as stated in appnote.txt
             for (rank = 0; rank < blcodes; rank++)
             {
-                s.Send_bits(blTree[BlOrder[rank]].Len, 3);
+                s.Send_bits(blTree[GetBitLength(rank)].Len, 3);
             }
 
             Send_tree(s, s.DynLTree.Pointer, lcodes - 1); // literal tree
@@ -927,116 +937,114 @@ namespace SixLabors.ZlibStream
         //     array bl_count contains the frequencies for each bit length.
         //     The length opt_len is updated; static_len is also updated if stree is
         //     not null.
-        private static void Gen_bitlen(Deflate s, DynamicTreeDesc descr)
+        private static void Gen_bitlen(Deflate s, DynamicTreeDesc tree, StaticTreeDesc stree)
         {
-            fixed (int* extraPtr = descr.StatDesc.ExtraBits)
+            int extra_base = stree.ExtraBase;
+            int max_code = tree.MaxCode;
+            int max_length = stree.MaxBitLength;
+            int h; // heap index
+            int n, m; // iterate over the tree elements
+            int bits; // bit length
+            int xbits; // extra bits
+            ushort f; // frequency
+            int overflow = 0; // number of elements with bit length too large
+            ushort* blCount = s.BlCountPointer;
+            int* heap = s.HeapPointer;
+
+            for (bits = 0; bits <= MAXBITS; bits++)
             {
-                DynamicTreeDesc tree = descr;
-                StaticTreeDesc stree = tree.StatDesc;
-                int* extra = extraPtr;
-                int extra_base = descr.StatDesc.ExtraBase;
-                int max_code = descr.MaxCode;
-                int max_length = descr.StatDesc.MaxLength;
-                int h; // heap index
-                int n, m; // iterate over the tree elements
-                int bits; // bit length
-                int xbits; // extra bits
-                ushort f; // frequency
-                int overflow = 0; // number of elements with bit length too large
-                ushort* blCount = s.BlCountPointer;
-                int* heap = s.HeapPointer;
+                blCount[bits] = 0;
+            }
 
-                for (bits = 0; bits <= MAXBITS; bits++)
+            // In a first pass, compute the optimal bit lengths (which may
+            // overflow in the case of the bit length tree).
+            tree[heap[s.HeapMax]].Len = 0; // root of the heap
+
+            ref CodeData streeCodeRef = ref stree.GetCodeDataReference();
+            ref int extraBitsRef = ref stree.GetExtraBitsReference();
+            bool hasTree = stree.HasTree;
+
+            for (h = s.HeapMax + 1; h < HEAPSIZE; h++)
+            {
+                n = heap[h];
+                bits = tree[tree[n].Dad].Len + 1;
+                if (bits > max_length)
                 {
-                    blCount[bits] = 0;
+                    bits = max_length;
+                    overflow++;
                 }
 
-                // In a first pass, compute the optimal bit lengths (which may
-                // overflow in the case of the bit length tree).
-                tree[heap[s.HeapMax]].Len = 0; // root of the heap
+                tree[n].Len = (ushort)bits;
 
-                for (h = s.HeapMax + 1; h < HEAPSIZE; h++)
+                // We overwrite tree[n].Dad which is no longer needed
+                if (n > max_code)
                 {
-                    n = heap[h];
-                    bits = tree[tree[n].Dad].Len + 1;
-                    if (bits > max_length)
-                    {
-                        bits = max_length;
-                        overflow++;
-                    }
-
-                    tree[n].Len = (ushort)bits;
-
-                    // We overwrite tree[n].Dad which is no longer needed
-                    if (n > max_code)
-                    {
-                        continue; // not a leaf node
-                    }
-
-                    blCount[bits]++;
-                    xbits = 0;
-                    if (n >= extra_base)
-                    {
-                        xbits = extra[n - extra_base];
-                    }
-
-                    f = tree[n].Freq;
-                    s.OptLen += f * (bits + xbits);
-                    if (stree.HasTree)
-                    {
-                        s.StaticLen += f * (stree[n].Len + xbits);
-                    }
+                    continue; // not a leaf node
                 }
 
-                if (overflow == 0)
+                blCount[bits]++;
+                xbits = 0;
+                if (n >= extra_base)
                 {
-                    return;
+                    xbits = Unsafe.Add(ref extraBitsRef, n - extra_base);
                 }
 
-                // This happens for example on obj2 and pic of the Calgary corpus
-                // Find the first bit length which could increase:
-                do
+                f = tree[n].Freq;
+                s.OptLen += f * (bits + xbits);
+                if (hasTree)
                 {
-                    bits = max_length - 1;
-                    while (blCount[bits] == 0)
-                    {
-                        bits--;
-                    }
-
-                    blCount[bits]--; // move one leaf down the tree
-                    blCount[bits + 1] += 2; // move one overflow item as its brother
-                    blCount[max_length]--;
-
-                    // The brother of the overflow item also moves one step up,
-                    // but this does not affect bl_count[max_length]
-                    overflow -= 2;
+                    s.StaticLen += f * (Unsafe.Add(ref streeCodeRef, n).Len + xbits);
                 }
-                while (overflow > 0);
+            }
 
-                // Now recompute all bit lengths, scanning in increasing frequency.
-                // h is still equal to HEAP_SIZE. (It is simpler to reconstruct all
-                // lengths instead of fixing only the wrong ones.This idea is taken
-                // from 'ar' written by Haruhiko Okumura.)
-                for (bits = max_length; bits != 0; bits--)
+            if (overflow == 0)
+            {
+                return;
+            }
+
+            // This happens for example on obj2 and pic of the Calgary corpus
+            // Find the first bit length which could increase:
+            do
+            {
+                bits = max_length - 1;
+                while (blCount[bits] == 0)
                 {
-                    n = blCount[bits];
-                    while (n != 0)
+                    bits--;
+                }
+
+                blCount[bits]--; // move one leaf down the tree
+                blCount[bits + 1] += 2; // move one overflow item as its brother
+                blCount[max_length]--;
+
+                // The brother of the overflow item also moves one step up,
+                // but this does not affect bl_count[max_length]
+                overflow -= 2;
+            }
+            while (overflow > 0);
+
+            // Now recompute all bit lengths, scanning in increasing frequency.
+            // h is still equal to HEAP_SIZE. (It is simpler to reconstruct all
+            // lengths instead of fixing only the wrong ones.This idea is taken
+            // from 'ar' written by Haruhiko Okumura.)
+            for (bits = max_length; bits != 0; bits--)
+            {
+                n = blCount[bits];
+                while (n != 0)
+                {
+                    m = heap[--h];
+                    if (m > max_code)
                     {
-                        m = heap[--h];
-                        if (m > max_code)
-                        {
-                            continue;
-                        }
-
-                        if (tree[m].Len != bits)
-                        {
-                            s.OptLen += (int)(ulong)(bits * tree[m].Freq);
-                            s.OptLen -= (int)(ulong)(tree[m].Len * tree[m].Freq);
-                            tree[m].Len = (ushort)bits;
-                        }
-
-                        n--;
+                        continue;
                     }
+
+                    if (tree[m].Len != bits)
+                    {
+                        s.OptLen += (int)(ulong)(bits * tree[m].Freq);
+                        s.OptLen -= (int)(ulong)(tree[m].Len * tree[m].Freq);
+                        tree[m].Len = (ushort)bits;
+                    }
+
+                    n--;
                 }
             }
         }

@@ -22,19 +22,12 @@ namespace SixLabors.ZlibStream
             /// Initializes a new instance of the <see cref="DynamicTreeDesc"/> class.
             /// </summary>
             /// <param name="size">The size of the tree.</param>
-            /// <param name="staticTreeDesc">The static tree descriptor</param>
-            public DynamicTreeDesc(int size, StaticTreeDesc staticTreeDesc)
+            public DynamicTreeDesc(int size)
             {
-                this.StatDesc = staticTreeDesc;
                 this.dynTreeBuffer = ArrayPool<CodeData>.Shared.Rent(size);
                 this.dynTreeHandle = new Memory<CodeData>(this.dynTreeBuffer).Pin();
                 this.Pointer = (CodeData*)this.dynTreeHandle.Pointer;
             }
-
-            /// <summary>
-            /// Gets the corresponding static tree.
-            /// </summary>
-            public StaticTreeDesc StatDesc { get; }
 
             /// <summary>
             /// Gets the pointer to the tree code data.
