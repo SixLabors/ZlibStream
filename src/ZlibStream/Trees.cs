@@ -70,44 +70,44 @@ namespace SixLabors.ZlibStream
         private const int REPZ11138 = 18;
 
         /// <summary>
-        /// Extra bits for each length code
+        /// Gets the extra bits for each length code.
         /// </summary>
-        internal static readonly int[] ExtraLbits =
+        private static ReadOnlySpan<byte> ExtraLbits => new byte[]
         {
             0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3,
             3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0,
         };
 
         /// <summary>
-        /// Extra bits for each distance code
+        /// Gets the extra bits for each distance code.
         /// </summary>
-        internal static readonly int[] ExtraDbits =
+        private static ReadOnlySpan<byte> ExtraDbits => new byte[]
         {
             0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7,
             8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13,
         };
 
         /// <summary>
-        /// Extra bits for each bit length code
+        /// Gets the extra bits for each bit length code.
         /// </summary>
-        private static readonly int[] ExtraBlbits =
+        private static ReadOnlySpan<byte> ExtraBlbits => new byte[]
         {
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 7,
         };
 
         /// <summary>
-        /// The first normalized length for each code (0 = MIN_MATCH)
+        /// Gets the first normalized length for each code (0 = MIN_MATCH)
         /// </summary>
-        private static readonly int[] BaseLength =
+        private static ReadOnlySpan<byte> BaseLength => new byte[]
         {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56,
             64, 80, 96, 112, 128, 160, 192, 224, 0,
         };
 
         /// <summary>
-        /// The first normalized distance for each code (0 = distance of 1)
+        /// Gets the first normalized distance for each code (0 = distance of 1)
         /// </summary>
-        private static readonly int[] BaseDist =
+        private static ReadOnlySpan<int> BaseDist => new int[]
         {
             0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384,
             512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384,
@@ -191,9 +191,23 @@ namespace SixLabors.ZlibStream
         /// <returns>The <see cref="int"/>.</returns>
         [MethodImpl(InliningOptions.ShortMethod)]
         public static int GetDistanceCode(int dist)
-            => dist < 256
-            ? Unsafe.Add(ref MemoryMarshal.GetReference(DistCode), dist)
-            : Unsafe.Add(ref MemoryMarshal.GetReference(DistCode), 256 + (dist >> 7));
+        {
+            if (dist < 256)
+            {
+                dist = 256 + (dist >> 7);
+            }
+
+            return Unsafe.Add(ref MemoryMarshal.GetReference(DistCode), dist);
+        }
+
+        /// <summary>
+        /// Gets the first normalized length for each code (0 = MIN_MATCH)
+        /// </summary>
+        /// <param name="match">The match length.</param>
+        /// <returns>The <see cref="byte"/>.</returns>
+        [MethodImpl(InliningOptions.ShortMethod)]
+        public static int GetBaseLength(int match)
+            => Unsafe.Add(ref MemoryMarshal.GetReference(BaseLength), match);
 
         /// <summary>
         /// Gets the length code for each normalized match length (0 == MIN_MATCH)
@@ -207,10 +221,42 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Gets the length of the bit length code at the given index.
         /// </summary>
-        /// <param name="i">The index to</param>
+        /// <param name="i">The index.</param>
         [MethodImpl(InliningOptions.ShortMethod)]
         private static byte GetBitLength(int i)
             => Unsafe.Add(ref MemoryMarshal.GetReference(BlOrder), i);
+
+        /// <summary>
+        /// Gets the extra bits for each bit length code at the given index.
+        /// </summary>
+        /// <param name="i">The index.</param>
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private static int GetBaseDistance(int i)
+            => Unsafe.Add(ref MemoryMarshal.GetReference(BaseDist), i);
+
+        /// <summary>
+        /// Gets the extra bits for each length code at the given index.
+        /// </summary>
+        /// <param name="i">The index.</param>
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private static byte GetExtraLBits(int i)
+            => Unsafe.Add(ref MemoryMarshal.GetReference(ExtraLbits), i);
+
+        /// <summary>
+        /// Gets the extra bits for each distance code at the given index.
+        /// </summary>
+        /// <param name="i">The index.</param>
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private static byte GetExtraDBits(int i)
+            => Unsafe.Add(ref MemoryMarshal.GetReference(ExtraDbits), i);
+
+        /// <summary>
+        /// Gets the extra bits for each bit length code at the given index.
+        /// </summary>
+        /// <param name="i">The index.</param>
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private static byte GetExtraBlBits(int i)
+            => Unsafe.Add(ref MemoryMarshal.GetReference(ExtraBlbits), i);
 
         /// <summary>
         /// Reverse the first len bits of a code, using straightforward code (a faster
@@ -660,10 +706,10 @@ namespace SixLabors.ZlibStream
             int code = GetLengthCode(lc);
 
             s.Send_code(code + LITERALS + 1, ltree); // send the length code
-            int extra = ExtraLbits.DangerousGetReferenceAt(code);
+            int extra = GetExtraLBits(code);
             if (extra != 0)
             {
-                lc -= BaseLength.DangerousGetReferenceAt(code);
+                lc -= GetBaseLength(code);
                 s.Send_bits(lc, extra); // send the extra length bits
             }
 
@@ -671,10 +717,10 @@ namespace SixLabors.ZlibStream
             code = GetDistanceCode(dist);
 
             s.Send_code(code, dtree); // send the distance code
-            extra = ExtraDbits.DangerousGetReferenceAt(code);
+            extra = GetExtraDBits(code);
             if (extra != 0)
             {
-                dist -= BaseDist.DangerousGetReferenceAt(code);
+                dist -= GetBaseDistance(code);
                 s.Send_bits(dist, extra); // send the extra distance bits
             }
         }
@@ -961,7 +1007,7 @@ namespace SixLabors.ZlibStream
             tree[heap[s.HeapMax]].Len = 0; // root of the heap
 
             ref CodeData streeCodeRef = ref stree.GetCodeDataReference();
-            ref int extraBitsRef = ref stree.GetExtraBitsReference();
+            ref byte extraBitsRef = ref stree.GetExtraBitsReference();
             bool hasTree = stree.HasTree;
 
             for (h = s.HeapMax + 1; h < HEAPSIZE; h++)

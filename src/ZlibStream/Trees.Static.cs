@@ -129,7 +129,7 @@ namespace SixLabors.ZlibStream
         public ref struct StaticTreeDesc
         {
             private readonly ReadOnlySpan<CodeData> staticTree;
-            private readonly ReadOnlySpan<int> extraBits;
+            private readonly ReadOnlySpan<byte> extraBits;
 
             /// <summary>
             /// Initializes a new instance of the <see cref="StaticTreeDesc"/> struct.
@@ -141,7 +141,7 @@ namespace SixLabors.ZlibStream
             /// <param name="maxLength">max length.</param>
             public StaticTreeDesc(
                 CodeData[] staticTree,
-                int[] extraBits,
+                ReadOnlySpan<byte> extraBits,
                 int extraBase,
                 int maxElements,
                 int maxLength)
@@ -185,9 +185,9 @@ namespace SixLabors.ZlibStream
             /// <summary>
             /// Returns a readonly reference to the span of extra bit lengths at index 0.
             /// </summary>
-            /// <returns>A reference to the <see cref="int"/> at index 0.</returns>
+            /// <returns>A reference to the <see cref="byte"/> at index 0.</returns>
             [MethodImpl(InliningOptions.ShortMethod)]
-            public readonly ref int GetExtraBitsReference()
+            public readonly ref byte GetExtraBitsReference()
                 => ref MemoryMarshal.GetReference(this.extraBits);
         }
     }
