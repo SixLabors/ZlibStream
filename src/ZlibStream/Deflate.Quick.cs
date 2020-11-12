@@ -28,8 +28,8 @@ namespace SixLabors.ZlibStream
             ushort* head = this.headPointer;
             ushort* prev = this.prevPointer;
 
-            fixed (Trees.CodeData* ltree = Trees.StaticLTree)
-            fixed (Trees.CodeData* dtree = Trees.StaticDTree)
+            fixed (Trees.CodeData* ltree = &Trees.StaticLTreeDesc.GetCodeDataReference())
+            fixed (Trees.CodeData* dtree = &Trees.StaticDTreeDesc.GetCodeDataReference())
             {
                 if (!this.blockOpen && this.lookahead > 0)
                 {

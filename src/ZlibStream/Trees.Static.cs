@@ -10,36 +10,36 @@ namespace SixLabors.ZlibStream
     internal sealed unsafe partial class Trees
     {
         /// <summary>
+        /// Gets the static literal tree. Since the bit lengths are imposed, there is no
+        /// need for the L_CODES extra codes used during heap construction.However
+        /// The codes 286 and 287 are needed to build a canonical tree (see MakeStaticTrees).
+        /// </summary>
+        private static readonly CodeData[] StaticLTree = new CodeData[LCODES + 2];
+
+        /// <summary>
+        /// Gets the static distance tree. (Actually a trivial tree since all codes use 5 bits.)
+        /// </summary>
+        private static readonly CodeData[] StaticDTree = new CodeData[DCODES];
+
+        /// <summary>
         /// Initializes static members of the <see cref="Trees"/> class.
         /// </summary>
         static Trees() => MakeStaticTrees();
 
         /// <summary>
-        /// Gets the static literal tree. Since the bit lengths are imposed, there is no
-        /// need for the L_CODES extra codes used during heap construction.However
-        /// The codes 286 and 287 are needed to build a canonical tree (see MakeStaticTrees).
-        /// </summary>
-        public static CodeData[] StaticLTree { get; } = new CodeData[LCODES + 2];
-
-        /// <summary>
-        /// Gets the static distance tree. (Actually a trivial tree since all codes use 5 bits.)
-        /// </summary>
-        public static CodeData[] StaticDTree { get; } = new CodeData[DCODES];
-
-        /// <summary>
         /// Gets the static literal tree descriptor.
         /// </summary>
-        public static StaticTreeDesc StaticLDesc => new StaticTreeDesc(StaticLTree, ExtraLbits, LITERALS + 1, LCODES, MAXBITS);
+        public static StaticTreeDesc StaticLTreeDesc => new StaticTreeDesc(StaticLTree, ExtraLbits, LITERALS + 1, LCODES, MAXBITS);
 
         /// <summary>
         /// Gets the static distance tree descriptor.
         /// </summary>
-        public static StaticTreeDesc StaticDDesc => new StaticTreeDesc(StaticDTree, ExtraDbits, 0, DCODES, MAXBITS);
+        public static StaticTreeDesc StaticDTreeDesc => new StaticTreeDesc(StaticDTree, ExtraDbits, 0, DCODES, MAXBITS);
 
         /// <summary>
         /// Gets the static bit length tree descriptor.
         /// </summary>
-        public static StaticTreeDesc StaticBlDesc => new StaticTreeDesc(null, ExtraBlbits, 0, BLCODES, MAXBLBITS);
+        public static StaticTreeDesc StaticBlTreeDesc => new StaticTreeDesc(null, ExtraBlbits, 0, BLCODES, MAXBLBITS);
 
         private static void MakeStaticTrees()
         {

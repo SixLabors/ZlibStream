@@ -367,7 +367,7 @@ namespace SixLabors.ZlibStream
             Scan_tree(s, s.DynDTree, s.DynDTree.MaxCode);
 
             // Build the bit length tree:
-            Build_tree(s, s.DynBLTree, StaticBlDesc);
+            Build_tree(s, s.DynBLTree, StaticBlTreeDesc);
 
             // opt_len now includes the length of the tree representations, except
             // the lengths of the bit lengths codes and the 5+5+4 bits for the counts.
@@ -574,9 +574,9 @@ namespace SixLabors.ZlibStream
                 }
 
                 // Construct the literal and distance trees
-                Build_tree(s, s.DynLTree, StaticLDesc);
+                Build_tree(s, s.DynLTree, StaticLTreeDesc);
 
-                Build_tree(s, s.DynDTree, StaticDDesc);
+                Build_tree(s, s.DynDTree, StaticDTreeDesc);
 
                 // At this point, opt_len and static_len are the total bit lengths of
                 // the compressed block data, excluding the tree representations.
@@ -613,8 +613,8 @@ namespace SixLabors.ZlibStream
             {
                 Tr_emit_tree(s, Deflate.STATICTREES, eof);
 
-                fixed (CodeData* ltree = &StaticLTree.DangerousGetReference())
-                fixed (CodeData* dtree = &StaticDTree.DangerousGetReference())
+                fixed (CodeData* ltree = &StaticLTreeDesc.GetCodeDataReference())
+                fixed (CodeData* dtree = &StaticDTreeDesc.GetCodeDataReference())
                 {
                     Compress_block(s, ltree, dtree);
                 }
@@ -651,7 +651,7 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         public static void Tr_align(Deflate s)
         {
-            fixed (CodeData* ltree = &StaticLTree.DangerousGetReference())
+            fixed (CodeData* ltree = &StaticLTreeDesc.GetCodeDataReference())
             {
                 Tr_emit_tree(s, Deflate.STATICTREES, false);
                 Tr_emit_end_block(s, ltree, false);
