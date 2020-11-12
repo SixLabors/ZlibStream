@@ -29,7 +29,7 @@ namespace SixLabors.ZlibStream
             ushort* prev = this.prevPointer;
 
             fixed (Trees.CodeData* ltree = Trees.StaticLTree)
-            fixed (Trees.CodeData* dtree = Trees.StaticDTtree)
+            fixed (Trees.CodeData* dtree = Trees.StaticDTree)
             {
                 if (!this.blockOpen && this.lookahead > 0)
                 {

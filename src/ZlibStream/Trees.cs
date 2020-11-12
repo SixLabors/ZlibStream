@@ -192,7 +192,7 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         public static int GetDistanceCode(int dist)
         {
-            if (dist < 256)
+            if (dist >= 256)
             {
                 dist = 256 + (dist >> 7);
             }
@@ -239,7 +239,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="i">The index.</param>
         [MethodImpl(InliningOptions.ShortMethod)]
-        private static byte GetExtraLBits(int i)
+        private static int GetExtraLBits(int i)
             => Unsafe.Add(ref MemoryMarshal.GetReference(ExtraLbits), i);
 
         /// <summary>
@@ -247,7 +247,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="i">The index.</param>
         [MethodImpl(InliningOptions.ShortMethod)]
-        private static byte GetExtraDBits(int i)
+        private static int GetExtraDBits(int i)
             => Unsafe.Add(ref MemoryMarshal.GetReference(ExtraDbits), i);
 
         /// <summary>
@@ -255,7 +255,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="i">The index.</param>
         [MethodImpl(InliningOptions.ShortMethod)]
-        private static byte GetExtraBlBits(int i)
+        private static int GetExtraBlBits(int i)
             => Unsafe.Add(ref MemoryMarshal.GetReference(ExtraBlbits), i);
 
         /// <summary>
@@ -614,7 +614,7 @@ namespace SixLabors.ZlibStream
                 Tr_emit_tree(s, Deflate.STATICTREES, eof);
 
                 fixed (CodeData* ltree = &StaticLTree.DangerousGetReference())
-                fixed (CodeData* dtree = &StaticDTtree.DangerousGetReference())
+                fixed (CodeData* dtree = &StaticDTree.DangerousGetReference())
                 {
                     Compress_block(s, ltree, dtree);
                 }

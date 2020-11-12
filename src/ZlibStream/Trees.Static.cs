@@ -24,7 +24,7 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Gets the static distance tree. (Actually a trivial tree since all codes use 5 bits.)
         /// </summary>
-        public static CodeData[] StaticDTtree { get; } = new CodeData[DCODES];
+        public static CodeData[] StaticDTree { get; } = new CodeData[DCODES];
 
         /// <summary>
         /// Gets the static literal tree descriptor.
@@ -34,7 +34,7 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Gets the static distance tree descriptor.
         /// </summary>
-        public static StaticTreeDesc StaticDDesc => new StaticTreeDesc(StaticLTree, ExtraDbits, 0, DCODES, MAXBITS);
+        public static StaticTreeDesc StaticDDesc => new StaticTreeDesc(StaticDTree, ExtraDbits, 0, DCODES, MAXBITS);
 
         /// <summary>
         /// Gets the static bit length tree descriptor.
@@ -44,7 +44,7 @@ namespace SixLabors.ZlibStream
         private static void MakeStaticTrees()
         {
             fixed (CodeData* staticLTreePtr = StaticLTree)
-            fixed (CodeData* staticDTreePtr = StaticDTtree)
+            fixed (CodeData* staticDTreePtr = StaticDTree)
             {
                 CodeData* static_ltree = staticLTreePtr;
                 CodeData* static_dtree = staticDTreePtr;
