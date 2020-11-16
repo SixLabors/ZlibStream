@@ -407,9 +407,9 @@ namespace SixLabors.ZlibStream
             int n, m; // iterate over heap elements
             var max_code = -1; // largest code with non zero frequency
             int node; // new node being created
-            ushort* blCount = s.BlCountPointer;
-            int* heap = s.HeapPointer;
-            byte* depth = s.DepthPointer;
+            ushort* blCount = s.ConstBuffers.BlCountPointer;
+            int* heap = s.ConstBuffers.HeapPointer;
+            byte* depth = s.ConstBuffers.DepthPointer;
 
             // Construct the initial heap, with least frequent element in
             // heap[1]. The sons of heap[n] are heap[2*n] and heap[2*n+1].
@@ -512,8 +512,8 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         public static void Pqdownheap(Deflate s, DynamicTreeDesc tree, int k)
         {
-            int* heap = s.HeapPointer;
-            byte* depth = s.DepthPointer;
+            int* heap = s.ConstBuffers.HeapPointer;
+            byte* depth = s.ConstBuffers.DepthPointer;
 
             int v = heap[k];
             int heapLen = s.HeapLen;
@@ -939,7 +939,7 @@ namespace SixLabors.ZlibStream
         }
 
         // Send the block data compressed using the given Huffman trees
-        [MethodImpl(InliningOptions.HotPath)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private static void Compress_block(Deflate s, CodeData* ltree, CodeData* dtree)
         {
             int dist; // distance of matched string
@@ -994,8 +994,8 @@ namespace SixLabors.ZlibStream
             int xbits; // extra bits
             ushort f; // frequency
             int overflow = 0; // number of elements with bit length too large
-            ushort* blCount = s.BlCountPointer;
-            int* heap = s.HeapPointer;
+            ushort* blCount = s.ConstBuffers.BlCountPointer;
+            int* heap = s.ConstBuffers.HeapPointer;
 
             for (bits = 0; bits <= MAXBITS; bits++)
             {

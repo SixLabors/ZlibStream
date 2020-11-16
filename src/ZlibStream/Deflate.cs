@@ -197,18 +197,6 @@ namespace SixLabors.ZlibStream
         // Stop searching when current match exceeds this
         private int niceMatch;
 
-        // Number of codes at each bit length for an optimal tree
-        private readonly ushort[] blCountBuffer;
-        private MemoryHandle blCountHandle;
-
-        // Heap used to build the Huffman trees
-        private readonly int[] heapBuffer;
-        private MemoryHandle heapHandle;
-
-        // Depth of each subtree used as tie breaker for trees of equal frequency
-        private readonly byte[] depthBuffer;
-        private MemoryHandle depthHandle;
-
         internal int matches; // number of string matches in current block
 
         internal int lastEobLen;  // bit length of EOB code for last block
@@ -257,39 +245,20 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Initializes a new instance of the <see cref="Deflate"/> class.
         /// </summary>
-        internal Deflate()
-        {
-            this.blCountBuffer = ArrayPool<ushort>.Shared.Rent(MAXBITS + 1);
-            this.blCountHandle = new Memory<ushort>(this.blCountBuffer).Pin();
-            this.BlCountPointer = (ushort*)this.blCountHandle.Pointer;
-
-            this.heapBuffer = ArrayPool<int>.Shared.Rent((2 * LCODES) + 1);
-            this.heapHandle = new Memory<int>(this.heapBuffer).Pin();
-            this.HeapPointer = (int*)this.heapHandle.Pointer;
-
-            this.depthBuffer = ArrayPool<byte>.Shared.Rent((2 * LCODES) + 1);
-            this.depthHandle = new Memory<byte>(this.depthBuffer).Pin();
-            this.DepthPointer = (byte*)this.depthHandle.Pointer;
-        }
+        internal Deflate() => this.ConstBuffers = new ConstantBuffers();
 
         internal int Pending { get; set; } // nb of bytes in the pending buffer
 
         internal int Noheader { get; set; } // suppress zlib header and adler32
 
-        // number of codes at each bit length for an optimal tree
-        internal ushort* BlCountPointer { get; private set; }
-
-        // heap used to build the Huffman trees
-        // The sons of heap[n] are heap[2*n] and heap[2*n+1]. heap[0] is not used.
-        // The same heap array is used to build all trees.
-        internal int* HeapPointer { get; private set; }
+        /// <summary>
+        /// Gets buffers whose lengths are defined by compile time constants.
+        /// </summary>
+        public ConstantBuffers ConstBuffers { get; private set; }
 
         internal int HeapLen { get; set; } // number of elements in the heap
 
         internal int HeapMax { get; set; } // element of largest frequency
-
-        // Depth of each subtree used as tie breaker for trees of equal frequency
-        internal byte* DepthPointer { get; private set; }
 
         internal int PendingOut { get; set; } // next pending byte to output to the stream
 
@@ -313,7 +282,13 @@ namespace SixLabors.ZlibStream
         internal Trees.DynamicTreeDesc DynDTree { get; } = new Trees.DynamicTreeDesc((2 * DCODES) + 1);
 
         public CompressionState DeflateInit(ZStream strm, CompressionLevel level, int bits)
-            => this.DeflateInit2(strm, level, ZDEFLATED, bits, DEFMEMLEVEL, CompressionStrategy.DefaultStrategy);
+            => this.DeflateInit2(
+                strm,
+                level,
+                ZDEFLATED,
+                bits,
+                DEFMEMLEVEL,
+                CompressionStrategy.DefaultStrategy);
 
         public CompressionState DeflateInit2(
             ZStream strm,
@@ -429,21 +404,19 @@ namespace SixLabors.ZlibStream
             this.DynDTree.Dispose();
             this.DynBLTree.Dispose();
 
-            this.depthHandle.Dispose();
-            ArrayPool<byte>.Shared.Return(this.depthBuffer);
-
-            this.heapHandle.Dispose();
-            ArrayPool<int>.Shared.Return(this.heapBuffer);
-
-            this.blCountHandle.Dispose();
-            ArrayPool<ushort>.Shared.Return(this.blCountBuffer);
+            this.ConstBuffers.Dispose();
 
             // free
             // dstate=null;
-            return this.status == BUSYSTATE ? CompressionState.ZDATAERROR : CompressionState.ZOK;
+            return this.status == BUSYSTATE
+                ? CompressionState.ZDATAERROR
+                : CompressionState.ZOK;
         }
 
-        public CompressionState DeflateParams(ZStream strm, CompressionLevel level, CompressionStrategy strategy)
+        public CompressionState DeflateParams(
+            ZStream strm,
+            CompressionLevel level,
+            CompressionStrategy strategy)
         {
             CompressionState err = CompressionState.ZOK;
 
@@ -992,7 +965,7 @@ namespace SixLabors.ZlibStream
         //    At least one byte has been read, or avail_in == 0; reads are
         //    performed for at least two bytes (required for the zip translate_eol
         //    option -- not supported here).
-        [MethodImpl(InliningOptions.HotPath)]
+        [MethodImpl(InliningOptions.ShortMethod)]
         private void Fill_window()
         {
             int n;

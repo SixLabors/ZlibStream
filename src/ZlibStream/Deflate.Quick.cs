@@ -16,7 +16,6 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="flush">The flush strategy.</param>
         /// <returns>The <see cref="int"/>.</returns>
-        [MethodImpl(InliningOptions.HotPath)]
         internal int DeflateQuick(FlushStrategy flush)
         {
             int hash_head; // head of the hash chain

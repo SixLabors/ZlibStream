@@ -50,11 +50,7 @@ namespace SixLabors.ZlibStream
             }
 
             /// <inheritdoc/>
-            public void Dispose()
-            {
-                this.Dispose(true);
-                GC.SuppressFinalize(this);
-            }
+            public void Dispose() => this.Dispose(true);
 
             private void Dispose(bool disposing)
             {

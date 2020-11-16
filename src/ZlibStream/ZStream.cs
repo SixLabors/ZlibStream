@@ -192,7 +192,7 @@ namespace SixLabors.ZlibStream
         }
 
         /// <summary>
-        /// Sets the compression paramiters.
+        /// Sets the compression parameters.
         /// </summary>
         /// <param name="level">The compression level to use.</param>
         /// <param name="strategy">The strategy to use for compression.</param>

@@ -2,7 +2,6 @@
 // See LICENSE for more details.
 
 using System;
-using System.Runtime.CompilerServices;
 
 namespace SixLabors.ZlibStream
 {
@@ -22,7 +21,6 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="flush">The flush strategy.</param>
         /// <returns>The <see cref="int"/>.</returns>
-        [MethodImpl(InliningOptions.HotPath)]
         private int DeflateStored(FlushStrategy flush)
         {
             // Smallest worthy block size when not flushing or finishing. By default

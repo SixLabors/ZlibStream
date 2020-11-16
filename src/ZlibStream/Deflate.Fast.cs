@@ -1,8 +1,6 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
-using System.Runtime.CompilerServices;
-
 namespace SixLabors.ZlibStream
 {
     /// <content>
@@ -19,7 +17,6 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="flush">The flush strategy.</param>
         /// <returns>The <see cref="int"/>.</returns>
-        [MethodImpl(InliningOptions.HotPath)]
         internal int DeflateFast(FlushStrategy flush)
         {
             int hash_head; // head of the hash chain

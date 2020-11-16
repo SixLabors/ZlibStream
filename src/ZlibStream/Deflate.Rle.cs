@@ -1,8 +1,6 @@
 // Copyright (c) Six Labors and contributors.
 // See LICENSE for more details.
 
-using System.Runtime.CompilerServices;
-
 namespace SixLabors.ZlibStream
 {
     /// <content>
@@ -17,7 +15,6 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="flush">The flush strategy.</param>
         /// <returns>The <see cref="int"/>.</returns>
-        [MethodImpl(InliningOptions.HotPath)]
         internal int DeflateRle(FlushStrategy flush)
         {
             bool bflush; // set if current block must be flushed
