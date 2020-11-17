@@ -21,7 +21,7 @@ namespace SixLabors.ZlibStream
             int prev; // byte at distance one to match
             byte* scan; // scan goes up to strend for length of run
             byte* strend;
-            byte* window = this.windowPointer;
+            byte* window = this.DynBuffers.WindowPointer;
 
             while (true)
             {

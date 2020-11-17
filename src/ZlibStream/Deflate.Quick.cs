@@ -23,9 +23,9 @@ namespace SixLabors.ZlibStream
             int matchLen;
             bool last;
 
-            byte* window = this.windowPointer;
-            ushort* head = this.headPointer;
-            ushort* prev = this.prevPointer;
+            byte* window = this.DynBuffers.WindowPointer;
+            ushort* head = this.DynBuffers.HeadPointer;
+            ushort* prev = this.DynBuffers.PrevPointer;
 
             fixed (Trees.CodeData* ltree = &Trees.StaticLTreeDesc.GetCodeDataReference())
             fixed (Trees.CodeData* dtree = &Trees.StaticDTreeDesc.GetCodeDataReference())
@@ -38,9 +38,10 @@ namespace SixLabors.ZlibStream
                     this.QuickStartBlock(last);
                 }
 
+                int pendingBufferSize = this.DynBuffers.PendingSize;
                 do
                 {
-                    if (this.Pending + 12 >= this.pendingBufferSize)
+                    if (this.Pending + 12 >= pendingBufferSize)
                     {
                         this.Flush_pending(this.strm);
                         if (this.strm.AvailIn == 0 && flush != FlushStrategy.Finish)

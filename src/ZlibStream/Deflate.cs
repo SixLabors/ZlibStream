@@ -116,11 +116,6 @@ namespace SixLabors.ZlibStream
         private ZStream strm; // pointer back to this zlib stream
         private int status; // as the name implies
 
-        private int pendingBufferSize; // size of pending_buf
-        private byte[] pendingBuffer; // output still pending
-        private MemoryHandle pendingHandle;
-        internal byte* pendingPointer;
-
         internal byte dataType; // UNKNOWN, BINARY or ASCII
         private byte method; // STORED (for zip only) or DEFLATED
         private FlushStrategy lastFlush; // value of flush param for previous deflate call
@@ -130,31 +125,9 @@ namespace SixLabors.ZlibStream
         private int wBits; // log2(w_size)  (8..16)
         private int wMask; // w_size - 1
 
-        // Sliding window. Input bytes are read into the second half of the window,
-        // and move to the first half later to keep a dictionary of at least wSize
-        // bytes. With this organization, matches are limited to a distance of
-        // wSize-MAX_MATCH bytes, but this ensures that IO is always
-        // performed with a length multiple of the block size. Also, it limits
-        // the window size to 64K, which is quite useful on MSDOS.
-        // To do: use the user input buffer as sliding window.
-        private byte[] windowBuffer;
-        private MemoryHandle windowHandle;
-        private byte* windowPointer;
-
         // Actual size of window: 2*wSize, except when the user input buffer
         // is directly used as sliding window.
         private int windowSize;
-
-        // Link to older string with same hash index. To limit the size of this
-        // array to 64K, this link is maintained only for the last 32K strings.
-        // An index in this array is thus a window index modulo 32K.
-        private ushort[] prevBuffer;
-        private MemoryHandle prevHandle;
-        private ushort* prevPointer;
-
-        private ushort[] headBuffer; // Heads of the hash chains or NIL.
-        private MemoryHandle headHandle;
-        private ushort* headPointer;
 
         private int hashSize; // number of elements in hash table
         private int hashBits; // log2(hashSize)
@@ -256,6 +229,8 @@ namespace SixLabors.ZlibStream
         /// </summary>
         public ConstantBuffers ConstBuffers { get; private set; }
 
+        public DynamicBuffers DynBuffers { get; private set; }
+
         internal int HeapLen { get; set; } // number of elements in the heap
 
         internal int HeapMax { get; set; } // element of largest frequency
@@ -349,33 +324,15 @@ namespace SixLabors.ZlibStream
             this.hashSize = 1 << this.hashBits;
             this.hashMask = (uint)this.hashSize - 1;
 
-            this.windowBuffer = ArrayPool<byte>.Shared.Rent(this.wSize * 2);
-            this.windowHandle = new Memory<byte>(this.windowBuffer).Pin();
-            this.windowPointer = (byte*)this.windowHandle.Pointer;
-
-            this.prevBuffer = ArrayPool<ushort>.Shared.Rent(this.wSize);
-            this.prevHandle = new Memory<ushort>(this.prevBuffer).Pin();
-            this.prevPointer = (ushort*)this.prevHandle.Pointer;
-
-            this.headBuffer = ArrayPool<ushort>.Shared.Rent(this.hashSize);
-            this.headHandle = new Memory<ushort>(this.headBuffer).Pin();
-            this.headPointer = (ushort*)this.headHandle.Pointer;
-
             this.litBufsize = 1 << (memLevel + 6); // 16K elements by default
-
-            // We overlay pending_buf and d_buf+l_buf. This works since the average
-            // output size for (length,distance) codes is <= 24 bits.
-            this.pendingBufferSize = this.litBufsize * 4;
-            this.pendingBuffer = ArrayPool<byte>.Shared.Rent(this.pendingBufferSize);
-            this.pendingHandle = new Memory<byte>(this.pendingBuffer).Pin();
-            this.pendingPointer = (byte*)this.pendingHandle.Pointer;
-
             this.dBuf = this.litBufsize;
             this.lBuf = (1 + 2) * this.litBufsize;
 
             this.level = level;
             this.strategy = strategy;
             this.method = (byte)method;
+
+            this.DynBuffers = new DynamicBuffers(this.wSize, this.hashSize, this.litBufsize * 4);
 
             return this.DeflateReset(strm);
         }
@@ -387,24 +344,15 @@ namespace SixLabors.ZlibStream
                 return CompressionState.ZSTREAMERROR;
             }
 
-            // Deallocate in reverse order of allocations:
-            this.pendingHandle.Dispose();
-            ArrayPool<byte>.Shared.Return(this.pendingBuffer);
-
-            this.headHandle.Dispose();
-            ArrayPool<ushort>.Shared.Return(this.headBuffer);
-
-            this.prevHandle.Dispose();
-            ArrayPool<ushort>.Shared.Return(this.prevBuffer);
-
-            this.windowHandle.Dispose();
-            ArrayPool<byte>.Shared.Return(this.windowBuffer);
+            this.DynBuffers.Dispose();
+            this.DynBuffers = null;
 
             this.DynLTree.Dispose();
             this.DynDTree.Dispose();
             this.DynBLTree.Dispose();
 
             this.ConstBuffers.Dispose();
+            this.ConstBuffers = null;
 
             // free
             // dstate=null;
@@ -475,16 +423,16 @@ namespace SixLabors.ZlibStream
                 index = dictLength - length; // use the tail of the dictionary
             }
 
-            Buffer.BlockCopy(dictionary, index, this.windowBuffer, 0, length);
+            Buffer.BlockCopy(dictionary, index, this.DynBuffers.WindowBuffer, 0, length);
             this.strStart = length;
             this.blockStart = length;
 
             // Insert all strings in the hash table (except for the last two bytes).
             // s->lookahead stays null, so s->ins_h will be recomputed at the next
             // call of fill_window.
-            byte* window = this.windowPointer;
-            ushort* head = this.headPointer;
-            ushort* prev = this.prevPointer;
+            byte* window = this.DynBuffers.WindowPointer;
+            ushort* head = this.DynBuffers.HeadPointer;
+            ushort* prev = this.DynBuffers.PrevPointer;
 
             this.InsertString(prev, head, window, 1);
 
@@ -659,7 +607,7 @@ namespace SixLabors.ZlibStream
                         if (flush == FlushStrategy.FullFlush)
                         {
                             // state.head[s.hash_size-1]=0;
-                            ushort* head = this.headPointer;
+                            ushort* head = this.DynBuffers.HeadPointer;
                             for (int i = 0; i < this.hashSize; i++)
                             {
                                 // forget history
@@ -747,13 +695,13 @@ namespace SixLabors.ZlibStream
                 this.PutShort((ushort)~len);
             }
 
-            this.PutByte(this.windowBuffer, buf, len);
+            this.PutByte(this.DynBuffers.WindowBuffer, buf, len);
         }
 
         private void Lm_init()
         {
             this.windowSize = 2 * this.wSize;
-            ushort* head = this.headPointer;
+            ushort* head = this.DynBuffers.HeadPointer;
 
             head[this.hashSize - 1] = 0;
             for (int i = 0; i < this.hashSize - 1; i++)
@@ -779,17 +727,17 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         private void PutByte(byte[] p, int start, int len)
         {
-            Buffer.BlockCopy(p, start, this.pendingBuffer, this.Pending, len);
+            Buffer.BlockCopy(p, start, this.DynBuffers.PendingBuffer, this.Pending, len);
             this.Pending += len;
         }
 
         [MethodImpl(InliningOptions.ShortMethod)]
-        private void PutByte(byte c) => this.pendingPointer[this.Pending++] = c;
+        private void PutByte(byte c) => this.DynBuffers.PendingPointer[this.Pending++] = c;
 
         [MethodImpl(InliningOptions.ShortMethod)]
         private void PutShort(int w)
         {
-            *(ushort*)&this.pendingPointer[this.Pending] = (ushort)w;
+            *(ushort*)&this.DynBuffers.PendingPointer[this.Pending] = (ushort)w;
             this.Pending += 2;
         }
 
@@ -841,7 +789,7 @@ namespace SixLabors.ZlibStream
                 return;
             }
 
-            Buffer.BlockCopy(this.pendingBuffer, this.PendingOut, strm.INextOut, strm.NextOutIndex, len);
+            Buffer.BlockCopy(this.DynBuffers.PendingBuffer, this.PendingOut, strm.INextOut, strm.NextOutIndex, len);
 
             strm.NextOutIndex += len;
             this.PendingOut += len;
@@ -911,7 +859,7 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         private bool Tr_tally_dist(int dist, int len)
         {
-            byte* pending = this.pendingPointer;
+            byte* pending = this.DynBuffers.PendingPointer;
             int dbuffindex = this.dBuf + (this.lastLit * 2);
 
             pending[dbuffindex++] = (byte)(dist >> 8);
@@ -936,7 +884,7 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         private bool Tr_tally_lit(byte c)
         {
-            byte* pending = this.pendingPointer;
+            byte* pending = this.DynBuffers.PendingPointer;
             int dbuffindex = this.dBuf + (this.lastLit * 2);
 
             pending[dbuffindex++] = 0;
@@ -971,9 +919,9 @@ namespace SixLabors.ZlibStream
             int n;
             int more; // Amount of free space at the end of the window.
 
-            byte* window = this.windowPointer;
-            ushort* head = this.headPointer;
-            ushort* prev = this.prevPointer;
+            byte* window = this.DynBuffers.WindowPointer;
+            ushort* head = this.DynBuffers.HeadPointer;
+            ushort* prev = this.DynBuffers.PrevPointer;
 
             do
             {
@@ -981,7 +929,7 @@ namespace SixLabors.ZlibStream
 
                 if (this.strStart >= this.wSize + this.wSize - MINLOOKAHEAD)
                 {
-                    Buffer.BlockCopy(this.windowBuffer, this.wSize, this.windowBuffer, 0, this.wSize);
+                    Buffer.BlockCopy(this.DynBuffers.WindowBuffer, this.wSize, this.DynBuffers.WindowBuffer, 0, this.wSize);
                     this.matchStart -= this.wSize;
                     this.strStart -= this.wSize; // we now have strstart >= MAX_DIST
                     this.blockStart -= this.wSize;
@@ -1005,7 +953,7 @@ namespace SixLabors.ZlibStream
                 //   strstart + s->lookahead <= input_size => more >= MIN_LOOKAHEAD.
                 // Otherwise, window_size == 2*WSIZE so more >= 2.
                 // If there was sliding, more >= WSIZE. So in all cases, more >= 2.
-                n = this.strm.Read_buf(this.windowBuffer, this.strStart + this.lookahead, more);
+                n = this.strm.Read_buf(this.DynBuffers.WindowBuffer, this.strStart + this.lookahead, more);
                 this.lookahead += n;
 
                 // Initialize the hash value now that we have some input:
@@ -1023,7 +971,7 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         private int Longest_match(int cur_match)
         {
-            byte* window = this.windowPointer;
+            byte* window = this.DynBuffers.WindowPointer;
 
             int chain_length = this.maxChainLength; // max hash chain length
             byte* scan = &window[this.strStart]; // current string
@@ -1062,7 +1010,7 @@ namespace SixLabors.ZlibStream
                 nice_match = this.lookahead;
             }
 
-            ushort* prev = this.prevPointer;
+            ushort* prev = this.DynBuffers.PrevPointer;
 
             do
             {

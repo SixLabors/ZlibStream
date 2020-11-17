@@ -948,7 +948,7 @@ namespace SixLabors.ZlibStream
 
             if (s.lastLit != 0)
             {
-                byte* pending = s.pendingPointer;
+                byte* pending = s.DynBuffers.PendingPointer;
 
                 do
                 {

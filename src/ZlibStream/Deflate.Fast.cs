@@ -22,9 +22,9 @@ namespace SixLabors.ZlibStream
             int hash_head; // head of the hash chain
             bool bflush; // set if current block must be flushed
 
-            byte* window = this.windowPointer;
-            ushort* head = this.headPointer;
-            ushort* prev = this.prevPointer;
+            byte* window = this.DynBuffers.WindowPointer;
+            ushort* head = this.DynBuffers.HeadPointer;
+            ushort* prev = this.DynBuffers.PrevPointer;
 
             while (true)
             {

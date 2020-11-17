@@ -26,7 +26,7 @@ namespace SixLabors.ZlibStream
             // Smallest worthy block size when not flushing or finishing. By default
             // this is 32K.This can be as small as 507 bytes for memLevel == 1., pending_buf is limited
             // to pending_buf_size, and each stored block has a 5 byte header:
-            int max_block_size = Math.Min(this.pendingBufferSize - 5, this.wSize);
+            int max_block_size = Math.Min(this.DynBuffers.PendingSize - 5, this.wSize);
             int max_start;
 
             // Copy as much as possible from input to output:
