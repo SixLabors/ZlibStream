@@ -143,6 +143,20 @@ namespace SixLabors.ZlibStream
                     // Here we take care of accumulating the previous sums.
                     w_s2 = Avx2.Add(w_s2, Avx2.ShiftLeftLogical(w_ps, 6));
 
+                    if (n >= 2)
+                    {
+                        // If there are at least two more 128-bit vectors, run a half AVX2 iteration.
+                        Vector256<byte> bytes1 = Unsafe.As<byte, Vector256<byte>>(ref bufRef);
+                        bufRef = ref Unsafe.Add(ref bufRef, Vector256<byte>.Count);
+                        n -= 2;
+
+                        w_s2 = Avx2.Add(w_s2, Avx2.ShiftLeftLogical(w_s1, 5));
+
+                        w_s1 = Avx2.Add(w_s1, Avx2.SumAbsoluteDifferences(bytes1, zero).AsUInt32());
+                        Vector256<short> mad1 = Avx2.MultiplyAddAdjacent(bytes1, mul2);
+                        w_s2 = Avx2.Add(w_s2, Avx2.MultiplyAddAdjacent(mad1, wone).AsUInt32());
+                    }
+
                     // Collapse the vectors to 128-bit so they can be carried into the SSSE3 branch.
                     v_s1 = Sse2.Add(w_s1.GetLower(), w_s1.GetUpper());
                     v_s2 = Sse2.Add(w_s2.GetLower(), w_s2.GetUpper());
