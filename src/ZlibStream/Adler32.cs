@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 #if SUPPORTS_RUNTIME_INTRINSICS
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -29,15 +30,15 @@ namespace SixLabors.ZlibStream
         private const uint NMAX = 5552;
 
 #if SUPPORTS_RUNTIME_INTRINSICS
-        private const int MinBufferSize = 64;
+        private const int MinBufferSize = 32;
+        private const byte ShuffleMaskHighToLow = 0b_11_10_11_10;
+        private const byte ShuffleMaskOddToEven = 0b_11_11_01_01;
 
         // The C# compiler emits this as a compile-time constant embedded in the PE file.
-        private static ReadOnlySpan<byte> Tap1Tap2 => new byte[]
+        private static ReadOnlySpan<sbyte> UnrollMultipliers => new sbyte[]
         {
-            64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, // tap1
-            48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, // tap2
-            32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, // tap1
-            16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 // tap2
+            32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17,
+            16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
         };
 #endif
 
@@ -65,14 +66,9 @@ namespace SixLabors.ZlibStream
             }
 
 #if SUPPORTS_RUNTIME_INTRINSICS
-            if (Avx2.IsSupported && buffer.Length >= MinBufferSize)
-            {
-                return CalculateAvx2(adler, buffer);
-            }
-
             if (Ssse3.IsSupported && buffer.Length >= MinBufferSize)
             {
-                return CalculateSse3(adler, buffer);
+                return CalculateSsse3(adler, buffer);
             }
 
             return CalculateScalar(adler, buffer);
@@ -81,316 +77,252 @@ namespace SixLabors.ZlibStream
 #endif
         }
 
-        // Based on https://github.com/chromium/chromium/blob/master/third_party/zlib/adler32_simd.c
+        // Inspired by https://github.com/chromium/chromium/blob/master/third_party/zlib/adler32_simd.c
 #if SUPPORTS_RUNTIME_INTRINSICS
         [MethodImpl(InliningOptions.ShortMethod)]
-        private static unsafe uint CalculateAvx2(uint adler, ReadOnlySpan<byte> buffer)
+        private static uint CalculateSsse3(uint adler, ReadOnlySpan<byte> buffer)
         {
             uint s1 = adler & 0xFFFF;
-            uint s2 = (adler >> 16) & 0xFFFF;
+            uint s2 = adler >> 16;
 
-            // Process the data in blocks.
-            const int BLOCK_SIZE = 64;
+            ref byte bufRef = ref MemoryMarshal.GetReference(buffer);
+            ref byte endRef = ref Unsafe.Add(ref bufRef, buffer.Length);
 
-            uint length = (uint)buffer.Length;
-            uint blocks = length / BLOCK_SIZE;
-            length -= blocks * BLOCK_SIZE;
-
-            int index = 0;
-            fixed (byte* bufferPtr = buffer)
-            fixed (byte* tapPtr = Tap1Tap2)
+            uint vectors = (uint)Unsafe.ByteOffset(ref bufRef, ref endRef) / (uint)Vector128<byte>.Count;
+            while (vectors > 0)
             {
-                index += (int)blocks * BLOCK_SIZE;
-                var localBufferPtr = bufferPtr;
+                // Process n 128-bit vectors of data. At most NMAX data bytes can be
+                // processed before s2 must be reduced modulo BASE.
+                uint n = Math.Min(vectors, NMAX / (uint)Vector128<byte>.Count);
+                vectors -= n;
 
-                // _mm_setr_epi8 on x86
-                Vector256<sbyte> tap1 = Avx.LoadVector256((sbyte*)tapPtr);
-                Vector256<sbyte> tap2 = Avx.LoadVector256((sbyte*)(tapPtr + 0x20));
-                Vector256<byte> zero = Vector256<byte>.Zero;
-                var ones = Vector256.Create((short)1);
-
-                while (blocks > 0)
+                Vector128<uint> v_s1, v_s2;
+                Vector128<short> vone;
+                if (Avx2.IsSupported && n >= 4)
                 {
-                    uint n = NMAX / BLOCK_SIZE;  /* The NMAX constraint. */
-                    if (n > blocks)
-                    {
-                        n = blocks;
-                    }
+                    // The AVX2 loop handles four 128-bit vectors (64 bytes) per iteration.
+                    Vector256<sbyte> mul2 = Unsafe.As<sbyte, Vector256<sbyte>>(ref MemoryMarshal.GetReference(UnrollMultipliers));
+                    Vector256<sbyte> mul1 = Avx2.Add(Vector256.Create((sbyte)32), mul2);
+                    Vector256<short> wone = Vector256.Create((short)1);
+                    Vector256<byte> zero = Vector256<byte>.Zero;
 
-                    blocks -= n;
-
-                    // Process n blocks of data. At most NMAX data bytes can be
-                    // processed before s2 must be reduced modulo BASE.
-                    Vector256<uint> v_ps = Vector256.CreateScalar(s1 * n);
-                    Vector256<uint> v_s2 = Vector256.CreateScalar(s2);
-                    Vector256<uint> v_s1 = Vector256<uint>.Zero;
+                    Vector256<uint> w_s1 = Vector256.CreateScalar(s1);
+                    Vector256<uint> w_s2 = Vector256.CreateScalar(s2);
+                    Vector256<uint> w_ps = Vector256<uint>.Zero;
 
                     do
                     {
                         // Load 64 input bytes.
-                        Vector256<byte> bytes1 = Avx.LoadDquVector256(localBufferPtr);
-                        Vector256<byte> bytes2 = Avx.LoadDquVector256(localBufferPtr + 0x20);
+                        Vector256<byte> bytes1 = Unsafe.As<byte, Vector256<byte>>(ref bufRef);
+                        Vector256<byte> bytes2 = Unsafe.As<byte, Vector256<byte>>(ref Unsafe.Add(ref bufRef, Vector256<byte>.Count));
+                        bufRef = ref Unsafe.Add(ref bufRef, Vector256<byte>.Count * 2);
+                        n -= 4;
 
-                        // Add previous block byte sum to v_ps.
-                        v_ps = Avx2.Add(v_ps, v_s1);
+                        // We need to accumulate the previous s1 value into s2 64 times each iteration.
+                        // Rather than duplicate the effort, we will keep a running total of the
+                        // previous sums, then multiply the whole thing by 64 and add it to s2 at the end.
+                        w_ps = Avx2.Add(w_ps, w_s1);
 
-                        // Horizontally add the bytes for s1, multiply-adds the
-                        // bytes by [ 32, 31, 30, ... ] for s2.
-                        v_s1 = Avx2.Add(v_s1, Avx2.SumAbsoluteDifferences(bytes1, zero).AsUInt32());
-                        Vector256<short> mad1 = Avx2.MultiplyAddAdjacent(bytes1, tap1);
-                        v_s2 = Avx2.Add(v_s2, Avx2.MultiplyAddAdjacent(mad1, ones).AsUInt32());
+                        // Horizontally add the bytes for s1 -- PSADBW subtracts (zero in this case) and
+                        // then sums sets of 8 adjacent bytes into 16-bit results padded to 64 bits,
+                        // which we then reinterpret as 32-bit values.
+                        // Multiply-add the bytes by [ 64, 63, 62, ... ] for s2 -- PMADDUBSW multiplies
+                        // two byte values then adds adjacent pairs into 16-bit values. Then PMADDWD
+                        // does the same with the short values, yielding one 32-bit sum for each 4
+                        // bytes multiplied by their associated positional multiplier.
+                        w_s1 = Avx2.Add(w_s1, Avx2.SumAbsoluteDifferences(bytes1, zero).AsUInt32());
+                        Vector256<short> mad1 = Avx2.MultiplyAddAdjacent(bytes1, mul1);
+                        w_s2 = Avx2.Add(w_s2, Avx2.MultiplyAddAdjacent(mad1, wone).AsUInt32());
 
-                        v_s1 = Avx2.Add(v_s1, Avx2.SumAbsoluteDifferences(bytes2, zero).AsUInt32());
-                        Vector256<short> mad2 = Avx2.MultiplyAddAdjacent(bytes2, tap2);
-                        v_s2 = Avx2.Add(v_s2, Avx2.MultiplyAddAdjacent(mad2, ones).AsUInt32());
-
-                        localBufferPtr += BLOCK_SIZE;
+                        w_s1 = Avx2.Add(w_s1, Avx2.SumAbsoluteDifferences(bytes2, zero).AsUInt32());
+                        Vector256<short> mad2 = Avx2.MultiplyAddAdjacent(bytes2, mul2);
+                        w_s2 = Avx2.Add(w_s2, Avx2.MultiplyAddAdjacent(mad2, wone).AsUInt32());
                     }
-                    while (--n > 0);
+                    while (n >= 4);
 
-                    v_s2 = Avx2.Add(v_s2, Avx2.ShiftLeftLogical(v_ps, 6));
+                    // Here we take care of accumulating the previous sums.
+                    w_s2 = Avx2.Add(w_s2, Avx2.ShiftLeftLogical(w_ps, 6));
 
-                    // Sum epi32 ints v_s1(s2) and accumulate in s1(s2).
-                    const byte S2301 = 0b1011_0001;  // A B C D -> B A D C
-                    const byte S1032 = 0b0100_1110;  // A B C D -> C D A B
+                    if (n >= 2)
+                    {
+                        // If there are at least two more 128-bit vectors, run a half AVX2 iteration.
+                        Vector256<byte> bytes1 = Unsafe.As<byte, Vector256<byte>>(ref bufRef);
+                        bufRef = ref Unsafe.Add(ref bufRef, Vector256<byte>.Count);
+                        n -= 2;
 
-                    v_s1 = Avx2.Add(v_s1, Avx2.Shuffle(v_s1, S1032));
+                        w_s2 = Avx2.Add(w_s2, Avx2.ShiftLeftLogical(w_s1, 5));
 
-                    s1 += Sse2.ConvertToUInt32(Sse2.Add(v_s1.GetLower(), v_s1.GetUpper()));
+                        w_s1 = Avx2.Add(w_s1, Avx2.SumAbsoluteDifferences(bytes1, zero).AsUInt32());
+                        Vector256<short> mad1 = Avx2.MultiplyAddAdjacent(bytes1, mul2);
+                        w_s2 = Avx2.Add(w_s2, Avx2.MultiplyAddAdjacent(mad1, wone).AsUInt32());
+                    }
 
-                    v_s2 = Avx2.Add(v_s2, Avx2.Shuffle(v_s2, S2301));
-                    v_s2 = Avx2.Add(v_s2, Avx2.Shuffle(v_s2, S1032));
-
-                    s2 = Sse2.ConvertToUInt32(Sse2.Add(v_s2.GetLower(), v_s2.GetUpper()));
-
-                    // Reduce.
-                    s1 %= BASE;
-                    s2 %= BASE;
+                    // Collapse the vectors to 128-bit so they can be carried into the SSSE3 branch.
+                    v_s1 = Sse2.Add(w_s1.GetLower(), w_s1.GetUpper());
+                    v_s2 = Sse2.Add(w_s2.GetLower(), w_s2.GetUpper());
+                    vone = wone.GetLower();
+                }
+                else
+                {
+                    // If the AVX2 loop didn't run, initialize the 128-bit vectors.
+                    v_s1 = Vector128.CreateScalar(s1);
+                    v_s2 = Vector128.CreateScalar(s2);
+                    vone = Vector128.Create((short)1);
                 }
 
-                if (length > 0)
+                if (n != 0)
                 {
-                    if (length >= 16)
-                    {
-                        s2 += s1 += localBufferPtr[0];
-                        s2 += s1 += localBufferPtr[1];
-                        s2 += s1 += localBufferPtr[2];
-                        s2 += s1 += localBufferPtr[3];
-                        s2 += s1 += localBufferPtr[4];
-                        s2 += s1 += localBufferPtr[5];
-                        s2 += s1 += localBufferPtr[6];
-                        s2 += s1 += localBufferPtr[7];
-                        s2 += s1 += localBufferPtr[8];
-                        s2 += s1 += localBufferPtr[9];
-                        s2 += s1 += localBufferPtr[10];
-                        s2 += s1 += localBufferPtr[11];
-                        s2 += s1 += localBufferPtr[12];
-                        s2 += s1 += localBufferPtr[13];
-                        s2 += s1 += localBufferPtr[14];
-                        s2 += s1 += localBufferPtr[15];
+                    // If the input length wasn't a mupliple of 64 or if AVX2 isn't supported,
+                    // process the remainder using SSSE3.
+                    Vector128<sbyte> mul2 = Unsafe.Add(ref Unsafe.As<sbyte, Vector128<sbyte>>(ref MemoryMarshal.GetReference(UnrollMultipliers)), 1);
+                    Vector128<byte> zero = Vector128<byte>.Zero;
 
-                        localBufferPtr += 16;
-                        length -= 16;
+                    if (n >= 2)
+                    {
+                        // This loop mirrors the AVX2 loop above at half the vector width.
+                        // It processes two 128-bit vectors (32 bytes) per iteration.
+                        Vector128<sbyte> mul1 = Unsafe.As<sbyte, Vector128<sbyte>>(ref MemoryMarshal.GetReference(UnrollMultipliers));
+                        Vector128<uint> v_ps = Vector128<uint>.Zero;
+
+                        do
+                        {
+                            Vector128<byte> bytes1 = Unsafe.As<byte, Vector128<byte>>(ref bufRef);
+                            Vector128<byte> bytes2 = Unsafe.As<byte, Vector128<byte>>(ref Unsafe.Add(ref bufRef, Vector128<byte>.Count));
+                            bufRef = ref Unsafe.Add(ref bufRef, Vector128<byte>.Count * 2);
+                            n -= 2;
+
+                            v_ps = Sse2.Add(v_ps, v_s1);
+
+                            v_s1 = Sse2.Add(v_s1, Sse2.SumAbsoluteDifferences(bytes1, zero).AsUInt32());
+                            Vector128<short> mad1 = Ssse3.MultiplyAddAdjacent(bytes1, mul1);
+                            v_s2 = Sse2.Add(v_s2, Sse2.MultiplyAddAdjacent(mad1, vone).AsUInt32());
+
+                            v_s1 = Sse2.Add(v_s1, Sse2.SumAbsoluteDifferences(bytes2, zero).AsUInt32());
+                            Vector128<short> mad2 = Ssse3.MultiplyAddAdjacent(bytes2, mul2);
+                            v_s2 = Sse2.Add(v_s2, Sse2.MultiplyAddAdjacent(mad2, vone).AsUInt32());
+                        }
+                        while (n >= 2);
+
+                        v_s2 = Sse2.Add(v_s2, Sse2.ShiftLeftLogical(v_ps, 5));
                     }
 
-                    while (length-- > 0)
+                    if (n != 0)
                     {
-                        s2 += s1 += *localBufferPtr++;
-                    }
+                        // If there is a trailing 128-bit vector, use a half SSSE3 iteration to finish.
+                        Vector128<byte> bytes1 = Unsafe.As<byte, Vector128<byte>>(ref bufRef);
+                        bufRef = ref Unsafe.Add(ref bufRef, Vector128<byte>.Count);
 
-                    if (s1 >= BASE)
-                    {
-                        s1 -= BASE;
-                    }
+                        v_s2 = Sse2.Add(v_s2, Sse2.ShiftLeftLogical(v_s1, 4));
 
-                    s2 %= BASE;
-                }
-
-                return s1 | (s2 << 16);
-            }
-        }
-
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private static unsafe uint CalculateSse3(uint adler, ReadOnlySpan<byte> buffer)
-        {
-            uint s1 = adler & 0xFFFF;
-            uint s2 = (adler >> 16) & 0xFFFF;
-
-            // Process the data in blocks.
-            const int BLOCK_SIZE = 32;
-
-            uint length = (uint)buffer.Length;
-            uint blocks = length / BLOCK_SIZE;
-            length -= blocks * BLOCK_SIZE;
-
-            int index = 0;
-            fixed (byte* bufferPtr = buffer)
-            fixed (byte* tapPtr = Tap1Tap2.Slice(32))
-            {
-                index += (int)blocks * BLOCK_SIZE;
-                var localBufferPtr = bufferPtr;
-
-                // _mm_setr_epi8 on x86
-                Vector128<sbyte> tap1 = Sse2.LoadVector128((sbyte*)tapPtr);
-                Vector128<sbyte> tap2 = Sse2.LoadVector128((sbyte*)(tapPtr + 0x10));
-                Vector128<byte> zero = Vector128<byte>.Zero;
-                var ones = Vector128.Create((short)1);
-
-                while (blocks > 0)
-                {
-                    uint n = NMAX / BLOCK_SIZE;  /* The NMAX constraint. */
-                    if (n > blocks)
-                    {
-                        n = blocks;
-                    }
-
-                    blocks -= n;
-
-                    // Process n blocks of data. At most NMAX data bytes can be
-                    // processed before s2 must be reduced modulo BASE.
-                    Vector128<uint> v_ps = Vector128.CreateScalar(s1 * n);
-                    Vector128<uint> v_s2 = Vector128.CreateScalar(s2);
-                    Vector128<uint> v_s1 = Vector128<uint>.Zero;
-
-                    do
-                    {
-                        // Load 32 input bytes.
-                        Vector128<byte> bytes1 = Sse3.LoadDquVector128(localBufferPtr);
-                        Vector128<byte> bytes2 = Sse3.LoadDquVector128(localBufferPtr + 0x10);
-
-                        // Add previous block byte sum to v_ps.
-                        v_ps = Sse2.Add(v_ps, v_s1);
-
-                        // Horizontally add the bytes for s1, multiply-adds the
-                        // bytes by [ 32, 31, 30, ... ] for s2.
                         v_s1 = Sse2.Add(v_s1, Sse2.SumAbsoluteDifferences(bytes1, zero).AsUInt32());
-                        Vector128<short> mad1 = Ssse3.MultiplyAddAdjacent(bytes1, tap1);
-                        v_s2 = Sse2.Add(v_s2, Sse2.MultiplyAddAdjacent(mad1, ones).AsUInt32());
-
-                        v_s1 = Sse2.Add(v_s1, Sse2.SumAbsoluteDifferences(bytes2, zero).AsUInt32());
-                        Vector128<short> mad2 = Ssse3.MultiplyAddAdjacent(bytes2, tap2);
-                        v_s2 = Sse2.Add(v_s2, Sse2.MultiplyAddAdjacent(mad2, ones).AsUInt32());
-
-                        localBufferPtr += BLOCK_SIZE;
+                        Vector128<short> mad1 = Ssse3.MultiplyAddAdjacent(bytes1, mul2);
+                        v_s2 = Sse2.Add(v_s2, Sse2.MultiplyAddAdjacent(mad1, vone).AsUInt32());
                     }
-                    while (--n > 0);
-
-                    v_s2 = Sse2.Add(v_s2, Sse2.ShiftLeftLogical(v_ps, 5));
-
-                    // Sum epi32 ints v_s1(s2) and accumulate in s1(s2).
-                    const byte S2301 = 0b1011_0001;  // A B C D -> B A D C
-                    const byte S1032 = 0b0100_1110;  // A B C D -> C D A B
-
-                    v_s1 = Sse2.Add(v_s1, Sse2.Shuffle(v_s1, S1032));
-
-                    // ToScalar isn't optimized pre .NET 5
-                    // https://github.com/dotnet/runtime/pull/37882
-                    s1 += Sse2.ConvertToUInt32(v_s1);
-
-                    v_s2 = Sse2.Add(v_s2, Sse2.Shuffle(v_s2, S2301));
-                    v_s2 = Sse2.Add(v_s2, Sse2.Shuffle(v_s2, S1032));
-
-                    s2 = Sse2.ConvertToUInt32(v_s2);
-
-                    // Reduce.
-                    s1 %= BASE;
-                    s2 %= BASE;
                 }
 
-                if (length > 0)
-                {
-                    if (length >= 16)
-                    {
-                        s2 += s1 += localBufferPtr[0];
-                        s2 += s1 += localBufferPtr[1];
-                        s2 += s1 += localBufferPtr[2];
-                        s2 += s1 += localBufferPtr[3];
-                        s2 += s1 += localBufferPtr[4];
-                        s2 += s1 += localBufferPtr[5];
-                        s2 += s1 += localBufferPtr[6];
-                        s2 += s1 += localBufferPtr[7];
-                        s2 += s1 += localBufferPtr[8];
-                        s2 += s1 += localBufferPtr[9];
-                        s2 += s1 += localBufferPtr[10];
-                        s2 += s1 += localBufferPtr[11];
-                        s2 += s1 += localBufferPtr[12];
-                        s2 += s1 += localBufferPtr[13];
-                        s2 += s1 += localBufferPtr[14];
-                        s2 += s1 += localBufferPtr[15];
+                // Horizontally sum the 2 even elements in the s1 vector.
+                // The odd elements will be zero because PSADBW outputs two 64-bit values.
+                v_s1 = Sse2.Add(v_s1, Sse2.Shuffle(v_s1, ShuffleMaskHighToLow));
+                s1 = Sse2.ConvertToUInt32(v_s1);
 
-                        localBufferPtr += 16;
-                        length -= 16;
-                    }
+                // And horizontally sum the 4 elememts in the s2 vector.
+                v_s2 = Sse2.Add(v_s2, Sse2.Shuffle(v_s2, ShuffleMaskOddToEven));
+                v_s2 = Sse2.Add(v_s2, Sse2.Shuffle(v_s2, ShuffleMaskHighToLow));
+                s2 = Sse2.ConvertToUInt32(v_s2);
 
-                    while (length-- > 0)
-                    {
-                        s2 += s1 += *localBufferPtr++;
-                    }
-
-                    if (s1 >= BASE)
-                    {
-                        s1 -= BASE;
-                    }
-
-                    s2 %= BASE;
-                }
-
-                return s1 | (s2 << 16);
+                // Reduce.
+                s1 %= BASE;
+                s2 %= BASE;
             }
+
+            // This handles at most 15 leftover bytes that didn't fit in the SIMD loop.
+            if (Unsafe.IsAddressLessThan(ref bufRef, ref endRef))
+            {
+                while (!Unsafe.IsAddressGreaterThan(ref bufRef, ref Unsafe.Subtract(ref endRef, 4)))
+                {
+                    s2 += s1 += Unsafe.Add(ref bufRef, 0);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 1);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 2);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 3);
+
+                    bufRef = ref Unsafe.Add(ref bufRef, 4);
+                }
+
+                while (Unsafe.IsAddressLessThan(ref bufRef, ref endRef))
+                {
+                    s2 += s1 += bufRef;
+                    bufRef = ref Unsafe.Add(ref bufRef, 1);
+                }
+
+                if (s1 >= BASE)
+                {
+                    s1 -= BASE;
+                }
+
+                s2 %= BASE;
+            }
+
+            return s1 | (s2 << 16);
         }
 #endif
 
         [MethodImpl(InliningOptions.ShortMethod)]
-        private static unsafe uint CalculateScalar(uint adler, ReadOnlySpan<byte> buffer)
+        private static uint CalculateScalar(uint adler, ReadOnlySpan<byte> buffer)
         {
             uint s1 = adler & 0xFFFF;
-            uint s2 = (adler >> 16) & 0xFFFF;
-            uint k;
+            uint s2 = adler >> 16;
 
-            fixed (byte* bufferPtr = buffer)
+            ref byte bufRef = ref MemoryMarshal.GetReference(buffer);
+            ref byte endRef = ref Unsafe.Add(ref bufRef, buffer.Length);
+
+            while (Unsafe.IsAddressLessThan(ref bufRef, ref endRef))
             {
-                var localBufferPtr = bufferPtr;
-                uint length = (uint)buffer.Length;
+                int blockBytes = Math.Min((int)Unsafe.ByteOffset(ref bufRef, ref endRef), (int)NMAX);
+                ref byte blockEndRef = ref Unsafe.Add(ref bufRef, blockBytes);
 
-                while (length > 0)
+                while (!Unsafe.IsAddressGreaterThan(ref bufRef, ref Unsafe.Subtract(ref blockEndRef, 16)))
                 {
-                    k = length < NMAX ? length : NMAX;
-                    length -= k;
+                    s2 += s1 += Unsafe.Add(ref bufRef, 0);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 1);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 2);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 3);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 4);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 5);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 6);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 7);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 8);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 9);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 10);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 11);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 12);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 13);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 14);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 15);
 
-                    while (k >= 16)
-                    {
-                        s2 += s1 += localBufferPtr[0];
-                        s2 += s1 += localBufferPtr[1];
-                        s2 += s1 += localBufferPtr[2];
-                        s2 += s1 += localBufferPtr[3];
-                        s2 += s1 += localBufferPtr[4];
-                        s2 += s1 += localBufferPtr[5];
-                        s2 += s1 += localBufferPtr[6];
-                        s2 += s1 += localBufferPtr[7];
-                        s2 += s1 += localBufferPtr[8];
-                        s2 += s1 += localBufferPtr[9];
-                        s2 += s1 += localBufferPtr[10];
-                        s2 += s1 += localBufferPtr[11];
-                        s2 += s1 += localBufferPtr[12];
-                        s2 += s1 += localBufferPtr[13];
-                        s2 += s1 += localBufferPtr[14];
-                        s2 += s1 += localBufferPtr[15];
-
-                        localBufferPtr += 16;
-                        k -= 16;
-                    }
-
-                    while (k-- > 0)
-                    {
-                        s2 += s1 += *localBufferPtr++;
-                    }
-
-                    s1 %= BASE;
-                    s2 %= BASE;
+                    bufRef = ref Unsafe.Add(ref bufRef, 16);
                 }
 
-                return (s2 << 16) | s1;
+                while (!Unsafe.IsAddressGreaterThan(ref bufRef, ref Unsafe.Subtract(ref blockEndRef, 4)))
+                {
+                    s2 += s1 += Unsafe.Add(ref bufRef, 0);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 1);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 2);
+                    s2 += s1 += Unsafe.Add(ref bufRef, 3);
+
+                    bufRef = ref Unsafe.Add(ref bufRef, 4);
+                }
+
+                while (Unsafe.IsAddressLessThan(ref bufRef, ref blockEndRef))
+                {
+                    s2 += s1 += bufRef;
+                    bufRef = ref Unsafe.Add(ref bufRef, 1);
+                }
+
+                s1 %= BASE;
+                s2 %= BASE;
             }
+
+            return (s2 << 16) | s1;
         }
     }
 }
