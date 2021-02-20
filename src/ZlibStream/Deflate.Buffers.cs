@@ -1,5 +1,5 @@
-// Copyright (c) Six Labors and contributors.
-// See LICENSE for more details.
+// Copyright (c) Six Labors.
+// Licensed under the Apache License, Version 2.0.
 
 using System;
 using System.Buffers;
@@ -14,7 +14,7 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Contains buffers whose lengths are defined by compile time constants.
         /// </summary>
-        public class ConstantBuffers : IDisposable
+        public class FixedLengthBuffers : IDisposable
         {
             private bool isDisposed;
 
@@ -31,9 +31,9 @@ namespace SixLabors.ZlibStream
             private MemoryHandle depthHandle;
 
             /// <summary>
-            /// Initializes a new instance of the <see cref="ConstantBuffers"/> class.
+            /// Initializes a new instance of the <see cref="FixedLengthBuffers"/> class.
             /// </summary>
-            public ConstantBuffers()
+            public FixedLengthBuffers()
             {
                 this.blCountBuffer = ArrayPool<ushort>.Shared.Rent(MAXBITS + 1);
                 this.blCountHandle = new Memory<ushort>(this.blCountBuffer).Pin();
@@ -93,7 +93,7 @@ namespace SixLabors.ZlibStream
         /// Contains buffers whose lengths are defined by parameters passed
         /// to the containing <see cref="Deflate"/> instance.
         /// </summary>
-        public class DynamicBuffers : IDisposable
+        public class DynamicLengthBuffers : IDisposable
         {
             private MemoryHandle windowHandle;
 
@@ -112,12 +112,12 @@ namespace SixLabors.ZlibStream
             private bool isDisposed;
 
             /// <summary>
-            /// Initializes a new instance of the <see cref="DynamicBuffers"/> class.
+            /// Initializes a new instance of the <see cref="DynamicLengthBuffers"/> class.
             /// </summary>
             /// <param name="wSize">The size of the sliding window.</param>
             /// <param name="hashSize">The size of the hash chain.</param>
             /// <param name="pendingSize">The size of the pending buffer.</param>
-            public DynamicBuffers(int wSize, int hashSize, int pendingSize)
+            public DynamicLengthBuffers(int wSize, int hashSize, int pendingSize)
             {
                 this.WindowBuffer = ArrayPool<byte>.Shared.Rent(wSize * 2);
                 this.windowHandle = new Memory<byte>(this.WindowBuffer).Pin();

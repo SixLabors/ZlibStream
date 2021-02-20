@@ -1,5 +1,5 @@
-// Copyright (c) Six Labors and contributors.
-// See LICENSE for more details.
+// Copyright (c) Six Labors.
+// Licensed under the Apache License, Version 2.0.
 
 namespace SixLabors.ZlibStream
 {
@@ -22,9 +22,9 @@ namespace SixLabors.ZlibStream
             int hash_head; // head of the hash chain
             bool bflush; // set if current block must be flushed
 
-            byte* window = this.DynBuffers.WindowPointer;
-            ushort* head = this.DynBuffers.HeadPointer;
-            ushort* prev = this.DynBuffers.PrevPointer;
+            byte* window = this.DynamicBuffers.WindowPointer;
+            ushort* head = this.DynamicBuffers.HeadPointer;
+            ushort* prev = this.DynamicBuffers.PrevPointer;
 
             while (true)
             {

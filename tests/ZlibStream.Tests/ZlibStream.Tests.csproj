@@ -1,15 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFrameworks>net5.0;netcoreapp3.1;netcoreapp2.1;net472</TargetFrameworks>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <DebugSymbols>True</DebugSymbols>
     <IsTestProject>True</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SharpZipLib" />
-    <PackageReference Include="zlib.managed" />
+    <PackageReference Include="SharpZipLib"  />
+    <PackageReference Include="zlib.managed"  />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,5 @@
-// Copyright (c) Six Labors and contributors.
-// See LICENSE for more details.
+// Copyright (c) Six Labors.
+// Licensed under the Apache License, Version 2.0.
 
 using System;
 using BenchmarkDotNet.Attributes;

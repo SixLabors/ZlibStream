@@ -1,5 +1,5 @@
-// Copyright (c) Six Labors and contributors.
-// See LICENSE for more details.
+// Copyright (c) Six Labors.
+// Licensed under the Apache License, Version 2.0.
 
 using System;
 using System.Runtime.CompilerServices;
@@ -407,9 +407,9 @@ namespace SixLabors.ZlibStream
             int n, m; // iterate over heap elements
             var max_code = -1; // largest code with non zero frequency
             int node; // new node being created
-            ushort* blCount = s.ConstBuffers.BlCountPointer;
-            int* heap = s.ConstBuffers.HeapPointer;
-            byte* depth = s.ConstBuffers.DepthPointer;
+            ushort* blCount = s.FixedBuffers.BlCountPointer;
+            int* heap = s.FixedBuffers.HeapPointer;
+            byte* depth = s.FixedBuffers.DepthPointer;
 
             // Construct the initial heap, with least frequent element in
             // heap[1]. The sons of heap[n] are heap[2*n] and heap[2*n+1].
@@ -512,8 +512,8 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         public static void Pqdownheap(Deflate s, DynamicTreeDesc tree, int k)
         {
-            int* heap = s.ConstBuffers.HeapPointer;
-            byte* depth = s.ConstBuffers.DepthPointer;
+            int* heap = s.FixedBuffers.HeapPointer;
+            byte* depth = s.FixedBuffers.DepthPointer;
 
             int v = heap[k];
             int heapLen = s.HeapLen;
@@ -948,7 +948,7 @@ namespace SixLabors.ZlibStream
 
             if (s.lastLit != 0)
             {
-                byte* pending = s.DynBuffers.PendingPointer;
+                byte* pending = s.DynamicBuffers.PendingPointer;
 
                 do
                 {
@@ -994,8 +994,8 @@ namespace SixLabors.ZlibStream
             int xbits; // extra bits
             ushort f; // frequency
             int overflow = 0; // number of elements with bit length too large
-            ushort* blCount = s.ConstBuffers.BlCountPointer;
-            int* heap = s.ConstBuffers.HeapPointer;
+            ushort* blCount = s.FixedBuffers.BlCountPointer;
+            int* heap = s.FixedBuffers.HeapPointer;
 
             for (bits = 0; bits <= MAXBITS; bits++)
             {

@@ -1,5 +1,5 @@
-// Copyright (c) Six Labors and contributors.
-// See LICENSE for more details.
+// Copyright (c) Six Labors.
+// Licensed under the Apache License, Version 2.0.
 
 namespace SixLabors.ZlibStream
 {
@@ -21,7 +21,7 @@ namespace SixLabors.ZlibStream
             int prev; // byte at distance one to match
             byte* scan; // scan goes up to strend for length of run
             byte* strend;
-            byte* window = this.DynBuffers.WindowPointer;
+            byte* window = this.DynamicBuffers.WindowPointer;
 
             while (true)
             {

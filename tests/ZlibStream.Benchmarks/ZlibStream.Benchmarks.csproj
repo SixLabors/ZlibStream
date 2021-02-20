@@ -1,22 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <AssemblyName>ZlibStream.Benchmarks</AssemblyName>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFrameworks>net5.0;netcoreapp3.1</TargetFrameworks>
     <IsPackable>false</IsPackable>
     <!--Used to hide test project from dotnet test-->
     <IsTestProject>false</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="BenchmarkDotNet"  />
-    <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Condition="'$(OS)' == 'Windows_NT'" />
-    <PackageReference Include="SharpZipLib"  />
-    <PackageReference Include="zlib.managed"  />
+    <PackageReference Include="BenchmarkDotNet" Version="0.12.1" />
+    <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.12.1" Condition="'$(IsWindows)'=='true'" />
+    <PackageReference Include="SharpZipLib" />
+    <PackageReference Include="zlib.managed" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="..\ZlibStream.Tests\TestUtilities\**" />
   </ItemGroup>
-  
+
 </Project>

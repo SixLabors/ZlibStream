@@ -1,5 +1,5 @@
-// Copyright (c) Six Labors and contributors.
-// See LICENSE for more details.
+// Copyright (c) Six Labors.
+// Licensed under the Apache License, Version 2.0.
 
 using System.Runtime.CompilerServices;
 
@@ -23,9 +23,9 @@ namespace SixLabors.ZlibStream
             int matchLen;
             bool last;
 
-            byte* window = this.DynBuffers.WindowPointer;
-            ushort* head = this.DynBuffers.HeadPointer;
-            ushort* prev = this.DynBuffers.PrevPointer;
+            byte* window = this.DynamicBuffers.WindowPointer;
+            ushort* head = this.DynamicBuffers.HeadPointer;
+            ushort* prev = this.DynamicBuffers.PrevPointer;
 
             fixed (Trees.CodeData* ltree = &Trees.StaticLTreeDesc.GetCodeDataReference())
             fixed (Trees.CodeData* dtree = &Trees.StaticDTreeDesc.GetCodeDataReference())
@@ -38,7 +38,7 @@ namespace SixLabors.ZlibStream
                     this.QuickStartBlock(last);
                 }
 
-                int pendingBufferSize = this.DynBuffers.PendingSize;
+                int pendingBufferSize = this.DynamicBuffers.PendingSize;
                 do
                 {
                     if (this.Pending + 12 >= pendingBufferSize)

@@ -31,6 +31,4 @@
     <InternalsVisibleTo Include="ZlibStream.Tests" Key="$(SixLaborsPublicKey)" />
   </ItemGroup>
 
-
-
 </Project>

@@ -1,5 +1,5 @@
-// Copyright (c) Six Labors and contributors.
-// See LICENSE for more details.
+// Copyright (c) Six Labors.
+// Licensed under the Apache License, Version 2.0.
 
 using System;
 using System.IO;
@@ -125,28 +125,16 @@ namespace ZlibStream.Benchmarks
         }
 
         /// <inheritdoc/>
-        public override void Flush()
-        {
-            this.deflateStream.Flush();
-        }
+        public override void Flush() => this.deflateStream.Flush();
 
         /// <inheritdoc/>
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            throw new NotSupportedException();
-        }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
         /// <inheritdoc/>
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            throw new NotSupportedException();
-        }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
 
         /// <inheritdoc/>
-        public override void SetLength(long value)
-        {
-            throw new NotSupportedException();
-        }
+        public override void SetLength(long value) => throw new NotSupportedException();
 
         /// <inheritdoc/>
         public override void Write(byte[] buffer, int offset, int count)
@@ -260,10 +248,7 @@ namespace ZlibStream.Benchmarks
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Reset()
-            {
-                this.checksum = 1;
-            }
+            public void Reset() => this.checksum = 1;
 
             /// <summary>
             /// Updates the checksum with a byte value.
