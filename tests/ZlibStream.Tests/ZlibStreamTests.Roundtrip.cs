@@ -25,15 +25,15 @@ namespace ZlibStream.Tests
         public void EncodeDecode(CompressionLevel compression)
         {
             const int count = 2 * 4096 * 4;
-            var expected = GetBuffer(count);
-            var reference = new byte[count];
-            var actual = new byte[count];
+            byte[] expected = GetBuffer(count);
+            byte[] reference = new byte[count];
+            byte[] actual = new byte[count];
 
             using (var compressed = new MemoryStream())
             {
                 using (var deflate = new ZlibOutputStream(compressed, compression))
                 {
-                    deflate.Write(expected);
+                    deflate.Write(expected, 0, expected.Length);
                 }
 
                 compressed.Position = 0;
@@ -41,14 +41,14 @@ namespace ZlibStream.Tests
                 using (var refInflate = new InflaterInputStream(compressed))
                 {
                     refInflate.IsStreamOwner = false;
-                    refInflate.Read(reference);
+                    refInflate.Read(reference, 0, reference.Length);
                 }
 
                 compressed.Position = 0;
 
                 using (var inflate = new ZlibInputStream(compressed))
                 {
-                    inflate.Read(actual);
+                    inflate.Read(actual, 0, actual.Length);
                 }
             }
 
