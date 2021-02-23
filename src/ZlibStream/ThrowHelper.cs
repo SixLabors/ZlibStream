@@ -15,6 +15,14 @@ namespace SixLabors.ZlibStream
             => throw new ArgumentNullException(paramName);
 
         [MethodImpl(InliningOptions.ColdPath)]
+        public static void ThrowRangeException(string paramName)
+            => throw new ArgumentOutOfRangeException(paramName);
+
+        [MethodImpl(InliningOptions.ColdPath)]
+        public static void ThrowBadConfigurationException()
+            => throw new ZlibStreamException("Bad Configuration.");
+
+        [MethodImpl(InliningOptions.ColdPath)]
         public static void ThrowCompressionException(bool compressing, string message)
             => throw new ZlibStreamException((compressing ? "de" : "in") + "flating: " + message);
     }

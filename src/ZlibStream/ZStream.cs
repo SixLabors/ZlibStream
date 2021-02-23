@@ -1,18 +1,32 @@
 // Copyright (c) Six Labors.
 // Licensed under the Apache License, Version 2.0.
 
+using System;
+using System.Runtime.CompilerServices;
+
 namespace SixLabors.ZlibStream
 {
-    using System;
-    using System.Runtime.CompilerServices;
-
     /// <summary>
     /// The zlib stream class.
     /// </summary>
-    internal sealed class ZStream
+    internal sealed class ZStream : IDisposable
     {
         private const int MAXWBITS = 15; // 32K LZ77 window
         private const int DEFWBITS = MAXWBITS;
+        private readonly bool compress;
+        private bool isDisposed;
+
+        public ZStream()
+        {
+            this.compress = false;
+            this.InflateInit();
+        }
+
+        public ZStream(CompressionLevel level)
+        {
+            this.compress = true;
+            this.DeflateInit(level);
+        }
 
         /// <summary>
         /// Gets or sets the next input bytes.
@@ -67,12 +81,12 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Gets or sets the current Deflate instance for this class.
         /// </summary>
-        public Deflate Dstate { get; internal set; }
+        public Deflate DeflateState { get; internal set; }
 
         /// <summary>
         /// Gets the current Inflate instance for this class.
         /// </summary>
-        public Inflate Istate { get; private set; }
+        public Inflate InflateState { get; private set; }
 
         /// <summary>
         /// Gets or sets the data type to this instance of this class.
@@ -82,30 +96,25 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Initializes decompression.
         /// </summary>
-        /// <returns>The state.</returns>
-        public CompressionState InflateInit()
+        public void InflateInit()
             => this.InflateInit(DEFWBITS);
 
         /// <summary>
         /// Initializes decompression.
         /// </summary>
-        /// <param name="w">The window size.</param>
-        /// <returns>The zlib status state.</returns>
-        public CompressionState InflateInit(int w)
-        {
-            this.Istate = new Inflate();
-            return this.Istate.InflateInit(this, w);
-        }
+        /// <param name="windowBits">The window size in bits.</param>
+        public void InflateInit(int windowBits)
+            => this.InflateState = new Inflate(this, windowBits);
 
         /// <summary>
         /// Decompresses data.
         /// </summary>
-        /// <param name="f">The flush mode to use.</param>
+        /// <param name="strategy">The flush mode to use.</param>
         /// <returns>The zlib status state.</returns>
-        public CompressionState Inflate(FlushStrategy f)
-            => this.Istate == null
+        public CompressionState Inflate(FlushStrategy strategy)
+            => this.InflateState == null
             ? CompressionState.ZSTREAMERROR
-            : ZlibStream.Inflate.Decompress(this, f);
+            : ZlibStream.Inflate.Decompress(this, strategy);
 
         /// <summary>
         /// Ends decompression.
@@ -114,13 +123,13 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         public CompressionState InflateEnd()
         {
-            if (this.Istate == null)
+            if (this.InflateState == null)
             {
                 return CompressionState.ZSTREAMERROR;
             }
 
-            CompressionState ret = this.Istate.InflateEnd(this);
-            this.Istate = null;
+            CompressionState ret = this.InflateState.InflateEnd(this);
+            this.InflateState = null;
             return ret;
         }
 
@@ -129,7 +138,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <returns>The zlib status state.</returns>
         public CompressionState InflateSync()
-            => this.Istate == null
+            => this.InflateState == null
             ? CompressionState.ZSTREAMERROR
             : ZlibStream.Inflate.InflateSync(this);
 
@@ -140,7 +149,7 @@ namespace SixLabors.ZlibStream
         /// <param name="dictLength">The dictionary length.</param>
         /// <returns>The zlib status state.</returns>
         public CompressionState InflateSetDictionary(byte[] dictionary, int dictLength)
-            => this.Istate == null
+            => this.InflateState == null
             ? CompressionState.ZSTREAMERROR
             : ZlibStream.Inflate.InflateSetDictionary(this, dictionary, dictLength);
 
@@ -148,21 +157,16 @@ namespace SixLabors.ZlibStream
         /// Initializes compression.
         /// </summary>
         /// <param name="level">The compression level to use.</param>
-        /// <returns>The zlib status state.</returns>
-        public CompressionState DeflateInit(CompressionLevel level)
+        public void DeflateInit(CompressionLevel level)
             => this.DeflateInit(level, MAXWBITS);
 
         /// <summary>
         /// Initializes compression.
         /// </summary>
         /// <param name="level">The compression level to use.</param>
-        /// <param name="bits">The window bits to use.</param>
-        /// <returns>The zlib status state.</returns>
-        public CompressionState DeflateInit(CompressionLevel level, int bits)
-        {
-            this.Dstate = new Deflate();
-            return this.Dstate.DeflateInit(this, level, bits);
-        }
+        /// <param name="windowBits">The window bits to use.</param>
+        public void DeflateInit(CompressionLevel level, int windowBits)
+            => this.DeflateState = new Deflate(this, level, windowBits);
 
         /// <summary>
         /// Compress data.
@@ -170,9 +174,9 @@ namespace SixLabors.ZlibStream
         /// <param name="flush">The flush mode to use on the data.</param>
         /// <returns>The zlib status state.</returns>
         public CompressionState Deflate(FlushStrategy flush)
-            => this.Dstate == null
+            => this.DeflateState == null
             ? CompressionState.ZSTREAMERROR
-            : this.Dstate.Compress(this, flush);
+            : this.DeflateState.Compress(this, flush);
 
         /// <summary>
         /// Ends compression.
@@ -181,13 +185,13 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         public CompressionState DeflateEnd()
         {
-            if (this.Dstate == null)
+            if (this.DeflateState == null)
             {
                 return CompressionState.ZSTREAMERROR;
             }
 
-            CompressionState ret = this.Dstate.DeflateEnd();
-            this.Dstate = null;
+            CompressionState ret = this.DeflateState.DeflateEnd();
+            this.DeflateState = null;
             return ret;
         }
 
@@ -198,9 +202,9 @@ namespace SixLabors.ZlibStream
         /// <param name="strategy">The strategy to use for compression.</param>
         /// <returns>The zlib status state.</returns>
         public CompressionState DeflateParams(CompressionLevel level, CompressionStrategy strategy)
-            => this.Dstate == null
+            => this.DeflateState == null
             ? CompressionState.ZSTREAMERROR
-            : this.Dstate.DeflateParams(this, level, strategy);
+            : this.DeflateState.DeflateParams(this, level, strategy);
 
         /// <summary>
         /// Sets the deflate dictionary.
@@ -209,19 +213,9 @@ namespace SixLabors.ZlibStream
         /// <param name="dictLength">The dictionary length.</param>
         /// <returns>The zlib status state.</returns>
         public CompressionState DeflateSetDictionary(byte[] dictionary, int dictLength)
-            => this.Dstate == null
+            => this.DeflateState == null
             ? CompressionState.ZSTREAMERROR
-            : this.Dstate.DeflateSetDictionary(this, dictionary, dictLength);
-
-        /// <summary>
-        /// Frees everything.
-        /// </summary>
-        public void Free()
-        {
-            this.INextIn = null;
-            this.INextOut = null;
-            this.Msg = null;
-        }
+            : this.DeflateState.DeflateSetDictionary(this, dictionary, dictLength);
 
         // Read a new buffer from the current input stream, update the adler32
         // and total number of bytes read.  All deflate() input goes through
@@ -229,7 +223,7 @@ namespace SixLabors.ZlibStream
         // allocating a large strm->next_in buffer and copying from it.
         // (See also flush_pending()).
         [MethodImpl(InliningOptions.ShortMethod)]
-        public int Read_buf(byte[] buf, int start, int size)
+        public int ReadBuffer(byte[] buffer, int start, int size)
         {
             int len = this.AvailIn;
 
@@ -245,15 +239,38 @@ namespace SixLabors.ZlibStream
 
             this.AvailIn -= len;
 
-            if (this.Dstate.Noheader == 0)
+            if (this.DeflateState.Noheader == 0)
             {
                 this.Adler = Adler32.Calculate(this.Adler, this.INextIn.AsSpan(this.NextInIndex, len));
             }
 
-            Buffer.BlockCopy(this.INextIn, this.NextInIndex, buf, start, len);
+            Buffer.BlockCopy(this.INextIn, this.NextInIndex, buffer, start, len);
             this.NextInIndex += len;
             this.TotalIn += len;
             return len;
+        }
+
+        /// <inheritdoc/>
+        public void Dispose() => this.Dispose(true);
+
+        private void Dispose(bool disposing)
+        {
+            if (!this.isDisposed)
+            {
+                if (disposing)
+                {
+                    if (this.compress)
+                    {
+                        this.DeflateEnd();
+                    }
+                    else
+                    {
+                        this.InflateEnd();
+                    }
+                }
+
+                this.isDisposed = true;
+            }
         }
     }
 }

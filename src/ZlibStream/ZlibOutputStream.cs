@@ -19,7 +19,7 @@ namespace SixLabors.ZlibStream
         private readonly byte[] byteBuffer = new byte[1];
         private readonly bool compress;
         private bool isFinished;
-        private ZStream zStream = new ZStream();
+        private ZStream zStream;
         private bool isDisposed;
 
         /// <summary>
@@ -32,7 +32,7 @@ namespace SixLabors.ZlibStream
             this.compress = false;
             this.BaseStream = output;
             this.InitBlock();
-            _ = this.zStream.InflateInit();
+            this.zStream = new ZStream();
         }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace SixLabors.ZlibStream
             this.compress = true;
             this.BaseStream = output;
             this.InitBlock();
-            _ = this.zStream.DeflateInit(level);
+            this.zStream = new ZStream(level);
         }
 
         /// <summary>
@@ -110,7 +110,7 @@ namespace SixLabors.ZlibStream
                 return;
             }
 
-            CompressionState err;
+            CompressionState state;
             this.zStream.INextIn = buffer;
             this.zStream.NextInIndex = offset;
             this.zStream.AvailIn = count;
@@ -119,11 +119,11 @@ namespace SixLabors.ZlibStream
                 this.zStream.INextOut = this.chunkBuffer;
                 this.zStream.NextOutIndex = 0;
                 this.zStream.AvailOut = this.bufferSize;
-                err = this.compress
+                state = this.compress
                     ? this.zStream.Deflate(this.FlushMode)
                     : this.zStream.Inflate(this.FlushMode);
 
-                if (err != CompressionState.ZOK && err != CompressionState.ZSTREAMEND)
+                if (state != CompressionState.ZOK && state != CompressionState.ZSTREAMEND)
                 {
                     ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Msg);
                 }
@@ -134,7 +134,7 @@ namespace SixLabors.ZlibStream
                     break;
                 }
 
-                if (err == CompressionState.ZSTREAMEND)
+                if (state == CompressionState.ZSTREAMEND)
                 {
                     break;
                 }
@@ -170,7 +170,8 @@ namespace SixLabors.ZlibStream
                     }
                     finally
                     {
-                        this.EndStream();
+                        this.zStream.Dispose();
+                        this.zStream = null;
                         ArrayPool<byte>.Shared.Return(this.chunkBuffer);
                     }
                 }
@@ -188,15 +189,17 @@ namespace SixLabors.ZlibStream
         {
             if (!this.isFinished)
             {
-                CompressionState err;
+                CompressionState state;
                 do
                 {
                     this.zStream.INextOut = this.chunkBuffer;
                     this.zStream.NextOutIndex = 0;
                     this.zStream.AvailOut = this.bufferSize;
-                    err = this.compress ? this.zStream.Deflate(FlushStrategy.Finish) : this.zStream.Inflate(FlushStrategy.Finish);
+                    state = this.compress
+                        ? this.zStream.Deflate(FlushStrategy.Finish)
+                        : this.zStream.Inflate(FlushStrategy.Finish);
 
-                    if (err != CompressionState.ZSTREAMEND && err != CompressionState.ZOK)
+                    if (state != CompressionState.ZSTREAMEND && state != CompressionState.ZOK)
                     {
                         ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Msg);
                     }
@@ -206,12 +209,13 @@ namespace SixLabors.ZlibStream
                         this.BaseStream.Write(this.chunkBuffer, 0, this.bufferSize - this.zStream.AvailOut);
                     }
 
-                    if (err == CompressionState.ZSTREAMEND)
+                    if (state == CompressionState.ZSTREAMEND)
                     {
                         break;
                     }
                 }
                 while (this.zStream.AvailIn > 0 || this.zStream.AvailOut == 0);
+
                 try
                 {
                     this.Flush();
@@ -221,18 +225,6 @@ namespace SixLabors.ZlibStream
                     this.isFinished = true;
                 }
             }
-        }
-
-        /// <summary>
-        /// Ends the compression or decompression on the stream.
-        /// </summary>
-        [MethodImpl(InliningOptions.ShortMethod)]
-        private void EndStream()
-        {
-            _ = this.compress ? this.zStream.DeflateEnd() : this.zStream.InflateEnd();
-
-            this.zStream.Free();
-            this.zStream = null;
         }
 
         private void InitBlock()

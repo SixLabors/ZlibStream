@@ -740,7 +740,7 @@ namespace SixLabors.ZlibStream
         }
 
         /// <summary>
-        /// Send the start of a block
+        /// Emit the start of a block
         /// </summary>
         /// <param name="s">The deflate compressor.</param>
         /// <param name="type">The block type.</param>
@@ -749,24 +749,31 @@ namespace SixLabors.ZlibStream
         public static void Tr_emit_tree(Deflate s, int type, bool eof)
             => s.Send_bits((type << 1) + (eof ? 1 : 0), 3); // send block type
 
-        // Initialize the tree data structures for a new zlib stream.
-        public static void Tr_init(Deflate s)
+        /// <summary>
+        /// Initialize the tree data structures for a new zlib stream.
+        /// </summary>
+        /// <param name="deflate">The deflate state.</param>
+        public static void Tr_init(Deflate deflate)
         {
-            s.biBuf = 0;
-            s.biValid = 0;
-            s.lastEobLen = 8; // enough lookahead for inflate
+            deflate.biBuf = 0;
+            deflate.biValid = 0;
+            deflate.lastEobLen = 8; // enough lookahead for inflate
 
             // Initialize the first block of the first file:
-            Init_block(s);
+            Init_block(deflate);
         }
 
+        /// <summary>
+        /// Initialize a new block.
+        /// </summary>
+        /// <param name="deflate">The deflate state.</param>
         [MethodImpl(InliningOptions.ShortMethod)]
-        private static void Init_block(Deflate s)
+        private static void Init_block(Deflate deflate)
         {
             // Initialize the trees.
-            DynamicTreeDesc dynLtree = s.DynLTree;
-            DynamicTreeDesc dynDtree = s.DynDTree;
-            DynamicTreeDesc blTree = s.DynBLTree;
+            DynamicTreeDesc dynLtree = deflate.DynLTree;
+            DynamicTreeDesc dynDtree = deflate.DynDTree;
+            DynamicTreeDesc blTree = deflate.DynBLTree;
 
             for (int i = 0; i < LCODES; i++)
             {
@@ -784,8 +791,8 @@ namespace SixLabors.ZlibStream
             }
 
             dynLtree[ENDBLOCK].Freq = 1;
-            s.OptLen = s.StaticLen = 0;
-            s.lastLit = s.matches = 0;
+            deflate.OptLen = deflate.StaticLen = 0;
+            deflate.lastLit = deflate.matches = 0;
         }
 
         /// <summary>

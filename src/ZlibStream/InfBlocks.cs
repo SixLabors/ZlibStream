@@ -75,7 +75,7 @@ namespace SixLabors.ZlibStream
 
         internal int Write { get; set; } // window write pointer
 
-        internal void Reset(ZStream z, long[] c)
+        internal void Reset(ZStream zStream, long[] c)
         {
             if (c != null)
             {
@@ -99,7 +99,7 @@ namespace SixLabors.ZlibStream
 
             if (this.checkfn != null)
             {
-                z.Adler = this.check = Adler32.SeedValue;
+                zStream.Adler = this.check = Adler32.SeedValue;
             }
         }
 

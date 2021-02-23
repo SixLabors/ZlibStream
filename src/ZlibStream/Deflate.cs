@@ -217,7 +217,92 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Initializes a new instance of the <see cref="Deflate"/> class.
         /// </summary>
-        internal Deflate() => this.FixedBuffers = new FixedLengthBuffers();
+        /// <param name="zStream">The zlib stream.</param>
+        /// <param name="level">The compression level to use.</param>
+        /// <param name="windowBits">The window size in bits.</param>
+        public Deflate(ZStream zStream, CompressionLevel level, int windowBits)
+            : this(
+                 zStream,
+                 level,
+                 ZDEFLATED,
+                 windowBits,
+                 DEFMEMLEVEL,
+                 CompressionStrategy.DefaultStrategy)
+        {
+        }
+
+        public Deflate(
+            ZStream zStream,
+            CompressionLevel level,
+            int method,
+            int windowBits,
+            int memLevel,
+            CompressionStrategy strategy)
+        {
+            int noheader = 0;
+            zStream.Msg = null;
+
+            if (level == CompressionLevel.DefaultCompression)
+            {
+                level = CompressionLevel.Level6;
+            }
+
+            if (level == CompressionLevel.NoCompression)
+            {
+                memLevel = DEFNOCOMPRESSIONMEMLEVEL;
+            }
+
+            if (windowBits < 0)
+            {
+                // undocumented feature: suppress zlib header
+                noheader = 1;
+                windowBits = -windowBits;
+            }
+
+            if (memLevel < 1
+                || memLevel > MAXMEMLEVEL
+                || method != ZDEFLATED
+                || windowBits < 9
+                || windowBits > 15
+                || level < CompressionLevel.NoCompression
+                || level > CompressionLevel.BestCompression
+                || strategy < CompressionStrategy.DefaultStrategy
+                || strategy > CompressionStrategy.Rle)
+            {
+                ThrowHelper.ThrowBadConfigurationException();
+            }
+
+#if USE_QUICK
+            if (level == ZlibCompressionLevel.ZBESTSPEED)
+            {
+                windowBits = 13;
+            }
+#endif
+
+            zStream.DeflateState = this;
+
+            this.Noheader = noheader;
+            this.wBits = windowBits;
+            this.wSize = 1 << this.wBits;
+            this.wMask = this.wSize - 1;
+
+            this.hashBits = memLevel + 7;
+            this.hashSize = 1 << this.hashBits;
+            this.hashMask = (uint)this.hashSize - 1;
+
+            this.litBufsize = 1 << (memLevel + 6); // 16K elements by default
+            this.dBuf = this.litBufsize;
+            this.lBuf = (1 + 2) * this.litBufsize;
+
+            this.level = level;
+            this.strategy = strategy;
+            this.method = (byte)method;
+
+            this.FixedBuffers = new FixedLengthBuffers();
+            this.DynamicBuffers = new DynamicLengthBuffers(this.wSize, this.hashSize, this.litBufsize * 4);
+
+            this.DeflateReset(zStream);
+        }
 
         internal int Pending { get; set; } // nb of bytes in the pending buffer
 
@@ -255,90 +340,11 @@ namespace SixLabors.ZlibStream
         /// </summary>
         internal Trees.DynamicTreeDesc DynDTree { get; } = new Trees.DynamicTreeDesc((2 * DCODES) + 1);
 
-        public CompressionState DeflateInit(ZStream strm, CompressionLevel level, int bits)
-            => this.DeflateInit2(
-                strm,
-                level,
-                ZDEFLATED,
-                bits,
-                DEFMEMLEVEL,
-                CompressionStrategy.DefaultStrategy);
-
-        public CompressionState DeflateInit2(
-            ZStream strm,
-            CompressionLevel level,
-            int method,
-            int windowBits,
-            int memLevel,
-            CompressionStrategy strategy)
-        {
-            int noheader = 0;
-            strm.Msg = null;
-
-            if (level == CompressionLevel.DefaultCompression)
-            {
-                level = CompressionLevel.Level6;
-            }
-
-            if (level == CompressionLevel.NoCompression)
-            {
-                memLevel = DEFNOCOMPRESSIONMEMLEVEL;
-            }
-
-            if (windowBits < 0)
-            {
-                // undocumented feature: suppress zlib header
-                noheader = 1;
-                windowBits = -windowBits;
-            }
-
-            if (memLevel < 1
-                || memLevel > MAXMEMLEVEL
-                || method != ZDEFLATED
-                || windowBits < 9
-                || windowBits > 15
-                || level < CompressionLevel.NoCompression
-                || level > CompressionLevel.BestCompression
-                || strategy < CompressionStrategy.DefaultStrategy
-                || strategy > CompressionStrategy.Rle)
-            {
-                return CompressionState.ZSTREAMERROR;
-            }
-
-#if USE_QUICK
-            if (level == ZlibCompressionLevel.ZBESTSPEED)
-            {
-                windowBits = 13;
-            }
-#endif
-
-            strm.Dstate = this;
-
-            this.Noheader = noheader;
-            this.wBits = windowBits;
-            this.wSize = 1 << this.wBits;
-            this.wMask = this.wSize - 1;
-
-            this.hashBits = memLevel + 7;
-            this.hashSize = 1 << this.hashBits;
-            this.hashMask = (uint)this.hashSize - 1;
-
-            this.litBufsize = 1 << (memLevel + 6); // 16K elements by default
-            this.dBuf = this.litBufsize;
-            this.lBuf = (1 + 2) * this.litBufsize;
-
-            this.level = level;
-            this.strategy = strategy;
-            this.method = (byte)method;
-
-            this.DynamicBuffers = new DynamicLengthBuffers(this.wSize, this.hashSize, this.litBufsize * 4);
-
-            return this.DeflateReset(strm);
-        }
-
         public CompressionState DeflateEnd()
         {
-            if (this.status != INITSTATE && this.status != BUSYSTATE && this.status != FINISHSTATE)
+            if (this.status != INITSTATE
+                && this.status != BUSYSTATE
+                && this.status != FINISHSTATE)
             {
                 return CompressionState.ZSTREAMERROR;
             }
@@ -693,6 +699,9 @@ namespace SixLabors.ZlibStream
             this.PutByte(this.DynamicBuffers.WindowBuffer, buf, len);
         }
 
+        /// <summary>
+        /// Initialize the "longest match" routines for a new zlib stream.
+        /// </summary>
         private void Lm_init()
         {
             this.windowSize = 2 * this.wSize;
@@ -820,7 +829,7 @@ namespace SixLabors.ZlibStream
             return cur;
         }
 
-        private CompressionState DeflateReset(ZStream strm)
+        private void DeflateReset(ZStream strm)
         {
             strm.TotalIn = strm.TotalOut = 0;
             strm.Msg = null;
@@ -841,7 +850,6 @@ namespace SixLabors.ZlibStream
 
             Trees.Tr_init(this);
             this.Lm_init();
-            return CompressionState.ZOK;
         }
 
         /// <summary>
@@ -948,7 +956,7 @@ namespace SixLabors.ZlibStream
                 //   strstart + s->lookahead <= input_size => more >= MIN_LOOKAHEAD.
                 // Otherwise, window_size == 2*WSIZE so more >= 2.
                 // If there was sliding, more >= WSIZE. So in all cases, more >= 2.
-                n = this.strm.Read_buf(this.DynamicBuffers.WindowBuffer, this.strStart + this.lookahead, more);
+                n = this.strm.ReadBuffer(this.DynamicBuffers.WindowBuffer, this.strStart + this.lookahead, more);
                 this.lookahead += n;
 
                 // Initialize the hash value now that we have some input:
