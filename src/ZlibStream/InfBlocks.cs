@@ -1,10 +1,10 @@
 // Copyright (c) Six Labors.
 // Licensed under the Apache License, Version 2.0.
 
+using System;
+
 namespace SixLabors.ZlibStream
 {
-    using System;
-
     internal sealed class InfBlocks
     {
         // Table for deflate from PKZIP's appnote.txt.
@@ -213,8 +213,11 @@ namespace SixLabors.ZlibStream
                             z.Msg = "invalid block type";
                             r = CompressionState.ZDATAERROR;
 
-                            this.Bitb = b; this.Bitk = k;
-                            z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                            this.Bitb = b;
+                            this.Bitk = k;
+                            z.AvailIn = n;
+                            z.TotalIn += p - z.NextInIndex;
+                            z.NextInIndex = p;
                             this.Write = q;
                             return this.Inflate_flush(z, r);
                         }
@@ -324,8 +327,10 @@ namespace SixLabors.ZlibStream
                         }
 
                         Buffer.BlockCopy(z.INextIn, p, this.Window, q, t);
-                        p += t; n -= t;
-                        q += t; m -= t;
+                        p += t;
+                        n -= t;
+                        q += t;
+                        m -= t;
                         if ((this.left -= t) != 0)
                         {
                             break;
@@ -597,8 +602,11 @@ namespace SixLabors.ZlibStream
                         goto case CODES;
 
                     case CODES:
-                        this.Bitb = b; this.Bitk = k;
-                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                        this.Bitb = b;
+                        this.Bitk = k;
+                        z.AvailIn = n;
+                        z.TotalIn += p - z.NextInIndex;
+                        z.NextInIndex = p;
                         this.Write = q;
 
                         if ((r = this.codes.Proc(this, z, r)) != CompressionState.ZSTREAMEND)
@@ -609,8 +617,12 @@ namespace SixLabors.ZlibStream
                         r = CompressionState.ZOK;
                         InfCodes.Free();
 
-                        p = z.NextInIndex; n = z.AvailIn; b = this.Bitb; k = this.Bitk;
-                        q = this.Write; m = q < this.Read ? this.Read - q - 1 : this.End - q;
+                        p = z.NextInIndex;
+                        n = z.AvailIn;
+                        b = this.Bitb;
+                        k = this.Bitk;
+                        q = this.Write;
+                        m = q < this.Read ? this.Read - q - 1 : this.End - q;
 
                         if (this.last == 0)
                         {
@@ -624,7 +636,8 @@ namespace SixLabors.ZlibStream
                     case DRY:
                         this.Write = q;
                         r = this.Inflate_flush(z, r);
-                        q = this.Write; m = q < this.Read ? this.Read - q - 1 : this.End - q;
+                        q = this.Write;
+                        m = q < this.Read ? this.Read - q - 1 : this.End - q;
                         if (this.Read != this.Write)
                         {
                             this.Bitb = b;
@@ -642,24 +655,33 @@ namespace SixLabors.ZlibStream
                     case DONE:
                         r = CompressionState.ZSTREAMEND;
 
-                        this.Bitb = b; this.Bitk = k;
-                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                        this.Bitb = b;
+                        this.Bitk = k;
+                        z.AvailIn = n;
+                        z.TotalIn += p - z.NextInIndex;
+                        z.NextInIndex = p;
                         this.Write = q;
                         return this.Inflate_flush(z, r);
 
                     case BAD:
                         r = CompressionState.ZDATAERROR;
 
-                        this.Bitb = b; this.Bitk = k;
-                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                        this.Bitb = b;
+                        this.Bitk = k;
+                        z.AvailIn = n;
+                        z.TotalIn += p - z.NextInIndex;
+                        z.NextInIndex = p;
                         this.Write = q;
                         return this.Inflate_flush(z, r);
 
                     default:
                         r = CompressionState.ZSTREAMERROR;
 
-                        this.Bitb = b; this.Bitk = k;
-                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                        this.Bitb = b;
+                        this.Bitk = k;
+                        z.AvailIn = n;
+                        z.TotalIn += p - z.NextInIndex;
+                        z.NextInIndex = p;
                         this.Write = q;
                         return this.Inflate_flush(z, r);
                 }

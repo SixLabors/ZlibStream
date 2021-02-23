@@ -1,14 +1,14 @@
 // Copyright (c) Six Labors.
 // Licensed under the Apache License, Version 2.0.
 
-namespace SixLabors.ZlibStream
-{
-    using System;
-    using System.IO;
+using System;
+using System.IO;
 #if SUPPORTS_SERIALIZATION
-    using System.Runtime.Serialization;
+using System.Runtime.Serialization;
 #endif
 
+namespace SixLabors.ZlibStream
+{
     /// <summary>
     /// The exception that is thrown when an Zlib error occurs.
     /// </summary>

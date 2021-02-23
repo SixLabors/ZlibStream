@@ -1,10 +1,10 @@
 // Copyright (c) Six Labors.
 // Licensed under the Apache License, Version 2.0.
 
+using System;
+
 namespace SixLabors.ZlibStream
 {
-    using System;
-
     internal static class InfTree
     {
         internal const int FixedBl = 9;
