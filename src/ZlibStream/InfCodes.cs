@@ -109,7 +109,7 @@ namespace SixLabors.ZlibStream
 
             // load input, output, bit values
             p = z.NextInIndex;
-            n = z.AvailIn;
+            n = z.AvailableIn;
             b = s.Bitb;
             k = s.Bitk;
             q = s.Write;
@@ -128,7 +128,7 @@ namespace SixLabors.ZlibStream
                 {
                     // max bits for literal/length code
                     n--;
-                    b |= (z.INextIn[p++] & 0xff) << k;
+                    b |= (z.NextIn[p++] & 0xff) << k;
                     k += 8;
                 }
 
@@ -163,7 +163,7 @@ namespace SixLabors.ZlibStream
                         {
                             // max bits for distance code
                             n--;
-                            b |= (z.INextIn[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -185,7 +185,7 @@ namespace SixLabors.ZlibStream
                                 {
                                     // get extra bits (up to 13)
                                     n--;
-                                    b |= (z.INextIn[p++] & 0xff) << k;
+                                    b |= (z.NextIn[p++] & 0xff) << k;
                                     k += 8;
                                 }
 
@@ -279,7 +279,7 @@ namespace SixLabors.ZlibStream
                             {
                                 z.Message = "invalid distance code";
 
-                                c = z.AvailIn - n;
+                                c = z.AvailableIn - n;
                                 c = (k >> 3) < c ? k >> 3 : c;
                                 n += c;
                                 p -= c;
@@ -287,7 +287,7 @@ namespace SixLabors.ZlibStream
 
                                 s.Bitb = b;
                                 s.Bitk = k;
-                                z.AvailIn = n;
+                                z.AvailableIn = n;
                                 z.TotalIn += p - z.NextInIndex;
                                 z.NextInIndex = p;
                                 s.Write = q;
@@ -315,7 +315,7 @@ namespace SixLabors.ZlibStream
                     }
                     else if ((e & 32) != 0)
                     {
-                        c = z.AvailIn - n;
+                        c = z.AvailableIn - n;
                         c = (k >> 3) < c ? k >> 3 : c;
                         n += c;
                         p -= c;
@@ -323,7 +323,7 @@ namespace SixLabors.ZlibStream
 
                         s.Bitb = b;
                         s.Bitk = k;
-                        z.AvailIn = n;
+                        z.AvailableIn = n;
                         z.TotalIn += p - z.NextInIndex;
                         z.NextInIndex = p;
                         s.Write = q;
@@ -334,7 +334,7 @@ namespace SixLabors.ZlibStream
                     {
                         z.Message = "invalid literal/length code";
 
-                        c = z.AvailIn - n;
+                        c = z.AvailableIn - n;
                         c = (k >> 3) < c ? k >> 3 : c;
                         n += c;
                         p -= c;
@@ -342,7 +342,7 @@ namespace SixLabors.ZlibStream
 
                         s.Bitb = b;
                         s.Bitk = k;
-                        z.AvailIn = n;
+                        z.AvailableIn = n;
                         z.TotalIn += p - z.NextInIndex;
                         z.NextInIndex = p;
                         s.Write = q;
@@ -355,7 +355,7 @@ namespace SixLabors.ZlibStream
             while (m >= 258 && n >= 10);
 
             // not enough input or output--restore pointers and return
-            c = z.AvailIn - n;
+            c = z.AvailableIn - n;
             c = (k >> 3) < c ? k >> 3 : c;
             n += c;
             p -= c;
@@ -363,7 +363,7 @@ namespace SixLabors.ZlibStream
 
             s.Bitb = b;
             s.Bitk = k;
-            z.AvailIn = n;
+            z.AvailableIn = n;
             z.TotalIn += p - z.NextInIndex;
             z.NextInIndex = p;
             s.Write = q;
@@ -388,7 +388,7 @@ namespace SixLabors.ZlibStream
 
             // copy input/output information to locals (UPDATE macro restores)
             p = z.NextInIndex;
-            n = z.AvailIn;
+            n = z.AvailableIn;
             b = s.Bitb;
             k = s.Bitk;
             q = s.Write;
@@ -405,14 +405,14 @@ namespace SixLabors.ZlibStream
                         {
                             s.Bitb = b;
                             s.Bitk = k;
-                            z.AvailIn = n;
+                            z.AvailableIn = n;
                             z.TotalIn += p - z.NextInIndex;
                             z.NextInIndex = p;
                             s.Write = q;
                             r = Inflate_fast(this.Lbits, this.Dbits, this.Ltree, this.LtreeIndex, this.Dtree, this.DtreeIndex, s, z);
 
                             p = z.NextInIndex;
-                            n = z.AvailIn;
+                            n = z.AvailableIn;
                             b = s.Bitb;
                             k = s.Bitk;
                             q = s.Write;
@@ -445,7 +445,7 @@ namespace SixLabors.ZlibStream
                             {
                                 s.Bitb = b;
                                 s.Bitk = k;
-                                z.AvailIn = n;
+                                z.AvailableIn = n;
                                 z.TotalIn += p - z.NextInIndex;
                                 z.NextInIndex = p;
                                 s.Write = q;
@@ -453,7 +453,7 @@ namespace SixLabors.ZlibStream
                             }
 
                             n--;
-                            b |= (z.INextIn[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -501,7 +501,7 @@ namespace SixLabors.ZlibStream
                         r = CompressionState.ZDATAERROR;
 
                         s.Bitb = b; s.Bitk = k;
-                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                        z.AvailableIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
                         s.Write = q;
                         return s.Inflate_flush(z, r);
 
@@ -518,7 +518,7 @@ namespace SixLabors.ZlibStream
                             {
                                 s.Bitb = b;
                                 s.Bitk = k;
-                                z.AvailIn = n;
+                                z.AvailableIn = n;
                                 z.TotalIn += p - z.NextInIndex;
                                 z.NextInIndex = p;
                                 s.Write = q;
@@ -526,7 +526,7 @@ namespace SixLabors.ZlibStream
                             }
 
                             n--;
-                            b |= (z.INextIn[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -554,7 +554,7 @@ namespace SixLabors.ZlibStream
                             {
                                 s.Bitb = b;
                                 s.Bitk = k;
-                                z.AvailIn = n;
+                                z.AvailableIn = n;
                                 z.TotalIn += p - z.NextInIndex;
                                 z.NextInIndex = p;
                                 s.Write = q;
@@ -562,7 +562,7 @@ namespace SixLabors.ZlibStream
                             }
 
                             n--;
-                            b |= (z.INextIn[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -594,7 +594,7 @@ namespace SixLabors.ZlibStream
                         r = CompressionState.ZDATAERROR;
 
                         s.Bitb = b; s.Bitk = k;
-                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                        z.AvailableIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
                         s.Write = q;
                         return s.Inflate_flush(z, r);
 
@@ -611,7 +611,7 @@ namespace SixLabors.ZlibStream
                             {
                                 s.Bitb = b;
                                 s.Bitk = k;
-                                z.AvailIn = n;
+                                z.AvailableIn = n;
                                 z.TotalIn += p - z.NextInIndex;
                                 z.NextInIndex = p;
                                 s.Write = q;
@@ -619,7 +619,7 @@ namespace SixLabors.ZlibStream
                             }
 
                             n--;
-                            b |= (z.INextIn[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -666,7 +666,7 @@ namespace SixLabors.ZlibStream
                                     {
                                         s.Bitb = b;
                                         s.Bitk = k;
-                                        z.AvailIn = n;
+                                        z.AvailableIn = n;
                                         z.TotalIn += p - z.NextInIndex;
                                         z.NextInIndex = p;
                                         s.Write = q;
@@ -715,7 +715,7 @@ namespace SixLabors.ZlibStream
                                 {
                                     s.Bitb = b;
                                     s.Bitk = k;
-                                    z.AvailIn = n;
+                                    z.AvailableIn = n;
                                     z.TotalIn += p - z.NextInIndex;
                                     z.NextInIndex = p;
                                     s.Write = q;
@@ -747,7 +747,7 @@ namespace SixLabors.ZlibStream
                         {
                             s.Bitb = b;
                             s.Bitk = k;
-                            z.AvailIn = n;
+                            z.AvailableIn = n;
                             z.TotalIn += p - z.NextInIndex;
                             z.NextInIndex = p;
                             s.Write = q;
@@ -760,7 +760,7 @@ namespace SixLabors.ZlibStream
                     case END:
                         r = CompressionState.ZSTREAMEND;
                         s.Bitb = b; s.Bitk = k;
-                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                        z.AvailableIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
                         s.Write = q;
                         return s.Inflate_flush(z, r);
 
@@ -769,7 +769,7 @@ namespace SixLabors.ZlibStream
                         r = CompressionState.ZDATAERROR;
 
                         s.Bitb = b; s.Bitk = k;
-                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                        z.AvailableIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
                         s.Write = q;
                         return s.Inflate_flush(z, r);
 
@@ -777,7 +777,7 @@ namespace SixLabors.ZlibStream
                         r = CompressionState.ZSTREAMERROR;
 
                         s.Bitb = b; s.Bitk = k;
-                        z.AvailIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
+                        z.AvailableIn = n; z.TotalIn += p - z.NextInIndex; z.NextInIndex = p;
                         s.Write = q;
                         return s.Inflate_flush(z, r);
                 }

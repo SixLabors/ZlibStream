@@ -38,26 +38,21 @@ namespace SixLabors.ZlibStream
         /// <param name="windowBits">The window size in bits.</param>
         public Inflate(ZStream zStream, int windowBits)
         {
-            zStream.Message = null;
-            this.Blocks = null;
-
-            // handle undocumented nowrap option (no zlib header or check)
-            this.Nowrap = 0;
+            // Handle undocumented nowrap option (no zlib header or check)
             if (windowBits < 0)
             {
                 windowBits = -windowBits;
-                this.Nowrap = 1;
+                this.NoWrap = true;
             }
 
-            // set window size
+            // Set window size
             if (windowBits < 8 || windowBits > 15)
             {
-                _ = this.InflateEnd(zStream);
                 ThrowHelper.ThrowArgumentRangeException(nameof(windowBits));
             }
 
             this.WindowBits = windowBits;
-            this.Blocks = new InfBlocks(zStream, this.Nowrap != 0 ? null : this, 1 << windowBits);
+            this.Blocks = new InfBlocks(zStream, !this.NoWrap, 1 << windowBits);
 
             // Reset state
             InflateReset(zStream, this);
@@ -77,7 +72,7 @@ namespace SixLabors.ZlibStream
         internal int Marker { get; private set; }
 
         // mode independent information
-        internal int Nowrap { get; private set; } // flag for no wrapper
+        internal bool NoWrap { get; private set; } // flag for no wrapper
 
         internal int WindowBits { get; private set; } // log2(window size)  (8..15, defaults to 15)
 
@@ -97,252 +92,252 @@ namespace SixLabors.ZlibStream
 
             zStream.TotalIn = zStream.TotalOut = 0;
             zStream.Message = null;
-            inflate.Mode = inflate.Nowrap != 0 ? BLOCKS : METHOD;
+            inflate.Mode = inflate.NoWrap ? BLOCKS : METHOD;
             inflate.Blocks.Reset(zStream, null);
         }
 
-        internal static CompressionState Decompress(ZStream z, FlushStrategy f)
+        internal static CompressionState Decompress(ZStream zStream, FlushStrategy strategy)
         {
-            CompressionState r;
+            CompressionState state;
             int b;
 
-            if (z == null || z.InflateState == null || z.INextIn == null)
+            if (zStream == null || zStream.InflateState == null || zStream.NextIn == null)
             {
                 return CompressionState.ZSTREAMERROR;
             }
 
             // f = f == ZlibFlushStrategy.ZFINISH ? ZlibCompressionState.ZBUFERROR : ZlibCompressionState.ZOK;
-            r = CompressionState.ZBUFERROR;
+            state = CompressionState.ZBUFERROR;
             while (true)
             {
                 // System.out.println("mode: "+z.istate.mode);
-                switch (z.InflateState.Mode)
+                switch (zStream.InflateState.Mode)
                 {
                     case METHOD:
 
-                        if (z.AvailIn == 0)
+                        if (zStream.AvailableIn == 0)
                         {
-                            return r;
+                            return state;
                         }
 
-                        r = f == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
-                        z.AvailIn--;
-                        z.TotalIn++;
-                        if (((z.InflateState.Method = z.INextIn[z.NextInIndex++]) & 0xf) != ZDEFLATED)
+                        zStream.AvailableIn--;
+                        zStream.TotalIn++;
+                        if (((zStream.InflateState.Method = zStream.NextIn[zStream.NextInIndex++]) & 0xf) != ZDEFLATED)
                         {
-                            z.InflateState.Mode = BAD;
-                            z.Message = "unknown compression method";
-                            z.InflateState.Marker = 5; // can't try inflateSync
+                            zStream.InflateState.Mode = BAD;
+                            zStream.Message = "unknown compression method";
+                            zStream.InflateState.Marker = 5; // can't try inflateSync
                             break;
                         }
 
-                        if ((z.InflateState.Method >> 4) + 8 > z.InflateState.WindowBits)
+                        if ((zStream.InflateState.Method >> 4) + 8 > zStream.InflateState.WindowBits)
                         {
-                            z.InflateState.Mode = BAD;
-                            z.Message = "invalid window size";
-                            z.InflateState.Marker = 5; // can't try inflateSync
+                            zStream.InflateState.Mode = BAD;
+                            zStream.Message = "invalid window size";
+                            zStream.InflateState.Marker = 5; // can't try inflateSync
                             break;
                         }
 
-                        z.InflateState.Mode = FLAG;
+                        zStream.InflateState.Mode = FLAG;
                         goto case FLAG;
 
                     case FLAG:
 
-                        if (z.AvailIn == 0)
+                        if (zStream.AvailableIn == 0)
                         {
-                            return r;
+                            return state;
                         }
 
-                        r = f == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
-                        z.AvailIn--;
-                        z.TotalIn++;
-                        b = z.INextIn[z.NextInIndex++] & 0xff;
+                        zStream.AvailableIn--;
+                        zStream.TotalIn++;
+                        b = zStream.NextIn[zStream.NextInIndex++] & 0xff;
 
-                        if ((((z.InflateState.Method << 8) + b) % 31) != 0)
+                        if ((((zStream.InflateState.Method << 8) + b) % 31) != 0)
                         {
-                            z.InflateState.Mode = BAD;
-                            z.Message = "incorrect header check";
-                            z.InflateState.Marker = 5; // can't try inflateSync
+                            zStream.InflateState.Mode = BAD;
+                            zStream.Message = "incorrect header check";
+                            zStream.InflateState.Marker = 5; // can't try inflateSync
                             break;
                         }
 
                         if ((b & PRESETDICT) == 0)
                         {
-                            z.InflateState.Mode = BLOCKS;
+                            zStream.InflateState.Mode = BLOCKS;
                             break;
                         }
 
-                        z.InflateState.Mode = DICT4;
+                        zStream.InflateState.Mode = DICT4;
                         goto case DICT4;
 
                     case DICT4:
 
-                        if (z.AvailIn == 0)
+                        if (zStream.AvailableIn == 0)
                         {
-                            return r;
+                            return state;
                         }
 
-                        r = f == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
-                        z.AvailIn--;
-                        z.TotalIn++;
-                        z.InflateState.Need = ((z.INextIn[z.NextInIndex++] & 0xff) << 24) & unchecked((int)0xff000000L);
-                        z.InflateState.Mode = DICT3;
+                        zStream.AvailableIn--;
+                        zStream.TotalIn++;
+                        zStream.InflateState.Need = ((zStream.NextIn[zStream.NextInIndex++] & 0xff) << 24) & unchecked((int)0xff000000L);
+                        zStream.InflateState.Mode = DICT3;
                         goto case DICT3;
 
                     case DICT3:
 
-                        if (z.AvailIn == 0)
+                        if (zStream.AvailableIn == 0)
                         {
-                            return r;
+                            return state;
                         }
 
-                        r = f == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
-                        z.AvailIn--;
-                        z.TotalIn++;
-                        z.InflateState.Need += ((z.INextIn[z.NextInIndex++] & 0xff) << 16) & 0xff0000L;
-                        z.InflateState.Mode = DICT2;
+                        zStream.AvailableIn--;
+                        zStream.TotalIn++;
+                        zStream.InflateState.Need += ((zStream.NextIn[zStream.NextInIndex++] & 0xff) << 16) & 0xff0000L;
+                        zStream.InflateState.Mode = DICT2;
                         goto case DICT2;
 
                     case DICT2:
 
-                        if (z.AvailIn == 0)
+                        if (zStream.AvailableIn == 0)
                         {
-                            return r;
+                            return state;
                         }
 
-                        r = f == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
-                        z.AvailIn--;
-                        z.TotalIn++;
-                        z.InflateState.Need += ((z.INextIn[z.NextInIndex++] & 0xff) << 8) & 0xff00L;
-                        z.InflateState.Mode = DICT1;
+                        zStream.AvailableIn--;
+                        zStream.TotalIn++;
+                        zStream.InflateState.Need += ((zStream.NextIn[zStream.NextInIndex++] & 0xff) << 8) & 0xff00L;
+                        zStream.InflateState.Mode = DICT1;
                         goto case DICT1;
 
                     case DICT1:
 
-                        if (z.AvailIn == 0)
+                        if (zStream.AvailableIn == 0)
                         {
-                            return r;
+                            return state;
                         }
 
-                        r = f == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
-                        z.AvailIn--;
-                        z.TotalIn++;
-                        z.InflateState.Need += z.INextIn[z.NextInIndex++] & 0xffL;
-                        z.Adler = (uint)z.InflateState.Need;
-                        z.InflateState.Mode = DICT0;
+                        zStream.AvailableIn--;
+                        zStream.TotalIn++;
+                        zStream.InflateState.Need += zStream.NextIn[zStream.NextInIndex++] & 0xffL;
+                        zStream.Adler = (uint)zStream.InflateState.Need;
+                        zStream.InflateState.Mode = DICT0;
                         return CompressionState.ZNEEDDICT;
 
                     case DICT0:
-                        z.InflateState.Mode = BAD;
-                        z.Message = "need dictionary";
-                        z.InflateState.Marker = 0; // can try inflateSync
+                        zStream.InflateState.Mode = BAD;
+                        zStream.Message = "need dictionary";
+                        zStream.InflateState.Marker = 0; // can try inflateSync
                         return CompressionState.ZSTREAMERROR;
 
                     case BLOCKS:
 
-                        r = z.InflateState.Blocks.Proc(z, r);
-                        if (r == CompressionState.ZDATAERROR)
+                        state = zStream.InflateState.Blocks.Proc(zStream, state);
+                        if (state == CompressionState.ZDATAERROR)
                         {
-                            z.InflateState.Mode = BAD;
-                            z.InflateState.Marker = 0; // can try inflateSync
+                            zStream.InflateState.Mode = BAD;
+                            zStream.InflateState.Marker = 0; // can try inflateSync
                             break;
                         }
 
-                        if (r == CompressionState.ZOK)
+                        if (state == CompressionState.ZOK)
                         {
-                            r = f == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                            state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
                         }
 
-                        if (r != CompressionState.ZSTREAMEND)
+                        if (state != CompressionState.ZSTREAMEND)
                         {
-                            return r;
+                            return state;
                         }
 
-                        r = f == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
-                        z.InflateState.Blocks.Reset(z, z.InflateState.Was);
-                        if (z.InflateState.Nowrap != 0)
+                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        zStream.InflateState.Blocks.Reset(zStream, zStream.InflateState.Was);
+                        if (zStream.InflateState.NoWrap)
                         {
-                            z.InflateState.Mode = DONE;
+                            zStream.InflateState.Mode = DONE;
                             break;
                         }
 
-                        z.InflateState.Mode = CHECK4;
+                        zStream.InflateState.Mode = CHECK4;
                         goto case CHECK4;
 
                     case CHECK4:
 
-                        if (z.AvailIn == 0)
+                        if (zStream.AvailableIn == 0)
                         {
-                            return r;
+                            return state;
                         }
 
-                        r = f == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
-                        z.AvailIn--;
-                        z.TotalIn++;
-                        z.InflateState.Need = ((z.INextIn[z.NextInIndex++] & 0xff) << 24) & unchecked((int)0xff000000L);
-                        z.InflateState.Mode = CHECK3;
+                        zStream.AvailableIn--;
+                        zStream.TotalIn++;
+                        zStream.InflateState.Need = ((zStream.NextIn[zStream.NextInIndex++] & 0xff) << 24) & unchecked((int)0xff000000L);
+                        zStream.InflateState.Mode = CHECK3;
                         goto case CHECK3;
 
                     case CHECK3:
 
-                        if (z.AvailIn == 0)
+                        if (zStream.AvailableIn == 0)
                         {
-                            return r;
+                            return state;
                         }
 
-                        r = f == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
-                        z.AvailIn--;
-                        z.TotalIn++;
-                        z.InflateState.Need += ((z.INextIn[z.NextInIndex++] & 0xff) << 16) & 0xff0000L;
-                        z.InflateState.Mode = CHECK2;
+                        zStream.AvailableIn--;
+                        zStream.TotalIn++;
+                        zStream.InflateState.Need += ((zStream.NextIn[zStream.NextInIndex++] & 0xff) << 16) & 0xff0000L;
+                        zStream.InflateState.Mode = CHECK2;
                         goto case CHECK2;
 
                     case CHECK2:
 
-                        if (z.AvailIn == 0)
+                        if (zStream.AvailableIn == 0)
                         {
-                            return r;
+                            return state;
                         }
 
-                        r = f == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
-                        z.AvailIn--;
-                        z.TotalIn++;
-                        z.InflateState.Need += ((z.INextIn[z.NextInIndex++] & 0xff) << 8) & 0xff00L;
-                        z.InflateState.Mode = CHECK1;
+                        zStream.AvailableIn--;
+                        zStream.TotalIn++;
+                        zStream.InflateState.Need += ((zStream.NextIn[zStream.NextInIndex++] & 0xff) << 8) & 0xff00L;
+                        zStream.InflateState.Mode = CHECK1;
                         goto case CHECK1;
 
                     case CHECK1:
 
-                        if (z.AvailIn == 0)
+                        if (zStream.AvailableIn == 0)
                         {
-                            return r;
+                            return state;
                         }
 
-                        r = f == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
-                        z.AvailIn--;
-                        z.TotalIn++;
-                        z.InflateState.Need += z.INextIn[z.NextInIndex++] & 0xffL;
+                        zStream.AvailableIn--;
+                        zStream.TotalIn++;
+                        zStream.InflateState.Need += zStream.NextIn[zStream.NextInIndex++] & 0xffL;
 
-                        if (((int)z.InflateState.Was[0]) != ((int)z.InflateState.Need))
+                        if (((int)zStream.InflateState.Was[0]) != ((int)zStream.InflateState.Need))
                         {
-                            z.InflateState.Mode = BAD;
-                            z.Message = "incorrect data check";
-                            z.InflateState.Marker = 5; // can't try inflateSync
+                            zStream.InflateState.Mode = BAD;
+                            zStream.Message = "incorrect data check";
+                            zStream.InflateState.Marker = 5; // can't try inflateSync
                             break;
                         }
 
-                        z.InflateState.Mode = DONE;
+                        zStream.InflateState.Mode = DONE;
                         goto case DONE;
 
                     case DONE:
@@ -403,7 +398,7 @@ namespace SixLabors.ZlibStream
                 zStream.InflateState.Marker = 0;
             }
 
-            if ((n = zStream.AvailIn) == 0)
+            if ((n = zStream.AvailableIn) == 0)
             {
                 return CompressionState.ZBUFERROR;
             }
@@ -414,13 +409,13 @@ namespace SixLabors.ZlibStream
             // search
             while (n != 0 && m < 4)
             {
-                if (zStream.INextIn[p] == Mark[m])
+                if (zStream.NextIn[p] == Mark[m])
                 {
                     m++;
                 }
                 else
                 {
-                    m = zStream.INextIn[p] != 0 ? 0 : 4 - m;
+                    m = zStream.NextIn[p] != 0 ? 0 : 4 - m;
                 }
 
                 p++;
@@ -430,7 +425,7 @@ namespace SixLabors.ZlibStream
             // restore
             zStream.TotalIn += p - zStream.NextInIndex;
             zStream.NextInIndex = p;
-            zStream.AvailIn = n;
+            zStream.AvailableIn = n;
             zStream.InflateState.Marker = m;
 
             // return no joy or set up to restart on a new block
@@ -459,6 +454,7 @@ namespace SixLabors.ZlibStream
             ? CompressionState.ZSTREAMERROR
             : z.InflateState.Blocks.Sync_point();
 
+        // TODO: Blocks should be IDisposable
         internal CompressionState InflateEnd(ZStream zStream)
         {
             this.Blocks?.Free(zStream);

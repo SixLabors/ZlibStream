@@ -35,7 +35,7 @@ namespace SixLabors.ZlibStream
 
         private readonly int[] bb = new int[1]; // bit length tree depth
         private readonly int[] tb = new int[1]; // bit length decoding tree
-        private readonly object checkfn; // check function
+        private readonly bool doCheck; // check function
 
         private int mode; // current inflate_block mode
         private int left; // if STORED, bytes left to copy
@@ -50,17 +50,18 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Initializes a new instance of the <see cref="InfBlocks"/> class.
         /// </summary>
-        /// <param name="z">Zlib Stream.</param>
-        /// <param name="checkfn">check function.</param>
-        /// <param name="w">Window size.</param>
-        internal InfBlocks(ZStream z, object checkfn, int w)
+        /// <param name="zStream">Zlib Stream.</param>
+        /// <param name="doCheck">Whether to calculate the checksum.</param>
+        /// <param name="windowSize">Window size.</param>
+        internal InfBlocks(ZStream zStream, bool doCheck, int windowSize)
         {
+            // TODO: Pool.
             this.hufts = new int[MANY * 3];
-            this.Window = new byte[w];
-            this.End = w;
-            this.checkfn = checkfn;
+            this.Window = new byte[windowSize];
+            this.End = windowSize;
+            this.doCheck = doCheck;
             this.mode = TYPE;
-            this.Reset(z, null);
+            this.Reset(zStream, null);
         }
 
         internal int End { get; private set; } // one byte after sliding window
@@ -97,7 +98,7 @@ namespace SixLabors.ZlibStream
             this.Bitb = 0;
             this.Read = this.Write = 0;
 
-            if (this.checkfn != null)
+            if (this.doCheck)
             {
                 zStream.Adler = this.check = Adler32.SeedValue;
             }
@@ -116,7 +117,7 @@ namespace SixLabors.ZlibStream
             // copy input/output information to locals (UPDATE macro restores)
             {
                 p = z.NextInIndex;
-                n = z.AvailIn;
+                n = z.AvailableIn;
                 b = this.Bitb;
                 k = this.Bitk;
             }
@@ -143,7 +144,7 @@ namespace SixLabors.ZlibStream
                             {
                                 this.Bitb = b;
                                 this.Bitk = k;
-                                z.AvailIn = n;
+                                z.AvailableIn = n;
                                 z.TotalIn += p - z.NextInIndex;
                                 z.NextInIndex = p;
                                 this.Write = q;
@@ -151,7 +152,7 @@ namespace SixLabors.ZlibStream
                             }
 
                             n--;
-                            b |= (z.INextIn[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -215,7 +216,7 @@ namespace SixLabors.ZlibStream
 
                             this.Bitb = b;
                             this.Bitk = k;
-                            z.AvailIn = n;
+                            z.AvailableIn = n;
                             z.TotalIn += p - z.NextInIndex;
                             z.NextInIndex = p;
                             this.Write = q;
@@ -236,7 +237,7 @@ namespace SixLabors.ZlibStream
                             {
                                 this.Bitb = b;
                                 this.Bitk = k;
-                                z.AvailIn = n;
+                                z.AvailableIn = n;
                                 z.TotalIn += p - z.NextInIndex;
                                 z.NextInIndex = p;
                                 this.Write = q;
@@ -244,7 +245,7 @@ namespace SixLabors.ZlibStream
                             }
 
                             n--;
-                            b |= (z.INextIn[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -256,7 +257,7 @@ namespace SixLabors.ZlibStream
 
                             this.Bitb = b;
                             this.Bitk = k;
-                            z.AvailIn = n;
+                            z.AvailableIn = n;
                             z.TotalIn += p - z.NextInIndex;
                             z.NextInIndex = p;
                             this.Write = q;
@@ -273,7 +274,7 @@ namespace SixLabors.ZlibStream
                         {
                             this.Bitb = b;
                             this.Bitk = k;
-                            z.AvailIn = n;
+                            z.AvailableIn = n;
                             z.TotalIn += p - z.NextInIndex;
                             z.NextInIndex = p;
                             this.Write = q;
@@ -304,7 +305,7 @@ namespace SixLabors.ZlibStream
                                 {
                                     this.Bitb = b;
                                     this.Bitk = k;
-                                    z.AvailIn = n;
+                                    z.AvailableIn = n;
                                     z.TotalIn += p - z.NextInIndex;
                                     z.NextInIndex = p;
                                     this.Write = q;
@@ -326,7 +327,7 @@ namespace SixLabors.ZlibStream
                             t = m;
                         }
 
-                        Buffer.BlockCopy(z.INextIn, p, this.Window, q, t);
+                        Buffer.BlockCopy(z.NextIn, p, this.Window, q, t);
                         p += t;
                         n -= t;
                         q += t;
@@ -351,7 +352,7 @@ namespace SixLabors.ZlibStream
                             {
                                 this.Bitb = b;
                                 this.Bitk = k;
-                                z.AvailIn = n;
+                                z.AvailableIn = n;
                                 z.TotalIn += p - z.NextInIndex;
                                 z.NextInIndex = p;
                                 this.Write = q;
@@ -359,7 +360,7 @@ namespace SixLabors.ZlibStream
                             }
 
                             n--;
-                            b |= (z.INextIn[p++] & 0xff) << k;
+                            b |= (z.NextIn[p++] & 0xff) << k;
                             k += 8;
                         }
 
@@ -372,7 +373,7 @@ namespace SixLabors.ZlibStream
 
                             this.Bitb = b;
                             this.Bitk = k;
-                            z.AvailIn = n;
+                            z.AvailableIn = n;
                             z.TotalIn += p - z.NextInIndex;
                             z.NextInIndex = p;
                             this.Write = q;
@@ -403,7 +404,7 @@ namespace SixLabors.ZlibStream
                                 {
                                     this.Bitb = b;
                                     this.Bitk = k;
-                                    z.AvailIn = n;
+                                    z.AvailableIn = n;
                                     z.TotalIn += p - z.NextInIndex;
                                     z.NextInIndex = p;
                                     this.Write = q;
@@ -411,7 +412,7 @@ namespace SixLabors.ZlibStream
                                 }
 
                                 n--;
-                                b |= (z.INextIn[p++] & 0xff) << k;
+                                b |= (z.NextIn[p++] & 0xff) << k;
                                 k += 8;
                             }
 
@@ -440,7 +441,7 @@ namespace SixLabors.ZlibStream
 
                             this.Bitb = b;
                             this.Bitk = k;
-                            z.AvailIn = n;
+                            z.AvailableIn = n;
                             z.TotalIn += p - z.NextInIndex;
                             z.NextInIndex = p;
                             this.Write = q;
@@ -474,7 +475,7 @@ namespace SixLabors.ZlibStream
                                 {
                                     this.Bitb = b;
                                     this.Bitk = k;
-                                    z.AvailIn = n;
+                                    z.AvailableIn = n;
                                     z.TotalIn += p - z.NextInIndex;
                                     z.NextInIndex = p;
                                     this.Write = q;
@@ -482,7 +483,7 @@ namespace SixLabors.ZlibStream
                                 }
 
                                 n--;
-                                b |= (z.INextIn[p++] & 0xff) << k;
+                                b |= (z.NextIn[p++] & 0xff) << k;
                                 k += 8;
                             }
 
@@ -516,7 +517,7 @@ namespace SixLabors.ZlibStream
                                     {
                                         this.Bitb = b;
                                         this.Bitk = k;
-                                        z.AvailIn = n;
+                                        z.AvailableIn = n;
                                         z.TotalIn += p - z.NextInIndex;
                                         z.NextInIndex = p;
                                         this.Write = q;
@@ -524,7 +525,7 @@ namespace SixLabors.ZlibStream
                                     }
 
                                     n--;
-                                    b |= (z.INextIn[p++] & 0xff) << k;
+                                    b |= (z.NextIn[p++] & 0xff) << k;
                                     k += 8;
                                 }
 
@@ -547,7 +548,7 @@ namespace SixLabors.ZlibStream
 
                                     this.Bitb = b;
                                     this.Bitk = k;
-                                    z.AvailIn = n;
+                                    z.AvailableIn = n;
                                     z.TotalIn += p - z.NextInIndex;
                                     z.NextInIndex = p;
                                     this.Write = q;
@@ -587,7 +588,7 @@ namespace SixLabors.ZlibStream
 
                                 this.Bitb = b;
                                 this.Bitk = k;
-                                z.AvailIn = n;
+                                z.AvailableIn = n;
                                 z.TotalIn += p - z.NextInIndex;
                                 z.NextInIndex = p;
                                 this.Write = q;
@@ -604,7 +605,7 @@ namespace SixLabors.ZlibStream
                     case CODES:
                         this.Bitb = b;
                         this.Bitk = k;
-                        z.AvailIn = n;
+                        z.AvailableIn = n;
                         z.TotalIn += p - z.NextInIndex;
                         z.NextInIndex = p;
                         this.Write = q;
@@ -618,7 +619,7 @@ namespace SixLabors.ZlibStream
                         InfCodes.Free();
 
                         p = z.NextInIndex;
-                        n = z.AvailIn;
+                        n = z.AvailableIn;
                         b = this.Bitb;
                         k = this.Bitk;
                         q = this.Write;
@@ -642,7 +643,7 @@ namespace SixLabors.ZlibStream
                         {
                             this.Bitb = b;
                             this.Bitk = k;
-                            z.AvailIn = n;
+                            z.AvailableIn = n;
                             z.TotalIn += p - z.NextInIndex;
                             z.NextInIndex = p;
                             this.Write = q;
@@ -657,7 +658,7 @@ namespace SixLabors.ZlibStream
 
                         this.Bitb = b;
                         this.Bitk = k;
-                        z.AvailIn = n;
+                        z.AvailableIn = n;
                         z.TotalIn += p - z.NextInIndex;
                         z.NextInIndex = p;
                         this.Write = q;
@@ -668,7 +669,7 @@ namespace SixLabors.ZlibStream
 
                         this.Bitb = b;
                         this.Bitk = k;
-                        z.AvailIn = n;
+                        z.AvailableIn = n;
                         z.TotalIn += p - z.NextInIndex;
                         z.NextInIndex = p;
                         this.Write = q;
@@ -679,7 +680,7 @@ namespace SixLabors.ZlibStream
 
                         this.Bitb = b;
                         this.Bitk = k;
-                        z.AvailIn = n;
+                        z.AvailableIn = n;
                         z.TotalIn += p - z.NextInIndex;
                         z.NextInIndex = p;
                         this.Write = q;
@@ -708,40 +709,40 @@ namespace SixLabors.ZlibStream
         internal CompressionState Sync_point() => this.mode == LENS ? CompressionState.ZSTREAMEND : CompressionState.ZOK;
 
         // copy as much as possible from the sliding window to the output area
-        internal CompressionState Inflate_flush(ZStream z, CompressionState r)
+        internal CompressionState Inflate_flush(ZStream zStream, CompressionState state)
         {
             int n;
             int p;
             int q;
 
             // local copies of source and destination pointers
-            p = z.NextOutIndex;
+            p = zStream.NextOutIndex;
             q = this.Read;
 
             // compute number of bytes to copy as far as end of window
             n = (q <= this.Write ? this.Write : this.End) - q;
-            if (n > z.AvailOut)
+            if (n > zStream.AvailableOut)
             {
-                n = z.AvailOut;
+                n = zStream.AvailableOut;
             }
 
-            if (n != 0 && r == CompressionState.ZBUFERROR)
+            if (n != 0 && state == CompressionState.ZBUFERROR)
             {
-                r = CompressionState.ZOK;
+                state = CompressionState.ZOK;
             }
 
             // update counters
-            z.AvailOut -= n;
-            z.TotalOut += n;
+            zStream.AvailableOut -= n;
+            zStream.TotalOut += n;
 
             // update check information
-            if (this.checkfn != null)
+            if (this.doCheck)
             {
-                z.Adler = this.check = Adler32.Calculate(this.check, this.Window.AsSpan(q, n));
+                zStream.Adler = this.check = Adler32.Calculate(this.check, this.Window.AsSpan(q, n));
             }
 
             // copy as far as end of window
-            Buffer.BlockCopy(this.Window, q, z.INextOut, p, n);
+            Buffer.BlockCopy(this.Window, q, zStream.NextOut, p, n);
             p += n;
             q += n;
 
@@ -757,38 +758,38 @@ namespace SixLabors.ZlibStream
 
                 // compute bytes to copy
                 n = this.Write - q;
-                if (n > z.AvailOut)
+                if (n > zStream.AvailableOut)
                 {
-                    n = z.AvailOut;
+                    n = zStream.AvailableOut;
                 }
 
-                if (n != 0 && r == CompressionState.ZBUFERROR)
+                if (n != 0 && state == CompressionState.ZBUFERROR)
                 {
-                    r = CompressionState.ZOK;
+                    state = CompressionState.ZOK;
                 }
 
                 // update counters
-                z.AvailOut -= n;
-                z.TotalOut += n;
+                zStream.AvailableOut -= n;
+                zStream.TotalOut += n;
 
                 // update check information
-                if (this.checkfn != null)
+                if (this.doCheck)
                 {
-                    z.Adler = this.check = Adler32.Calculate(this.check, this.Window.AsSpan(q, n));
+                    zStream.Adler = this.check = Adler32.Calculate(this.check, this.Window.AsSpan(q, n));
                 }
 
                 // copy
-                Buffer.BlockCopy(this.Window, q, z.INextOut, p, n);
+                Buffer.BlockCopy(this.Window, q, zStream.NextOut, p, n);
                 p += n;
                 q += n;
             }
 
             // update pointers
-            z.NextOutIndex = p;
+            zStream.NextOutIndex = p;
             this.Read = q;
 
             // done
-            return r;
+            return state;
         }
     }
 }

@@ -44,7 +44,7 @@ namespace SixLabors.ZlibStream
                     if (this.Pending + 12 >= pendingBufferSize)
                     {
                         this.Flush_pending(this.strm);
-                        if (this.strm.AvailIn == 0 && flush != FlushStrategy.Finish)
+                        if (this.strm.AvailableIn == 0 && flush != FlushStrategy.Finish)
                         {
                             // Break to emit end block and return need_more
                             break;
@@ -104,7 +104,7 @@ namespace SixLabors.ZlibStream
                     this.strStart++;
                     this.lookahead--;
                 }
-                while (this.strm.AvailOut != 0);
+                while (this.strm.AvailableOut != 0);
 
                 last = flush == FlushStrategy.Finish;
                 this.QuickEndBlock(ltree, last);
@@ -112,8 +112,8 @@ namespace SixLabors.ZlibStream
 
                 if (last)
                 {
-                    return this.strm.AvailOut == 0
-                        ? this.strm.AvailIn == 0 ? FinishStarted : NeedMore
+                    return this.strm.AvailableOut == 0
+                        ? this.strm.AvailableIn == 0 ? FinishStarted : NeedMore
                         : FinishDone;
                 }
 

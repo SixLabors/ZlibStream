@@ -59,7 +59,7 @@ namespace SixLabors.ZlibStream
                     this.strStart = max_start;
 
                     this.Flush_block_only(false);
-                    if (this.strm.AvailOut == 0)
+                    if (this.strm.AvailableOut == 0)
                     {
                         return NeedMore;
                     }
@@ -70,7 +70,7 @@ namespace SixLabors.ZlibStream
                 if (this.strStart - this.blockStart >= this.wSize - MINLOOKAHEAD)
                 {
                     this.Flush_block_only(false);
-                    if (this.strm.AvailOut == 0)
+                    if (this.strm.AvailableOut == 0)
                     {
                         return NeedMore;
                     }
@@ -78,7 +78,7 @@ namespace SixLabors.ZlibStream
             }
 
             this.Flush_block_only(flush == FlushStrategy.Finish);
-            return this.strm.AvailOut == 0 ? (flush == FlushStrategy.Finish)
+            return this.strm.AvailableOut == 0 ? (flush == FlushStrategy.Finish)
                 ? FinishStarted
                 : NeedMore : flush == FlushStrategy.Finish ? FinishDone : BlockDone;
         }

@@ -35,9 +35,9 @@ namespace SixLabors.ZlibStream
             this.InitBlock();
             this.zStream = new ZStream
             {
-                INextIn = this.chunkBuffer,
+                NextIn = this.chunkBuffer,
                 NextInIndex = 0,
-                AvailIn = 0
+                AvailableIn = 0
             };
         }
 
@@ -55,9 +55,9 @@ namespace SixLabors.ZlibStream
             this.InitBlock();
             this.zStream = new ZStream(level)
             {
-                INextIn = this.chunkBuffer,
+                NextIn = this.chunkBuffer,
                 NextInIndex = 0,
-                AvailIn = 0
+                AvailableIn = 0
             };
         }
 
@@ -117,20 +117,20 @@ namespace SixLabors.ZlibStream
             }
 
             CompressionState state;
-            this.zStream.INextOut = buffer;
+            this.zStream.NextOut = buffer;
             this.zStream.NextOutIndex = offset;
-            this.zStream.AvailOut = count;
+            this.zStream.AvailableOut = count;
             do
             {
-                if ((this.zStream.AvailIn == 0) && (!this.noMoreinput))
+                if ((this.zStream.AvailableIn == 0) && (!this.noMoreinput))
                 {
                     // If buffer is empty and more input is available, refill it
                     this.zStream.NextInIndex = 0;
-                    this.zStream.AvailIn = this.BaseStream.Read(this.chunkBuffer, 0, this.bufferSize);
+                    this.zStream.AvailableIn = this.BaseStream.Read(this.chunkBuffer, 0, this.bufferSize);
 
-                    if (this.zStream.AvailIn == -1)
+                    if (this.zStream.AvailableIn == -1)
                     {
-                        this.zStream.AvailIn = 0;
+                        this.zStream.AvailableIn = 0;
                         this.noMoreinput = true;
                     }
                 }
@@ -149,14 +149,14 @@ namespace SixLabors.ZlibStream
                     ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Message);
                 }
 
-                if (this.noMoreinput && (this.zStream.AvailOut == count))
+                if (this.noMoreinput && (this.zStream.AvailableOut == count))
                 {
                     return -1;
                 }
             }
-            while (this.zStream.AvailOut > 0 && state == CompressionState.ZOK);
+            while (this.zStream.AvailableOut > 0 && state == CompressionState.ZOK);
 
-            return count - this.zStream.AvailOut;
+            return count - this.zStream.AvailableOut;
         }
 
         /// <inheritdoc/>
@@ -208,9 +208,9 @@ namespace SixLabors.ZlibStream
                 CompressionState state;
                 do
                 {
-                    this.zStream.INextOut = this.chunkBuffer;
+                    this.zStream.NextOut = this.chunkBuffer;
                     this.zStream.NextOutIndex = 0;
-                    this.zStream.AvailOut = this.bufferSize;
+                    this.zStream.AvailableOut = this.bufferSize;
                     state = this.compress
                         ? this.zStream.Deflate(FlushStrategy.Finish)
                         : this.zStream.Inflate(FlushStrategy.Finish);
@@ -220,9 +220,9 @@ namespace SixLabors.ZlibStream
                         ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Message);
                     }
 
-                    if (this.bufferSize - this.zStream.AvailOut > 0)
+                    if (this.bufferSize - this.zStream.AvailableOut > 0)
                     {
-                        this.BaseStream.Write(this.chunkBuffer, 0, this.bufferSize - this.zStream.AvailOut);
+                        this.BaseStream.Write(this.chunkBuffer, 0, this.bufferSize - this.zStream.AvailableOut);
                     }
 
                     if (state == CompressionState.ZSTREAMEND)
@@ -230,7 +230,7 @@ namespace SixLabors.ZlibStream
                         break;
                     }
                 }
-                while (this.zStream.AvailIn > 0 || this.zStream.AvailOut == 0);
+                while (this.zStream.AvailableIn > 0 || this.zStream.AvailableOut == 0);
 
                 this.isFinished = true;
             }

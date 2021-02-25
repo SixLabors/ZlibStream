@@ -31,12 +31,12 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Gets or sets the next input bytes.
         /// </summary>
-        public byte[] INextIn { get; set; }
+        public byte[] NextIn { get; set; }
 
         /// <summary>
         /// Gets or sets the next output bytes.
         /// </summary>
-        public byte[] INextOut { get; set; }
+        public byte[] NextOut { get; set; }
 
         /// <summary>
         /// Gets or sets the next input byte index.
@@ -44,9 +44,9 @@ namespace SixLabors.ZlibStream
         public int NextInIndex { get; set; }
 
         /// <summary>
-        /// Gets or sets the number of bytes available at <see cref="INextIn"/>.
+        /// Gets or sets the number of bytes available at <see cref="NextIn"/>.
         /// </summary>
-        public int AvailIn { get; set; }
+        public int AvailableIn { get; set; }
 
         /// <summary>
         /// Gets or sets the total number of input bytes read so far.
@@ -59,9 +59,9 @@ namespace SixLabors.ZlibStream
         public int NextOutIndex { get; set; }
 
         /// <summary>
-        /// Gets or sets the remaining free space at <see cref="INextOut"/>.
+        /// Gets or sets the remaining free space at <see cref="NextOut"/>.
         /// </summary>
-        public int AvailOut { get; set; }
+        public int AvailableOut { get; set; }
 
         /// <summary>
         /// Gets or sets the total number of bytes output so far.
@@ -208,7 +208,7 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         public int ReadBuffer(byte[] buffer, int start, int size)
         {
-            int len = this.AvailIn;
+            int len = this.AvailableIn;
 
             if (len > size)
             {
@@ -220,14 +220,14 @@ namespace SixLabors.ZlibStream
                 return 0;
             }
 
-            this.AvailIn -= len;
+            this.AvailableIn -= len;
 
-            if (this.DeflateState.Noheader == 0)
+            if (this.DeflateState.NoHeader == 0)
             {
-                this.Adler = Adler32.Calculate(this.Adler, this.INextIn.AsSpan(this.NextInIndex, len));
+                this.Adler = Adler32.Calculate(this.Adler, this.NextIn.AsSpan(this.NextInIndex, len));
             }
 
-            Buffer.BlockCopy(this.INextIn, this.NextInIndex, buffer, start, len);
+            Buffer.BlockCopy(this.NextIn, this.NextInIndex, buffer, start, len);
             this.NextInIndex += len;
             this.TotalIn += len;
             return len;

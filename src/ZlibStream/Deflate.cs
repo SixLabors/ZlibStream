@@ -291,7 +291,7 @@ namespace SixLabors.ZlibStream
                 windowBits = 13;
             }
 #endif
-            this.Noheader = noheader;
+            this.NoHeader = noheader;
             this.wBits = windowBits;
             this.wSize = 1 << this.wBits;
             this.wMask = this.wSize - 1;
@@ -316,7 +316,10 @@ namespace SixLabors.ZlibStream
 
         internal int Pending { get; set; } // nb of bytes in the pending buffer
 
-        internal int Noheader { get; set; } // suppress zlib header and adler32
+        /// <summary>
+        /// Gets or sets a value indicating whether to suppress the zlib header and checksum fields.
+        /// </summary>
+        internal int NoHeader { get; set; }
 
         /// <summary>
         /// Gets buffers whose lengths are defined by compile time constants.
@@ -433,7 +436,7 @@ namespace SixLabors.ZlibStream
             return CompressionState.ZOK;
         }
 
-        public CompressionState Compress(ZStream strm, FlushStrategy flush)
+        public CompressionState Compress(ZStream zStream, FlushStrategy flush)
         {
             FlushStrategy old_flush;
 
@@ -442,21 +445,21 @@ namespace SixLabors.ZlibStream
                 return CompressionState.ZSTREAMERROR;
             }
 
-            if (strm.INextOut == null
-                || (strm.INextIn == null && strm.AvailIn != 0)
+            if (zStream.NextOut == null
+                || (zStream.NextIn == null && zStream.AvailableIn != 0)
                 || (this.status == FINISHSTATE && flush != FlushStrategy.Finish))
             {
-                strm.Message = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZSTREAMERROR];
+                zStream.Message = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZSTREAMERROR];
                 return CompressionState.ZSTREAMERROR;
             }
 
-            if (strm.AvailOut == 0)
+            if (zStream.AvailableOut == 0)
             {
-                strm.Message = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
+                zStream.Message = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
                 return CompressionState.ZBUFERROR;
             }
 
-            this.strm = strm; // just in case
+            this.strm = zStream; // just in case
             old_flush = this.lastFlush;
             this.lastFlush = flush;
 
@@ -485,18 +488,18 @@ namespace SixLabors.ZlibStream
                 // Save the adler32 of the preset dictionary:
                 if (this.strStart != 0)
                 {
-                    this.PutShortMSB((int)strm.Adler >> 16);
-                    this.PutShortMSB((int)strm.Adler);
+                    this.PutShortMSB((int)zStream.Adler >> 16);
+                    this.PutShortMSB((int)zStream.Adler);
                 }
 
-                strm.Adler = Adler32.SeedValue;
+                zStream.Adler = Adler32.SeedValue;
             }
 
             // Flush as much pending output as possible
             if (this.Pending != 0)
             {
-                this.Flush_pending(strm);
-                if (strm.AvailOut == 0)
+                this.Flush_pending(zStream);
+                if (zStream.AvailableOut == 0)
                 {
                     // System.out.println("  avail_out==0");
                     // Since avail_out is 0, deflate will be called again with
@@ -512,21 +515,21 @@ namespace SixLabors.ZlibStream
                 // flushes. For repeated and useless calls with Z_FINISH, we keep
                 // returning Z_STREAM_END instead of Z_BUFF_ERROR.
             }
-            else if (strm.AvailIn == 0 && flush <= old_flush && flush != FlushStrategy.Finish)
+            else if (zStream.AvailableIn == 0 && flush <= old_flush && flush != FlushStrategy.Finish)
             {
-                strm.Message = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
+                zStream.Message = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
                 return CompressionState.ZBUFERROR;
             }
 
             // User must not provide more input after the first FINISH:
-            if (this.status == FINISHSTATE && strm.AvailIn != 0)
+            if (this.status == FINISHSTATE && zStream.AvailableIn != 0)
             {
-                strm.Message = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
+                zStream.Message = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
                 return CompressionState.ZBUFERROR;
             }
 
             // Start a new block or continue the current one.
-            if (strm.AvailIn != 0
+            if (zStream.AvailableIn != 0
                 || this.lookahead != 0
                 || (flush != FlushStrategy.NoFlush && this.status != FINISHSTATE))
             {
@@ -565,7 +568,7 @@ namespace SixLabors.ZlibStream
 
                 if (bstate == NeedMore || bstate == FinishStarted)
                 {
-                    if (strm.AvailOut == 0)
+                    if (zStream.AvailableOut == 0)
                     {
                         this.lastFlush = (FlushStrategy)(-1); // avoid BUF_ERROR next call, see above
                     }
@@ -605,8 +608,8 @@ namespace SixLabors.ZlibStream
                         }
                     }
 
-                    this.Flush_pending(strm);
-                    if (strm.AvailOut == 0)
+                    this.Flush_pending(zStream);
+                    if (zStream.AvailableOut == 0)
                     {
                         this.lastFlush = (FlushStrategy)(-1); // avoid BUF_ERROR at next call, see above
                         return CompressionState.ZOK;
@@ -619,19 +622,19 @@ namespace SixLabors.ZlibStream
                 return CompressionState.ZOK;
             }
 
-            if (this.Noheader != 0)
+            if (this.NoHeader != 0)
             {
                 return CompressionState.ZSTREAMEND;
             }
 
             // Write the zlib trailer (adler32)
-            this.PutShortMSB((int)strm.Adler >> 16);
-            this.PutShortMSB((int)strm.Adler);
-            this.Flush_pending(strm);
+            this.PutShortMSB((int)zStream.Adler >> 16);
+            this.PutShortMSB((int)zStream.Adler);
+            this.Flush_pending(zStream);
 
             // If avail_out is zero, the application will call deflate again
             // to flush the rest.
-            this.Noheader = -1; // write the trailer only once!
+            this.NoHeader = -1; // write the trailer only once!
             return this.Pending != 0 ? CompressionState.ZOK : CompressionState.ZSTREAMEND;
         }
 
@@ -774,9 +777,9 @@ namespace SixLabors.ZlibStream
             this.Bi_flush();
             int len = this.Pending;
 
-            if (len > strm.AvailOut)
+            if (len > strm.AvailableOut)
             {
-                len = strm.AvailOut;
+                len = strm.AvailableOut;
             }
 
             if (len == 0)
@@ -784,12 +787,12 @@ namespace SixLabors.ZlibStream
                 return;
             }
 
-            Buffer.BlockCopy(this.DynamicBuffers.PendingBuffer, this.PendingOut, strm.INextOut, strm.NextOutIndex, len);
+            Buffer.BlockCopy(this.DynamicBuffers.PendingBuffer, this.PendingOut, strm.NextOut, strm.NextOutIndex, len);
 
             strm.NextOutIndex += len;
             this.PendingOut += len;
             strm.TotalOut += len;
-            strm.AvailOut -= len;
+            strm.AvailableOut -= len;
             this.Pending -= len;
             if (this.Pending == 0)
             {
@@ -829,12 +832,12 @@ namespace SixLabors.ZlibStream
             this.Pending = 0;
             this.PendingOut = 0;
 
-            if (this.Noheader < 0)
+            if (this.NoHeader < 0)
             {
-                this.Noheader = 0; // was set to -1 by deflate(..., Z_FINISH);
+                this.NoHeader = 0; // was set to -1 by deflate(..., Z_FINISH);
             }
 
-            this.status = (this.Noheader != 0) ? BUSYSTATE : INITSTATE;
+            this.status = (this.NoHeader != 0) ? BUSYSTATE : INITSTATE;
             zStream.Adler = Adler32.SeedValue;
 
             this.lastFlush = FlushStrategy.NoFlush;
@@ -932,7 +935,7 @@ namespace SixLabors.ZlibStream
                     more += this.wSize;
                 }
 
-                if (this.strm.AvailIn == 0)
+                if (this.strm.AvailableIn == 0)
                 {
                     return;
                 }
@@ -959,7 +962,7 @@ namespace SixLabors.ZlibStream
                 // If the whole input has less than MINMATCH bytes, ins_h is garbage,
                 // but this is not important since only literal bytes will be emitted.
             }
-            while (this.lookahead < MINLOOKAHEAD && this.strm.AvailIn != 0);
+            while (this.lookahead < MINLOOKAHEAD && this.strm.AvailableIn != 0);
         }
 
         [MethodImpl(InliningOptions.ShortMethod)]

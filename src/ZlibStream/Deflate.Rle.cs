@@ -90,7 +90,7 @@ namespace SixLabors.ZlibStream
                 if (bflush)
                 {
                     this.Flush_block_only(false);
-                    if (this.strm.AvailOut == 0)
+                    if (this.strm.AvailableOut == 0)
                     {
                         return NeedMore;
                     }
@@ -98,7 +98,7 @@ namespace SixLabors.ZlibStream
             }
 
             this.Flush_block_only(flush == FlushStrategy.Finish);
-            return this.strm.AvailOut == 0
+            return this.strm.AvailableOut == 0
                 ? flush == FlushStrategy.Finish ? FinishStarted : NeedMore
                 : flush == FlushStrategy.Finish ? FinishDone : BlockDone;
         }
