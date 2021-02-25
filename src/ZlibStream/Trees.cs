@@ -70,6 +70,16 @@ namespace SixLabors.ZlibStream
         private const int REPZ11138 = 18;
 
         /// <summary>
+        /// Gets the first normalized distance for each code (0 = distance of 1)
+        /// </summary>
+        private static readonly int[] BaseDist = new int[]
+        {
+            0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384,
+            512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384,
+            24576,
+        };
+
+        /// <summary>
         /// Gets the extra bits for each length code.
         /// </summary>
         private static ReadOnlySpan<byte> ExtraLbits => new byte[]
@@ -102,16 +112,6 @@ namespace SixLabors.ZlibStream
         {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56,
             64, 80, 96, 112, 128, 160, 192, 224, 0,
-        };
-
-        /// <summary>
-        /// Gets the first normalized distance for each code (0 = distance of 1)
-        /// </summary>
-        private static int[] BaseDist = new int[]
-        {
-            0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384,
-            512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384,
-            24576,
         };
 
         /// <summary>
@@ -543,12 +543,18 @@ namespace SixLabors.ZlibStream
             heap[k] = v;
         }
 
+        /// <summary>
+        /// Compares two subtrees, using the tree depth as tie breaker when
+        /// the subtrees have equal frequency.This minimizes the worst case length.
+        /// </summary>
+        /// <param name="tree">The tree to compare.</param>
+        /// <param name="n">The first subtree index.</param>
+        /// <param name="m">The second subtree index.</param>
+        /// <param name="depth">The bit depth.</param>
+        /// <returns>The <see cref="bool"/>.</returns>
         [MethodImpl(InliningOptions.ShortMethod)]
         public static bool Smaller(DynamicTreeDesc tree, int n, int m, byte* depth)
-        {
-            return tree[n].Freq < tree[m].Freq
-                || (tree[n].Freq == tree[m].Freq && depth[n] <= depth[m]);
-        }
+            => tree[n].Freq < tree[m].Freq || (tree[n].Freq == tree[m].Freq && depth[n] <= depth[m]);
 
         /// <summary>
         /// Determine the best encoding for the current block: dynamic trees, static

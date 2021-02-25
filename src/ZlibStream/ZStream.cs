@@ -44,7 +44,7 @@ namespace SixLabors.ZlibStream
         public int NextInIndex { get; set; }
 
         /// <summary>
-        /// Gets or sets the number of bytes available at next_in.
+        /// Gets or sets the number of bytes available at <see cref="INextIn"/>.
         /// </summary>
         public int AvailIn { get; set; }
 
@@ -59,7 +59,7 @@ namespace SixLabors.ZlibStream
         public int NextOutIndex { get; set; }
 
         /// <summary>
-        /// Gets or sets the remaining free space at next_out.
+        /// Gets or sets the remaining free space at <see cref="INextOut"/>.
         /// </summary>
         public int AvailOut { get; set; }
 
@@ -71,20 +71,20 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Gets or sets the stream's error message.
         /// </summary>
-        public string Msg { get; set; }
+        public string Message { get; set; }
 
         /// <summary>
-        /// Gets or sets the Stream Data's Adler32 checksum.
+        /// Gets or sets the stream data <see cref="Adler32"/> checksum.
         /// </summary>
         public uint Adler { get; set; }
 
         /// <summary>
-        /// Gets or sets the current Deflate instance for this class.
+        /// Gets the current deflate instance for this class.
         /// </summary>
-        public Deflate DeflateState { get; internal set; }
+        public Deflate DeflateState { get; private set; }
 
         /// <summary>
-        /// Gets the current Inflate instance for this class.
+        /// Gets the current inflate instance for this class.
         /// </summary>
         public Inflate InflateState { get; private set; }
 
@@ -179,23 +179,6 @@ namespace SixLabors.ZlibStream
             : this.DeflateState.Compress(this, flush);
 
         /// <summary>
-        /// Ends compression.
-        /// </summary>
-        /// <returns>The zlib status state.</returns>
-        [MethodImpl(InliningOptions.ShortMethod)]
-        public CompressionState DeflateEnd()
-        {
-            if (this.DeflateState == null)
-            {
-                return CompressionState.ZSTREAMERROR;
-            }
-
-            CompressionState ret = this.DeflateState.DeflateEnd();
-            this.DeflateState = null;
-            return ret;
-        }
-
-        /// <summary>
         /// Sets the compression parameters.
         /// </summary>
         /// <param name="level">The compression level to use.</param>
@@ -261,7 +244,7 @@ namespace SixLabors.ZlibStream
                 {
                     if (this.compress)
                     {
-                        this.DeflateEnd();
+                        this.DeflateState?.Dispose();
                     }
                     else
                     {

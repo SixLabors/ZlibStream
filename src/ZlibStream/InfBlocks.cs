@@ -210,7 +210,7 @@ namespace SixLabors.ZlibStream
                             }
 
                             this.mode = BAD;
-                            z.Msg = "invalid block type";
+                            z.Message = "invalid block type";
                             r = CompressionState.ZDATAERROR;
 
                             this.Bitb = b;
@@ -251,7 +251,7 @@ namespace SixLabors.ZlibStream
                         if (((~b >> 16) & 0xffff) != (b & 0xffff))
                         {
                             this.mode = BAD;
-                            z.Msg = "invalid stored block lengths";
+                            z.Message = "invalid stored block lengths";
                             r = CompressionState.ZDATAERROR;
 
                             this.Bitb = b;
@@ -367,7 +367,7 @@ namespace SixLabors.ZlibStream
                         if ((t & 0x1f) > 29 || ((t >> 5) & 0x1f) > 29)
                         {
                             this.mode = BAD;
-                            z.Msg = "too many length or distance symbols";
+                            z.Message = "too many length or distance symbols";
                             r = CompressionState.ZDATAERROR;
 
                             this.Bitb = b;
@@ -542,7 +542,7 @@ namespace SixLabors.ZlibStream
                                 {
                                     this.blens = null;
                                     this.mode = BAD;
-                                    z.Msg = "invalid bit length repeat";
+                                    z.Message = "invalid bit length repeat";
                                     r = CompressionState.ZDATAERROR;
 
                                     this.Bitb = b;

@@ -1,10 +1,10 @@
 // Copyright (c) Six Labors.
 // Licensed under the Apache License, Version 2.0.
+
 // Uncomment to use DeflateQuick
 // TODO: Make an option.
 // #define USE_QUICK
 using System;
-using System.Buffers;
 using System.Runtime.CompilerServices;
 
 namespace SixLabors.ZlibStream
@@ -12,7 +12,7 @@ namespace SixLabors.ZlibStream
     /// <summary>
     /// Class for compressing data through zlib.
     /// </summary>
-    internal sealed unsafe partial class Deflate
+    internal sealed unsafe partial class Deflate : IDisposable
     {
         private const int MAXMEMLEVEL = 9;
         private const int MAXWBITS = 15; // 32K LZ77 window
@@ -213,6 +213,7 @@ namespace SixLabors.ZlibStream
         // This is set to true if there is an active block, or false if the block was just
         // closed.
         internal bool blockOpen;
+        private bool isDisposed;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Deflate"/> class.
@@ -222,12 +223,12 @@ namespace SixLabors.ZlibStream
         /// <param name="windowBits">The window size in bits.</param>
         public Deflate(ZStream zStream, CompressionLevel level, int windowBits)
             : this(
-                 zStream,
-                 level,
-                 ZDEFLATED,
-                 windowBits,
-                 DEFMEMLEVEL,
-                 CompressionStrategy.DefaultStrategy)
+                zStream,
+                level,
+                ZDEFLATED,
+                windowBits,
+                DEFMEMLEVEL,
+                CompressionStrategy.DefaultStrategy)
         {
         }
 
@@ -240,7 +241,7 @@ namespace SixLabors.ZlibStream
             CompressionStrategy strategy)
         {
             int noheader = 0;
-            zStream.Msg = null;
+            zStream.Message = null;
 
             if (level == CompressionLevel.DefaultCompression)
             {
@@ -259,17 +260,29 @@ namespace SixLabors.ZlibStream
                 windowBits = -windowBits;
             }
 
-            if (memLevel < 1
-                || memLevel > MAXMEMLEVEL
-                || method != ZDEFLATED
-                || windowBits < 9
-                || windowBits > 15
-                || level < CompressionLevel.NoCompression
-                || level > CompressionLevel.BestCompression
-                || strategy < CompressionStrategy.DefaultStrategy
-                || strategy > CompressionStrategy.Rle)
+            if (memLevel < 1 || memLevel > MAXMEMLEVEL)
             {
-                ThrowHelper.ThrowBadConfigurationException();
+                ThrowHelper.ThrowArgumentRangeException(nameof(memLevel));
+            }
+
+            if (method != ZDEFLATED)
+            {
+                ThrowHelper.ThrowArgumentRangeException(nameof(method));
+            }
+
+            if (windowBits < 9 || windowBits > 15)
+            {
+                ThrowHelper.ThrowArgumentRangeException(nameof(windowBits));
+            }
+
+            if (level < CompressionLevel.NoCompression || level > CompressionLevel.BestCompression)
+            {
+                ThrowHelper.ThrowArgumentRangeException(nameof(level));
+            }
+
+            if (strategy < CompressionStrategy.DefaultStrategy || strategy > CompressionStrategy.Rle)
+            {
+                ThrowHelper.ThrowArgumentRangeException(nameof(strategy));
             }
 
 #if USE_QUICK
@@ -278,9 +291,6 @@ namespace SixLabors.ZlibStream
                 windowBits = 13;
             }
 #endif
-
-            zStream.DeflateState = this;
-
             this.Noheader = noheader;
             this.wBits = windowBits;
             this.wSize = 1 << this.wBits;
@@ -328,39 +338,17 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Gets the huffman tree literal and length tree description.
         /// </summary>
-        internal Trees.DynamicTreeDesc DynLTree { get; } = new Trees.DynamicTreeDesc(HEAPSIZE);
+        internal Trees.DynamicTreeDesc DynLTree { get; private set; } = new Trees.DynamicTreeDesc(HEAPSIZE);
 
         /// <summary>
         /// Gets the huffman tree bit length tree description.
         /// </summary>
-        internal Trees.DynamicTreeDesc DynBLTree { get; } = new Trees.DynamicTreeDesc((2 * BLCODES) + 1);
+        internal Trees.DynamicTreeDesc DynBLTree { get; private set; } = new Trees.DynamicTreeDesc((2 * BLCODES) + 1);
 
         /// <summary>
         /// Gets the huffman tree distance tree description.
         /// </summary>
-        internal Trees.DynamicTreeDesc DynDTree { get; } = new Trees.DynamicTreeDesc((2 * DCODES) + 1);
-
-        public CompressionState DeflateEnd()
-        {
-            if (this.status != INITSTATE
-                && this.status != BUSYSTATE
-                && this.status != FINISHSTATE)
-            {
-                return CompressionState.ZSTREAMERROR;
-            }
-
-            this.DynamicBuffers.Dispose();
-            this.DynLTree.Dispose();
-            this.DynDTree.Dispose();
-            this.DynBLTree.Dispose();
-            this.FixedBuffers.Dispose();
-
-            // free
-            // dstate=null;
-            return this.status == BUSYSTATE
-                ? CompressionState.ZDATAERROR
-                : CompressionState.ZOK;
-        }
+        internal Trees.DynamicTreeDesc DynDTree { get; private set; } = new Trees.DynamicTreeDesc((2 * DCODES) + 1);
 
         public CompressionState DeflateParams(
             ZStream strm,
@@ -458,13 +446,13 @@ namespace SixLabors.ZlibStream
                 || (strm.INextIn == null && strm.AvailIn != 0)
                 || (this.status == FINISHSTATE && flush != FlushStrategy.Finish))
             {
-                strm.Msg = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZSTREAMERROR];
+                strm.Message = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZSTREAMERROR];
                 return CompressionState.ZSTREAMERROR;
             }
 
             if (strm.AvailOut == 0)
             {
-                strm.Msg = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
+                strm.Message = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
                 return CompressionState.ZBUFERROR;
             }
 
@@ -526,14 +514,14 @@ namespace SixLabors.ZlibStream
             }
             else if (strm.AvailIn == 0 && flush <= old_flush && flush != FlushStrategy.Finish)
             {
-                strm.Msg = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
+                strm.Message = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
                 return CompressionState.ZBUFERROR;
             }
 
             // User must not provide more input after the first FINISH:
             if (this.status == FINISHSTATE && strm.AvailIn != 0)
             {
-                strm.Msg = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
+                strm.Message = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
                 return CompressionState.ZBUFERROR;
             }
 
@@ -699,6 +687,9 @@ namespace SixLabors.ZlibStream
             this.PutByte(this.DynamicBuffers.WindowBuffer, buf, len);
         }
 
+        /// <inheritdoc/>
+        public void Dispose() => this.Dispose(true);
+
         /// <summary>
         /// Initialize the "longest match" routines for a new zlib stream.
         /// </summary>
@@ -829,11 +820,11 @@ namespace SixLabors.ZlibStream
             return cur;
         }
 
-        private void DeflateReset(ZStream strm)
+        private void DeflateReset(ZStream zStream)
         {
-            strm.TotalIn = strm.TotalOut = 0;
-            strm.Msg = null;
-            strm.DataType = ZUNKNOWN;
+            zStream.TotalIn = zStream.TotalOut = 0;
+            zStream.Message = null;
+            zStream.DataType = ZUNKNOWN;
 
             this.Pending = 0;
             this.PendingOut = 0;
@@ -844,7 +835,7 @@ namespace SixLabors.ZlibStream
             }
 
             this.status = (this.Noheader != 0) ? BUSYSTATE : INITSTATE;
-            strm.Adler = Adler32.SeedValue;
+            zStream.Adler = Adler32.SeedValue;
 
             this.lastFlush = FlushStrategy.NoFlush;
 
@@ -1052,8 +1043,39 @@ namespace SixLabors.ZlibStream
             return Math.Min(best_len, this.lookahead);
         }
 
+        private void Dispose(bool disposing)
+        {
+            if (!this.isDisposed)
+            {
+                if (disposing)
+                {
+                    this.DynamicBuffers.Dispose();
+                    this.DynLTree.Dispose();
+                    this.DynDTree.Dispose();
+                    this.DynBLTree.Dispose();
+                    this.FixedBuffers.Dispose();
+                }
+
+                this.DynamicBuffers = null;
+                this.DynLTree = null;
+                this.DynDTree = null;
+                this.DynBLTree = null;
+                this.FixedBuffers = null;
+                this.isDisposed = true;
+            }
+        }
+
         private readonly struct Config
         {
+            public Config(int good_length, int max_lazy, int nice_length, int max_chain, int func)
+            {
+                this.GoodLength = good_length;
+                this.MaxLazy = max_lazy;
+                this.NiceLength = nice_length;
+                this.MaxChain = max_chain;
+                this.Func = func;
+            }
+
             // reduce lazy search above this match length
             public int GoodLength { get; }
 
@@ -1066,15 +1088,6 @@ namespace SixLabors.ZlibStream
             public int MaxChain { get; }
 
             public int Func { get; }
-
-            public Config(int good_length, int max_lazy, int nice_length, int max_chain, int func)
-            {
-                this.GoodLength = good_length;
-                this.MaxLazy = max_lazy;
-                this.NiceLength = nice_length;
-                this.MaxChain = max_chain;
-                this.Func = func;
-            }
         }
     }
 }

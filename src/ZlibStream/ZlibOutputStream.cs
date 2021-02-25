@@ -102,7 +102,7 @@ namespace SixLabors.ZlibStream
         {
             if (buffer is null)
             {
-                ThrowHelper.ThrowNullException(nameof(buffer));
+                ThrowHelper.ThrowArgumentNullException(nameof(buffer));
             }
 
             if (count == 0)
@@ -125,7 +125,7 @@ namespace SixLabors.ZlibStream
 
                 if (state != CompressionState.ZOK && state != CompressionState.ZSTREAMEND)
                 {
-                    ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Msg);
+                    ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Message);
                 }
 
                 this.BaseStream.Write(this.chunkBuffer, 0, this.bufferSize - this.zStream.AvailOut);
@@ -201,7 +201,7 @@ namespace SixLabors.ZlibStream
 
                     if (state != CompressionState.ZSTREAMEND && state != CompressionState.ZOK)
                     {
-                        ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Msg);
+                        ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Message);
                     }
 
                     if (this.bufferSize - this.zStream.AvailOut > 0)

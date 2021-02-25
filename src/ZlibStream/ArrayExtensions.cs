@@ -61,8 +61,10 @@ namespace SixLabors.ZlibStream
         {
 #pragma warning disable CS0649 // Unassigned fields
 #pragma warning disable SA1401 // Fields should be private
+#pragma warning disable IDE1006 // Naming Styles
             public IntPtr Length;
             public byte Data;
+#pragma warning restore IDE1006
 #pragma warning restore CS0649
 #pragma warning restore SA1401
         }

@@ -146,7 +146,7 @@ namespace SixLabors.ZlibStream
 
                 if (state != CompressionState.ZOK && state != CompressionState.ZSTREAMEND)
                 {
-                    ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Msg);
+                    ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Message);
                 }
 
                 if (this.noMoreinput && (this.zStream.AvailOut == count))
@@ -217,7 +217,7 @@ namespace SixLabors.ZlibStream
 
                     if (state != CompressionState.ZSTREAMEND && state != CompressionState.ZOK)
                     {
-                        ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Msg);
+                        ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Message);
                     }
 
                     if (this.bufferSize - this.zStream.AvailOut > 0)

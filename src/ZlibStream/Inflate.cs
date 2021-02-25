@@ -38,7 +38,7 @@ namespace SixLabors.ZlibStream
         /// <param name="windowBits">The window size in bits.</param>
         public Inflate(ZStream zStream, int windowBits)
         {
-            zStream.Msg = null;
+            zStream.Message = null;
             this.Blocks = null;
 
             // handle undocumented nowrap option (no zlib header or check)
@@ -53,7 +53,7 @@ namespace SixLabors.ZlibStream
             if (windowBits < 8 || windowBits > 15)
             {
                 _ = this.InflateEnd(zStream);
-                ThrowHelper.ThrowRangeException(nameof(windowBits));
+                ThrowHelper.ThrowArgumentRangeException(nameof(windowBits));
             }
 
             this.WindowBits = windowBits;
@@ -92,11 +92,11 @@ namespace SixLabors.ZlibStream
         {
             if (zStream is null || inflate is null)
             {
-                ThrowHelper.ThrowNullException(nameof(zStream));
+                ThrowHelper.ThrowArgumentNullException(nameof(zStream));
             }
 
             zStream.TotalIn = zStream.TotalOut = 0;
-            zStream.Msg = null;
+            zStream.Message = null;
             inflate.Mode = inflate.Nowrap != 0 ? BLOCKS : METHOD;
             inflate.Blocks.Reset(zStream, null);
         }
@@ -132,7 +132,7 @@ namespace SixLabors.ZlibStream
                         if (((z.InflateState.Method = z.INextIn[z.NextInIndex++]) & 0xf) != ZDEFLATED)
                         {
                             z.InflateState.Mode = BAD;
-                            z.Msg = "unknown compression method";
+                            z.Message = "unknown compression method";
                             z.InflateState.Marker = 5; // can't try inflateSync
                             break;
                         }
@@ -140,7 +140,7 @@ namespace SixLabors.ZlibStream
                         if ((z.InflateState.Method >> 4) + 8 > z.InflateState.WindowBits)
                         {
                             z.InflateState.Mode = BAD;
-                            z.Msg = "invalid window size";
+                            z.Message = "invalid window size";
                             z.InflateState.Marker = 5; // can't try inflateSync
                             break;
                         }
@@ -164,7 +164,7 @@ namespace SixLabors.ZlibStream
                         if ((((z.InflateState.Method << 8) + b) % 31) != 0)
                         {
                             z.InflateState.Mode = BAD;
-                            z.Msg = "incorrect header check";
+                            z.Message = "incorrect header check";
                             z.InflateState.Marker = 5; // can't try inflateSync
                             break;
                         }
@@ -241,7 +241,7 @@ namespace SixLabors.ZlibStream
 
                     case DICT0:
                         z.InflateState.Mode = BAD;
-                        z.Msg = "need dictionary";
+                        z.Message = "need dictionary";
                         z.InflateState.Marker = 0; // can try inflateSync
                         return CompressionState.ZSTREAMERROR;
 
@@ -337,7 +337,7 @@ namespace SixLabors.ZlibStream
                         if (((int)z.InflateState.Was[0]) != ((int)z.InflateState.Need))
                         {
                             z.InflateState.Mode = BAD;
-                            z.Msg = "incorrect data check";
+                            z.Message = "incorrect data check";
                             z.InflateState.Marker = 5; // can't try inflateSync
                             break;
                         }
@@ -459,9 +459,9 @@ namespace SixLabors.ZlibStream
             ? CompressionState.ZSTREAMERROR
             : z.InflateState.Blocks.Sync_point();
 
-        internal CompressionState InflateEnd(ZStream z)
+        internal CompressionState InflateEnd(ZStream zStream)
         {
-            this.Blocks?.Free(z);
+            this.Blocks?.Free(zStream);
             this.Blocks = null;
 
             // ZFREE(z, z->state);

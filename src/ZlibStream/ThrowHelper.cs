@@ -11,16 +11,12 @@ namespace SixLabors.ZlibStream
     internal static class ThrowHelper
     {
         [MethodImpl(InliningOptions.ColdPath)]
-        public static void ThrowNullException(string paramName)
+        public static void ThrowArgumentNullException(string paramName)
             => throw new ArgumentNullException(paramName);
 
         [MethodImpl(InliningOptions.ColdPath)]
-        public static void ThrowRangeException(string paramName)
+        public static void ThrowArgumentRangeException(string paramName)
             => throw new ArgumentOutOfRangeException(paramName);
-
-        [MethodImpl(InliningOptions.ColdPath)]
-        public static void ThrowBadConfigurationException()
-            => throw new ZlibStreamException("Bad Configuration.");
 
         [MethodImpl(InliningOptions.ColdPath)]
         public static void ThrowCompressionException(bool compressing, string message)

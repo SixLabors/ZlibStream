@@ -277,7 +277,7 @@ namespace SixLabors.ZlibStream
                             }
                             else
                             {
-                                z.Msg = "invalid distance code";
+                                z.Message = "invalid distance code";
 
                                 c = z.AvailIn - n;
                                 c = (k >> 3) < c ? k >> 3 : c;
@@ -332,7 +332,7 @@ namespace SixLabors.ZlibStream
                     }
                     else
                     {
-                        z.Msg = "invalid literal/length code";
+                        z.Message = "invalid literal/length code";
 
                         c = z.AvailIn - n;
                         c = (k >> 3) < c ? k >> 3 : c;
@@ -497,7 +497,7 @@ namespace SixLabors.ZlibStream
                         }
 
                         this.Mode = BADCODE; // invalid code
-                        z.Msg = "invalid literal/length code";
+                        z.Message = "invalid literal/length code";
                         r = CompressionState.ZDATAERROR;
 
                         s.Bitb = b; s.Bitk = k;
@@ -590,7 +590,7 @@ namespace SixLabors.ZlibStream
                         }
 
                         this.Mode = BADCODE; // invalid code
-                        z.Msg = "invalid distance code";
+                        z.Message = "invalid distance code";
                         r = CompressionState.ZDATAERROR;
 
                         s.Bitb = b; s.Bitk = k;

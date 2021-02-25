@@ -374,11 +374,11 @@ namespace SixLabors.ZlibStream
 
             if (r == CompressionState.ZDATAERROR)
             {
-                z.Msg = "oversubscribed dynamic bit lengths tree";
+                z.Message = "oversubscribed dynamic bit lengths tree";
             }
             else if (r == CompressionState.ZBUFERROR || bb[0] == 0)
             {
-                z.Msg = "incomplete dynamic bit lengths tree";
+                z.Message = "incomplete dynamic bit lengths tree";
                 r = CompressionState.ZDATAERROR;
             }
 
@@ -397,11 +397,11 @@ namespace SixLabors.ZlibStream
             {
                 if (r == CompressionState.ZDATAERROR)
                 {
-                    z.Msg = "oversubscribed literal/length tree";
+                    z.Message = "oversubscribed literal/length tree";
                 }
                 else if (r != CompressionState.ZMEMERROR)
                 {
-                    z.Msg = "incomplete literal/length tree";
+                    z.Message = "incomplete literal/length tree";
                     r = CompressionState.ZDATAERROR;
                 }
 
@@ -415,16 +415,16 @@ namespace SixLabors.ZlibStream
             {
                 if (r == CompressionState.ZDATAERROR)
                 {
-                    z.Msg = "oversubscribed distance tree";
+                    z.Message = "oversubscribed distance tree";
                 }
                 else if (r == CompressionState.ZBUFERROR)
                 {
-                    z.Msg = "incomplete distance tree";
+                    z.Message = "incomplete distance tree";
                     r = CompressionState.ZDATAERROR;
                 }
                 else if (r != CompressionState.ZMEMERROR)
                 {
-                    z.Msg = "empty distance tree with lengths";
+                    z.Message = "empty distance tree with lengths";
                     r = CompressionState.ZDATAERROR;
                 }
 
