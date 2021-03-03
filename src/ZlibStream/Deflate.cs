@@ -161,7 +161,6 @@ namespace SixLabors.ZlibStream
         private int maxLazyMatch;
 
         internal CompressionLevel level; // compression level (1..9)
-        private CompressionStrategy strategy; // favor or force Huffman coding
 
         // Use a faster search when the previous match is longer than this
         private int goodMatch;
@@ -276,7 +275,7 @@ namespace SixLabors.ZlibStream
                 ThrowHelper.ThrowArgumentRangeException(nameof(level));
             }
 
-            if (strategy < CompressionStrategy.DefaultStrategy || strategy > CompressionStrategy.Rle)
+            if (strategy < CompressionStrategy.DefaultStrategy || strategy > CompressionStrategy.Fixed)
             {
                 ThrowHelper.ThrowArgumentRangeException(nameof(strategy));
             }
@@ -301,7 +300,7 @@ namespace SixLabors.ZlibStream
             this.lBuf = (1 + 2) * this.litBufsize;
 
             this.level = level;
-            this.strategy = strategy;
+            this.Strategy = strategy;
             this.method = (byte)method;
 
             this.FixedBuffers = new FixedLengthBuffers();
@@ -309,6 +308,8 @@ namespace SixLabors.ZlibStream
 
             this.DeflateReset(zStream);
         }
+
+        public CompressionStrategy Strategy { get; private set; }
 
         internal int Pending { get; set; } // nb of bytes in the pending buffer
 
@@ -364,7 +365,7 @@ namespace SixLabors.ZlibStream
             if (level < CompressionLevel.NoCompression
                 || level > CompressionLevel.BestCompression
                 || strategy < CompressionStrategy.DefaultStrategy
-                || strategy > CompressionStrategy.HuffmanOnly)
+                || strategy > CompressionStrategy.Fixed)
             {
                 return CompressionState.ZSTREAMERROR;
             }
@@ -384,7 +385,7 @@ namespace SixLabors.ZlibStream
                 this.maxChainLength = ConfigTable[(int)this.level].MaxChain;
             }
 
-            this.strategy = strategy;
+            this.Strategy = strategy;
             return state;
         }
 
@@ -531,7 +532,7 @@ namespace SixLabors.ZlibStream
             {
                 int bstate = -1;
 
-                if (this.strategy == CompressionStrategy.Rle)
+                if (this.Strategy == CompressionStrategy.Rle)
                 {
                     bstate = this.DeflateRle(flush);
                 }

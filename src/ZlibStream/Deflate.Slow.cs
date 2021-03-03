@@ -63,13 +63,13 @@ namespace SixLabors.ZlibStream
                     // To simplify the code, we prevent matches with the string
                     // of window index 0 (in particular we have to avoid a match
                     // of the string with itself at the start of the input file).
-                    if (this.strategy != CompressionStrategy.HuffmanOnly)
+                    if (this.Strategy != CompressionStrategy.HuffmanOnly)
                     {
                         this.matchLength = this.Longest_match(hash_head);
                     }
 
                     // longest_match() sets match_start
-                    if (this.matchLength <= 5 && (this.strategy == CompressionStrategy.Filtered
+                    if (this.matchLength <= 5 && (this.Strategy == CompressionStrategy.Filtered
                         || (this.matchLength == MINMATCH && this.strStart - this.matchStart > 4096)))
                     {
                         // If prev_match is also MINMATCH, match_start is garbage

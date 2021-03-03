@@ -615,7 +615,7 @@ namespace SixLabors.ZlibStream
                 // transform a block into a stored block.
                 Tr_stored_block(s, buf, stored_len, eof);
             }
-            else if (static_lenb == opt_lenb)
+            else if (s.Strategy == CompressionStrategy.Fixed || static_lenb == opt_lenb)
             {
                 Tr_emit_tree(s, Deflate.STATICTREES, eof);
 

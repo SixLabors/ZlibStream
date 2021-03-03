@@ -1,7 +1,7 @@
 // Copyright (c) Six Labors.
 // Licensed under the Apache License, Version 2.0.
 
-#if Windows_NT
+#if OS_WINDOWS
 using System.Security.Principal;
 using BenchmarkDotNet.Diagnostics.Windows;
 #endif
@@ -23,24 +23,18 @@ namespace ZlibStream.Benchmarks
     {
         public Config()
         {
-            this.Add(MemoryDiagnoser.Default);
+            this.AddDiagnoser(MemoryDiagnoser.Default);
 
-#if Windows_NT
+#if OS_WINDOWS
             if (this.IsElevated)
             {
-                this.Add(new NativeMemoryProfiler());
+                this.AddDiagnoser(new NativeMemoryProfiler());
             }
 #endif
         }
 
-#if Windows_NT
-        private bool IsElevated
-        {
-            get
-            {
-                return new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
-            }
-        }
+#if OS_WINDOWS
+        private bool IsElevated => new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
 #endif
 
     }
@@ -48,30 +42,20 @@ namespace ZlibStream.Benchmarks
     public class DeflateConfig : ShortRun
     {
         public DeflateConfig()
-        {
-            this.AddColumn(new ByteSizeColumn(nameof(DeflateCorpusBenchmark.Compression)));
-        }
+            => this.AddColumn(new ByteSizeColumn(nameof(DeflateCorpusBenchmark.Compression)));
     }
 
     public class ShortRun : Config
     {
         public ShortRun()
-        {
-            this.AddJob(Job.Default.WithRuntime(
-                CoreRuntime.Core31).WithLaunchCount(1)
-                .WithWarmupCount(3)
-                .WithIterationCount(3));
-        }
+            => this.AddJob(Job.Default.WithRuntime(CoreRuntime.Core31).WithLaunchCount(1).WithWarmupCount(3).WithIterationCount(3));
     }
 
     public class ByteSizeColumn : IColumn
     {
         private readonly string parameterName;
 
-        public ByteSizeColumn(string parameterName)
-        {
-            this.parameterName = parameterName;
-        }
+        public ByteSizeColumn(string parameterName) => this.parameterName = parameterName;
 
         public string Id => nameof(ByteSizeColumn) + "." + this.ColumnName + "." + this.parameterName;
 
