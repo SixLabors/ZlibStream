@@ -22,44 +22,48 @@ namespace ZlibStream.Tests
         [InlineData(CompressionLevel.Level7)]
         [InlineData(CompressionLevel.BestCompression)]
         [InlineData(CompressionLevel.DefaultCompression)]
-        public void EncodeDecode(CompressionLevel compression)
+        public void EncodeDecode(CompressionLevel level)
         {
-            const int count = 2 * 4096 * 4;
-            byte[] expected = GetBuffer(count);
-            byte[] reference = new byte[count];
-            byte[] actual = new byte[count];
-
-            using (var compressed = new MemoryStream())
+            foreach (CompressionStrategy strategy in (CompressionStrategy[])Enum.GetValues(typeof(CompressionStrategy)))
             {
-                using (var deflate = new ZlibOutputStream(compressed, compression))
+                const int count = 2 * 4096 * 4;
+                byte[] expected = GetBuffer(count);
+                byte[] reference = new byte[count];
+                byte[] actual = new byte[count];
+
+                using (var compressed = new MemoryStream())
                 {
-                    deflate.Write(expected, 0, expected.Length);
+                    var options = new ZlibOptions { CompressionStrategy = strategy, CompressionLevel = level };
+                    using (var deflate = new ZlibOutputStream(compressed, options))
+                    {
+                        deflate.Write(expected, 0, expected.Length);
+                    }
+
+                    compressed.Position = 0;
+
+                    using (var refInflate = new InflaterInputStream(compressed))
+                    {
+                        refInflate.IsStreamOwner = false;
+                        refInflate.Read(reference, 0, reference.Length);
+                    }
+
+                    compressed.Position = 0;
+
+                    using (var inflate = new ZlibInputStream(compressed))
+                    {
+                        inflate.Read(actual, 0, actual.Length);
+                    }
                 }
 
-                compressed.Position = 0;
-
-                using (var refInflate = new InflaterInputStream(compressed))
+                for (int i = 0; i < expected.Length; i++)
                 {
-                    refInflate.IsStreamOwner = false;
-                    refInflate.Read(reference, 0, reference.Length);
+                    byte e = expected[i];
+                    byte r = reference[i];
+                    byte a = actual[i];
+
+                    Assert.Equal(e, r);
+                    Assert.Equal(e, a);
                 }
-
-                compressed.Position = 0;
-
-                using (var inflate = new ZlibInputStream(compressed))
-                {
-                    inflate.Read(actual, 0, actual.Length);
-                }
-            }
-
-            for (int i = 0; i < expected.Length; i++)
-            {
-                byte e = expected[i];
-                byte r = reference[i];
-                byte a = actual[i];
-
-                Assert.Equal(e, r);
-                Assert.Equal(e, a);
             }
         }
 
