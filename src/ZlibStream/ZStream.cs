@@ -24,7 +24,7 @@ namespace SixLabors.ZlibStream
             else
             {
                 this.Compress = true;
-                this.DeflateInit(options.CompressionLevel.Value);
+                this.DeflateInit(options);
             }
         }
 
@@ -94,7 +94,7 @@ namespace SixLabors.ZlibStream
         public int DataType { get; set; } // best guess about the data type: ascii or binary
 
         /// <summary>
-        /// Gets a value indication whether compression is taking place.
+        /// Gets a value indicating whether compression is taking place.
         /// </summary>
         public bool Compress { get; }
 
@@ -144,17 +144,17 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Initializes compression.
         /// </summary>
-        /// <param name="level">The compression level to use.</param>
-        public void DeflateInit(CompressionLevel level)
-            => this.DeflateInit(level, MAXWBITS);
+        /// <param name="options">The options.</param>
+        public void DeflateInit(ZlibOptions options)
+            => this.DeflateInit(options, MAXWBITS);
 
         /// <summary>
         /// Initializes compression.
         /// </summary>
-        /// <param name="level">The compression level to use.</param>
+        /// <param name="options">The options.</param>
         /// <param name="windowBits">The window bits to use.</param>
-        public void DeflateInit(CompressionLevel level, int windowBits)
-            => this.DeflateState = new Deflate(this, level, windowBits);
+        public void DeflateInit(ZlibOptions options, int windowBits)
+            => this.DeflateState = new Deflate(this, options, windowBits);
 
         /// <summary>
         /// Compress data.

@@ -219,29 +219,25 @@ namespace SixLabors.ZlibStream
         /// Initializes a new instance of the <see cref="Deflate"/> class.
         /// </summary>
         /// <param name="zStream">The zlib stream.</param>
-        /// <param name="level">The compression level to use.</param>
+        /// <param name="options">The zlib options.</param>
         /// <param name="windowBits">The window size in bits.</param>
-        public Deflate(ZStream zStream, CompressionLevel level, int windowBits)
-            : this(
-                zStream,
-                level,
-                ZDEFLATED,
-                windowBits,
-                DEFMEMLEVEL,
-                CompressionStrategy.DefaultStrategy)
+        public Deflate(ZStream zStream, ZlibOptions options, int windowBits)
+            : this(zStream, options, ZDEFLATED, windowBits, DEFMEMLEVEL)
         {
         }
 
         public Deflate(
             ZStream zStream,
-            CompressionLevel level,
+            ZlibOptions options,
             int method,
             int windowBits,
-            int memLevel,
-            CompressionStrategy strategy)
+            int memLevel)
         {
             int noheader = 0;
             zStream.Message = null;
+
+            CompressionLevel level = options.CompressionLevel.GetValueOrDefault();
+            CompressionStrategy strategy = options.CompressionStrategy;
 
             if (level == CompressionLevel.DefaultCompression)
             {
@@ -354,7 +350,7 @@ namespace SixLabors.ZlibStream
         internal Trees.DynamicTreeDesc DynDTree { get; private set; } = new Trees.DynamicTreeDesc((2 * DCODES) + 1);
 
         public CompressionState DeflateParams(
-            ZStream strm,
+            ZStream zStream,
             CompressionLevel level,
             CompressionStrategy strategy)
         {
@@ -373,10 +369,10 @@ namespace SixLabors.ZlibStream
                 return CompressionState.ZSTREAMERROR;
             }
 
-            if (ConfigTable[(int)this.level].Func != ConfigTable[(int)level].Func && strm.TotalIn != 0)
+            if (ConfigTable[(int)this.level].Func != ConfigTable[(int)level].Func && zStream.TotalIn != 0)
             {
                 // Flush the last buffer:
-                state = strm.Deflate(FlushMode.PartialFlush);
+                state = zStream.Deflate(FlushMode.PartialFlush);
             }
 
             if (this.level != level)
