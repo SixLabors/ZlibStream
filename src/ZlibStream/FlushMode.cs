@@ -4,9 +4,9 @@
 namespace SixLabors.ZlibStream
 {
     /// <summary>
-    /// Provides enumeration of flushing strategies for Zlib.
+    /// Provides enumeration of flushing modes.
     /// </summary>
-    public enum FlushStrategy : int
+    public enum FlushMode
     {
         /// <summary>
         /// No flush.

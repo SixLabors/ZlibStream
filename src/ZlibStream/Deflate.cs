@@ -117,7 +117,7 @@ namespace SixLabors.ZlibStream
 
         internal byte dataType; // UNKNOWN, BINARY or ASCII
         private byte method; // STORED (for zip only) or DEFLATED
-        private FlushStrategy lastFlush; // value of flush param for previous deflate call
+        private FlushMode lastFlush; // value of flush param for previous deflate call
 
         // Used by deflate
         private int wSize; // LZ77 window size (32K by default)
@@ -376,7 +376,7 @@ namespace SixLabors.ZlibStream
             if (ConfigTable[(int)this.level].Func != ConfigTable[(int)level].Func && strm.TotalIn != 0)
             {
                 // Flush the last buffer:
-                state = strm.Deflate(FlushStrategy.PartialFlush);
+                state = strm.Deflate(FlushMode.PartialFlush);
             }
 
             if (this.level != level)
@@ -436,18 +436,18 @@ namespace SixLabors.ZlibStream
             return CompressionState.ZOK;
         }
 
-        public CompressionState Compress(ZStream zStream, FlushStrategy flush)
+        public CompressionState Compress(ZStream zStream, FlushMode flush)
         {
-            FlushStrategy old_flush;
+            FlushMode old_flush;
 
-            if (flush > FlushStrategy.Finish || flush < 0)
+            if (flush > FlushMode.Finish || flush < 0)
             {
                 return CompressionState.ZSTREAMERROR;
             }
 
             if (zStream.NextOut == null
                 || (zStream.NextIn == null && zStream.AvailableIn != 0)
-                || (this.status == FINISHSTATE && flush != FlushStrategy.Finish))
+                || (this.status == FINISHSTATE && flush != FlushMode.Finish))
             {
                 zStream.Message = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZSTREAMERROR];
                 return CompressionState.ZSTREAMERROR;
@@ -507,7 +507,7 @@ namespace SixLabors.ZlibStream
                     // avail_in equal to zero. There won't be anything to do,
                     // but this is not an error situation so make sure we
                     // return OK instead of BUF_ERROR at next call of deflate:
-                    this.lastFlush = (FlushStrategy)(-1);
+                    this.lastFlush = (FlushMode)(-1);
                     return CompressionState.ZOK;
                 }
 
@@ -515,7 +515,7 @@ namespace SixLabors.ZlibStream
                 // flushes. For repeated and useless calls with Z_FINISH, we keep
                 // returning Z_STREAM_END instead of Z_BUFF_ERROR.
             }
-            else if (zStream.AvailableIn == 0 && flush <= old_flush && flush != FlushStrategy.Finish)
+            else if (zStream.AvailableIn == 0 && flush <= old_flush && flush != FlushMode.Finish)
             {
                 zStream.Message = ZErrmsg[CompressionState.ZNEEDDICT - CompressionState.ZBUFERROR];
                 return CompressionState.ZBUFERROR;
@@ -531,7 +531,7 @@ namespace SixLabors.ZlibStream
             // Start a new block or continue the current one.
             if (zStream.AvailableIn != 0
                 || this.lookahead != 0
-                || (flush != FlushStrategy.NoFlush && this.status != FINISHSTATE))
+                || (flush != FlushMode.NoFlush && this.status != FINISHSTATE))
             {
                 int bstate = -1;
 
@@ -570,7 +570,7 @@ namespace SixLabors.ZlibStream
                 {
                     if (zStream.AvailableOut == 0)
                     {
-                        this.lastFlush = (FlushStrategy)(-1); // avoid BUF_ERROR next call, see above
+                        this.lastFlush = (FlushMode)(-1); // avoid BUF_ERROR next call, see above
                     }
 
                     return CompressionState.ZOK;
@@ -585,7 +585,7 @@ namespace SixLabors.ZlibStream
 
                 if (bstate == BlockDone)
                 {
-                    if (flush == FlushStrategy.PartialFlush)
+                    if (flush == FlushMode.PartialFlush)
                     {
                         Trees.Tr_align(this);
                     }
@@ -596,7 +596,7 @@ namespace SixLabors.ZlibStream
 
                         // For a full flush, this empty block will be recognized
                         // as a special marker by inflate_sync().
-                        if (flush == FlushStrategy.FullFlush)
+                        if (flush == FlushMode.FullFlush)
                         {
                             // state.head[s.hash_size-1]=0;
                             ushort* head = this.DynamicBuffers.HeadPointer;
@@ -611,13 +611,13 @@ namespace SixLabors.ZlibStream
                     this.Flush_pending(zStream);
                     if (zStream.AvailableOut == 0)
                     {
-                        this.lastFlush = (FlushStrategy)(-1); // avoid BUF_ERROR at next call, see above
+                        this.lastFlush = (FlushMode)(-1); // avoid BUF_ERROR at next call, see above
                         return CompressionState.ZOK;
                     }
                 }
             }
 
-            if (flush != FlushStrategy.Finish)
+            if (flush != FlushMode.Finish)
             {
                 return CompressionState.ZOK;
             }
@@ -840,7 +840,7 @@ namespace SixLabors.ZlibStream
             this.status = (this.NoHeader != 0) ? BUSYSTATE : INITSTATE;
             zStream.Adler = Adler32.SeedValue;
 
-            this.lastFlush = FlushStrategy.NoFlush;
+            this.lastFlush = FlushMode.NoFlush;
 
             Trees.Tr_init(this);
             this.Lm_init();

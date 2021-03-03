@@ -16,7 +16,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="flush">The flush strategy.</param>
         /// <returns>The <see cref="int"/>.</returns>
-        internal int DeflateQuick(FlushStrategy flush)
+        internal int DeflateQuick(FlushMode flush)
         {
             int hash_head; // head of the hash chain
             int dist;
@@ -34,7 +34,7 @@ namespace SixLabors.ZlibStream
                 {
                     // Start new block when we have lookahead data, so that if no
                     // input data is given an empty block will not be written.
-                    last = flush == FlushStrategy.Finish;
+                    last = flush == FlushMode.Finish;
                     this.QuickStartBlock(last);
                 }
 
@@ -44,7 +44,7 @@ namespace SixLabors.ZlibStream
                     if (this.Pending + 12 >= pendingBufferSize)
                     {
                         this.Flush_pending(this.strm);
-                        if (this.strm.AvailableIn == 0 && flush != FlushStrategy.Finish)
+                        if (this.strm.AvailableIn == 0 && flush != FlushMode.Finish)
                         {
                             // Break to emit end block and return need_more
                             break;
@@ -54,7 +54,7 @@ namespace SixLabors.ZlibStream
                     if (this.lookahead < MINLOOKAHEAD)
                     {
                         this.Fill_window();
-                        if (this.lookahead < MINLOOKAHEAD && flush == FlushStrategy.NoFlush)
+                        if (this.lookahead < MINLOOKAHEAD && flush == FlushMode.NoFlush)
                         {
                             // Always emit end block, in case next call is with Z_FINISH
                             // and we need to emit start of last block
@@ -71,7 +71,7 @@ namespace SixLabors.ZlibStream
                         {
                             // Start new block when we have lookahead data, so that if no
                             // input data is given an empty block will not be written.
-                            last = flush == FlushStrategy.Finish;
+                            last = flush == FlushMode.Finish;
                             this.QuickStartBlock(last);
                         }
                     }
@@ -106,7 +106,7 @@ namespace SixLabors.ZlibStream
                 }
                 while (this.strm.AvailableOut != 0);
 
-                last = flush == FlushStrategy.Finish;
+                last = flush == FlushMode.Finish;
                 this.QuickEndBlock(ltree, last);
                 this.Flush_pending(this.strm);
 

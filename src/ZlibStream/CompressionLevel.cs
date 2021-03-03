@@ -4,9 +4,9 @@
 namespace SixLabors.ZlibStream
 {
     /// <summary>
-    /// Provides enumeration of compression levels for Zlib.
+    /// Provides enumeration of compression levels.
     /// </summary>
-    public enum CompressionLevel : int
+    public enum CompressionLevel
     {
         /// <summary>
         /// The default compression level. Equivalent to <see cref="Level6"/>.

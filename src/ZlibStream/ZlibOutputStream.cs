@@ -9,13 +9,13 @@ using System.Runtime.CompilerServices;
 namespace SixLabors.ZlibStream
 {
     /// <summary>
-    /// Provides methods and properties for compressing and decompressing output streams by
-    /// using the Zlib algorithm.
+    /// Provides methods and properties used to compress and decompress
+    /// output streams by using the zlib data format specification.
     /// </summary>
     public sealed class ZlibOutputStream : Stream
     {
         private readonly int bufferSize;
-        private byte[] chunkBuffer;
+        private readonly byte[] chunkBuffer;
         private readonly byte[] byteBuffer = new byte[1];
         private readonly bool compress;
         private bool isFinished;
@@ -27,26 +27,33 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="output">The output stream.</param>
         public ZlibOutputStream(Stream output)
+           : this(output, new ZlibOptions())
         {
-            this.bufferSize = 512;
-            this.compress = false;
-            this.BaseStream = output;
-            this.InitBlock();
-            this.zStream = new ZStream();
         }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ZlibOutputStream"/> class.
         /// </summary>
         /// <param name="output">The output stream.</param>
-        /// <param name="level">The compression level for the data to compress.</param>
+        /// <param name="level">The compression level.</param>
         public ZlibOutputStream(Stream output, CompressionLevel level)
+           : this(output, new ZlibOptions() { CompressionLevel = level })
         {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ZlibOutputStream"/> class.
+        /// </summary>
+        /// <param name="output">The output stream.</param>
+        /// <param name="options">The compression options.</param>
+        public ZlibOutputStream(Stream output, ZlibOptions options)
+        {
+            this.Options = options;
             this.bufferSize = 512;
-            this.compress = true;
+            this.chunkBuffer = ArrayPool<byte>.Shared.Rent(this.bufferSize);
+            this.zStream = new ZStream(options);
+            this.compress = this.zStream.Compress;
             this.BaseStream = output;
-            this.InitBlock();
-            this.zStream = new ZStream(level);
         }
 
         /// <summary>
@@ -55,9 +62,9 @@ namespace SixLabors.ZlibStream
         public Stream BaseStream { get; }
 
         /// <summary>
-        /// Gets or sets the flush mode for this stream.
+        /// Gets or sets the options.
         /// </summary>
-        public FlushStrategy FlushMode { get; set; }
+        public ZlibOptions Options { get; set; }
 
         /// <summary>
         /// Gets the total number of bytes input so far.
@@ -120,8 +127,8 @@ namespace SixLabors.ZlibStream
                 this.zStream.NextOutIndex = 0;
                 this.zStream.AvailableOut = this.bufferSize;
                 state = this.compress
-                    ? this.zStream.Deflate(this.FlushMode)
-                    : this.zStream.Inflate(this.FlushMode);
+                    ? this.zStream.Deflate(this.Options.FlushMode)
+                    : this.zStream.Inflate(this.Options.FlushMode);
 
                 if (state != CompressionState.ZOK && state != CompressionState.ZSTREAMEND)
                 {
@@ -196,8 +203,8 @@ namespace SixLabors.ZlibStream
                     this.zStream.NextOutIndex = 0;
                     this.zStream.AvailableOut = this.bufferSize;
                     state = this.compress
-                        ? this.zStream.Deflate(FlushStrategy.Finish)
-                        : this.zStream.Inflate(FlushStrategy.Finish);
+                        ? this.zStream.Deflate(FlushMode.Finish)
+                        : this.zStream.Inflate(FlushMode.Finish);
 
                     if (state != CompressionState.ZSTREAMEND && state != CompressionState.ZOK)
                     {
@@ -225,12 +232,6 @@ namespace SixLabors.ZlibStream
                     this.isFinished = true;
                 }
             }
-        }
-
-        private void InitBlock()
-        {
-            this.FlushMode = FlushStrategy.NoFlush;
-            this.chunkBuffer = ArrayPool<byte>.Shared.Rent(this.bufferSize);
         }
     }
 }

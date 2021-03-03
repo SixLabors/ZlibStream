@@ -13,19 +13,19 @@ namespace SixLabors.ZlibStream
     {
         private const int MAXWBITS = 15; // 32K LZ77 window
         private const int DEFWBITS = MAXWBITS;
-        private readonly bool compress;
         private bool isDisposed;
 
-        public ZStream()
+        public ZStream(ZlibOptions options)
         {
-            this.compress = false;
-            this.InflateInit();
-        }
-
-        public ZStream(CompressionLevel level)
-        {
-            this.compress = true;
-            this.DeflateInit(level);
+            if (options.CompressionLevel is null)
+            {
+                this.InflateInit();
+            }
+            else
+            {
+                this.Compress = true;
+                this.DeflateInit(options.CompressionLevel.Value);
+            }
         }
 
         /// <summary>
@@ -94,6 +94,11 @@ namespace SixLabors.ZlibStream
         public int DataType { get; set; } // best guess about the data type: ascii or binary
 
         /// <summary>
+        /// Gets a value indication whether compression is taking place.
+        /// </summary>
+        public bool Compress { get; }
+
+        /// <summary>
         /// Initializes decompression.
         /// </summary>
         public void InflateInit()
@@ -111,7 +116,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="strategy">The flush mode to use.</param>
         /// <returns>The zlib status state.</returns>
-        public CompressionState Inflate(FlushStrategy strategy)
+        public CompressionState Inflate(FlushMode strategy)
             => this.InflateState == null
             ? CompressionState.ZSTREAMERROR
             : ZlibStream.Inflate.Decompress(this, strategy);
@@ -156,7 +161,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="flush">The flush mode to use on the data.</param>
         /// <returns>The zlib status state.</returns>
-        public CompressionState Deflate(FlushStrategy flush)
+        public CompressionState Deflate(FlushMode flush)
             => this.DeflateState == null
             ? CompressionState.ZSTREAMERROR
             : this.DeflateState.Compress(this, flush);
@@ -225,7 +230,7 @@ namespace SixLabors.ZlibStream
             {
                 if (disposing)
                 {
-                    if (this.compress)
+                    if (this.Compress)
                     {
                         this.DeflateState?.Dispose();
                     }

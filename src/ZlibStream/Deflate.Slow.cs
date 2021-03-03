@@ -15,7 +15,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="flush">The flush strategy.</param>
         /// <returns>The <see cref="int"/>.</returns>
-        private int DeflateSlow(FlushStrategy flush)
+        private int DeflateSlow(FlushMode flush)
         {
             int hash_head = 0; // head of hash chain
             bool bflush; // set if current block must be flushed
@@ -34,7 +34,7 @@ namespace SixLabors.ZlibStream
                 if (this.lookahead < MINLOOKAHEAD)
                 {
                     this.Fill_window();
-                    if (this.lookahead < MINLOOKAHEAD && flush == FlushStrategy.NoFlush)
+                    if (this.lookahead < MINLOOKAHEAD && flush == FlushMode.NoFlush)
                     {
                         return NeedMore;
                     }
@@ -151,11 +151,11 @@ namespace SixLabors.ZlibStream
                 this.matchAvailable = 0;
             }
 
-            this.Flush_block_only(flush == FlushStrategy.Finish);
+            this.Flush_block_only(flush == FlushMode.Finish);
 
             return this.strm.AvailableOut == 0
-                ? flush == FlushStrategy.Finish ? FinishStarted : NeedMore
-                : flush == FlushStrategy.Finish ? FinishDone : BlockDone;
+                ? flush == FlushMode.Finish ? FinishStarted : NeedMore
+                : flush == FlushMode.Finish ? FinishDone : BlockDone;
         }
     }
 }

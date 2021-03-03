@@ -100,7 +100,7 @@ namespace SixLabors.ZlibStream
             inflate.Blocks.Reset(zStream, null);
         }
 
-        internal static CompressionState Decompress(ZStream zStream, FlushStrategy strategy)
+        internal static CompressionState Decompress(ZStream zStream, FlushMode strategy)
         {
             CompressionState state;
             int b;
@@ -124,7 +124,7 @@ namespace SixLabors.ZlibStream
                             return state;
                         }
 
-                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushMode.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
                         zStream.AvailableIn--;
                         zStream.TotalIn++;
@@ -154,7 +154,7 @@ namespace SixLabors.ZlibStream
                             return state;
                         }
 
-                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushMode.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
                         zStream.AvailableIn--;
                         zStream.TotalIn++;
@@ -184,7 +184,7 @@ namespace SixLabors.ZlibStream
                             return state;
                         }
 
-                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushMode.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
                         zStream.AvailableIn--;
                         zStream.TotalIn++;
@@ -199,7 +199,7 @@ namespace SixLabors.ZlibStream
                             return state;
                         }
 
-                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushMode.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
                         zStream.AvailableIn--;
                         zStream.TotalIn++;
@@ -214,7 +214,7 @@ namespace SixLabors.ZlibStream
                             return state;
                         }
 
-                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushMode.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
                         zStream.AvailableIn--;
                         zStream.TotalIn++;
@@ -229,7 +229,7 @@ namespace SixLabors.ZlibStream
                             return state;
                         }
 
-                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushMode.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
                         zStream.AvailableIn--;
                         zStream.TotalIn++;
@@ -256,7 +256,7 @@ namespace SixLabors.ZlibStream
 
                         if (state == CompressionState.ZOK)
                         {
-                            state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                            state = strategy == FlushMode.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
                         }
 
                         if (state != CompressionState.ZSTREAMEND)
@@ -264,7 +264,7 @@ namespace SixLabors.ZlibStream
                             return state;
                         }
 
-                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushMode.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
                         zStream.InflateState.Blocks.Reset(zStream, zStream.InflateState.Was);
                         if (zStream.InflateState.NoWrap)
                         {
@@ -282,7 +282,7 @@ namespace SixLabors.ZlibStream
                             return state;
                         }
 
-                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushMode.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
                         zStream.AvailableIn--;
                         zStream.TotalIn++;
@@ -297,7 +297,7 @@ namespace SixLabors.ZlibStream
                             return state;
                         }
 
-                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushMode.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
                         zStream.AvailableIn--;
                         zStream.TotalIn++;
@@ -312,7 +312,7 @@ namespace SixLabors.ZlibStream
                             return state;
                         }
 
-                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushMode.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
                         zStream.AvailableIn--;
                         zStream.TotalIn++;
@@ -327,7 +327,7 @@ namespace SixLabors.ZlibStream
                             return state;
                         }
 
-                        state = strategy == FlushStrategy.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
+                        state = strategy == FlushMode.Finish ? CompressionState.ZBUFERROR : CompressionState.ZOK;
 
                         zStream.AvailableIn--;
                         zStream.TotalIn++;
