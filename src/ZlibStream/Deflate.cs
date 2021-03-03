@@ -358,7 +358,7 @@ namespace SixLabors.ZlibStream
             CompressionLevel level,
             CompressionStrategy strategy)
         {
-            CompressionState err = CompressionState.ZOK;
+            CompressionState state = CompressionState.ZOK;
 
             if (level == CompressionLevel.DefaultCompression)
             {
@@ -376,7 +376,7 @@ namespace SixLabors.ZlibStream
             if (ConfigTable[(int)this.level].Func != ConfigTable[(int)level].Func && strm.TotalIn != 0)
             {
                 // Flush the last buffer:
-                err = strm.Deflate(FlushStrategy.PartialFlush);
+                state = strm.Deflate(FlushStrategy.PartialFlush);
             }
 
             if (this.level != level)
@@ -389,7 +389,7 @@ namespace SixLabors.ZlibStream
             }
 
             this.strategy = strategy;
-            return err;
+            return state;
         }
 
         public CompressionState DeflateSetDictionary(ZStream strm, byte[] dictionary, int dictLength)

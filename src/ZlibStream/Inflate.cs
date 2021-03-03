@@ -8,7 +8,7 @@ namespace SixLabors.ZlibStream
     /// <summary>
     /// Class for decompressing data through zlib.
     /// </summary>
-    internal sealed class Inflate
+    internal sealed class Inflate : IDisposable
     {
         // preset dictionary flag in zlib header
         private const int PRESETDICT = 0x20;
@@ -30,6 +30,8 @@ namespace SixLabors.ZlibStream
         private const int BAD = 13; // got an error--stay here
 
         private static readonly byte[] Mark = new byte[] { 0, 0, 0xFF, 0xFF };
+        private readonly ZStream zStream;
+        private bool isDisposed;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Inflate"/> class.
@@ -38,6 +40,8 @@ namespace SixLabors.ZlibStream
         /// <param name="windowBits">The window size in bits.</param>
         public Inflate(ZStream zStream, int windowBits)
         {
+            this.zStream = zStream;
+
             // Handle undocumented nowrap option (no zlib header or check)
             if (windowBits < 0)
             {
@@ -52,7 +56,7 @@ namespace SixLabors.ZlibStream
             }
 
             this.WindowBits = windowBits;
-            this.Blocks = new InfBlocks(zStream, !this.NoWrap, 1 << windowBits);
+            this.Blocks = new InflateBlocks(zStream, !this.NoWrap, 1 << windowBits);
 
             // Reset state
             InflateReset(zStream, this);
@@ -76,7 +80,7 @@ namespace SixLabors.ZlibStream
 
         internal int WindowBits { get; private set; } // log2(window size)  (8..15, defaults to 15)
 
-        internal InfBlocks Blocks { get; private set; } // current inflate_blocks state
+        internal InflateBlocks Blocks { get; private set; } // current inflate_blocks state
 
         /// <summary>
         /// Resets the inflate state.
@@ -242,7 +246,7 @@ namespace SixLabors.ZlibStream
 
                     case BLOCKS:
 
-                        state = zStream.InflateState.Blocks.Proc(zStream, state);
+                        state = zStream.InflateState.Blocks.Process(zStream, state);
                         if (state == CompressionState.ZDATAERROR)
                         {
                             zStream.InflateState.Mode = BAD;
@@ -454,14 +458,16 @@ namespace SixLabors.ZlibStream
             ? CompressionState.ZSTREAMERROR
             : z.InflateState.Blocks.Sync_point();
 
-        // TODO: Blocks should be IDisposable
-        internal CompressionState InflateEnd(ZStream zStream)
+        /// <inheritdoc/>
+        public void Dispose()
         {
-            this.Blocks?.Free(zStream);
-            this.Blocks = null;
+            if (!this.isDisposed)
+            {
+                this.Blocks?.Reset(this.zStream, null);
+                this.Blocks?.Dispose();
 
-            // ZFREE(z, z->state);
-            return CompressionState.ZOK;
+                this.isDisposed = true;
+            }
         }
     }
 }

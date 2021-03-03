@@ -117,23 +117,6 @@ namespace SixLabors.ZlibStream
             : ZlibStream.Inflate.Decompress(this, strategy);
 
         /// <summary>
-        /// Ends decompression.
-        /// </summary>
-        /// <returns>The zlib status state.</returns>
-        [MethodImpl(InliningOptions.ShortMethod)]
-        public CompressionState InflateEnd()
-        {
-            if (this.InflateState == null)
-            {
-                return CompressionState.ZSTREAMERROR;
-            }
-
-            CompressionState ret = this.InflateState.InflateEnd(this);
-            this.InflateState = null;
-            return ret;
-        }
-
-        /// <summary>
         /// Syncs inflate.
         /// </summary>
         /// <returns>The zlib status state.</returns>
@@ -248,7 +231,7 @@ namespace SixLabors.ZlibStream
                     }
                     else
                     {
-                        this.InflateEnd();
+                        this.InflateState?.Dispose();
                     }
                 }
 
