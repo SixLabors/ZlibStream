@@ -14,7 +14,7 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Contains buffers whose lengths are defined by compile time constants.
         /// </summary>
-        public class FixedLengthBuffers : IDisposable
+        public sealed class FixedLengthBuffers : IDisposable
         {
             private bool isDisposed;
 
@@ -66,23 +66,18 @@ namespace SixLabors.ZlibStream
             public byte* DepthPointer { get; }
 
             /// <inheritdoc/>
-            public void Dispose() => this.Dispose(true);
-
-            protected virtual void Dispose(bool disposing)
+            public void Dispose()
             {
                 if (!this.isDisposed)
                 {
-                    if (disposing)
-                    {
-                        this.depthHandle.Dispose();
-                        ArrayPool<byte>.Shared.Return(this.depthBuffer);
+                    this.depthHandle.Dispose();
+                    ArrayPool<byte>.Shared.Return(this.depthBuffer);
 
-                        this.heapHandle.Dispose();
-                        ArrayPool<int>.Shared.Return(this.heapBuffer);
+                    this.heapHandle.Dispose();
+                    ArrayPool<int>.Shared.Return(this.heapBuffer);
 
-                        this.blCountHandle.Dispose();
-                        ArrayPool<ushort>.Shared.Return(this.blCountBuffer);
-                    }
+                    this.blCountHandle.Dispose();
+                    ArrayPool<ushort>.Shared.Return(this.blCountBuffer);
 
                     this.isDisposed = true;
                 }
@@ -93,7 +88,7 @@ namespace SixLabors.ZlibStream
         /// Contains buffers whose lengths are defined by parameters passed
         /// to the containing <see cref="Deflate"/> instance.
         /// </summary>
-        public class DynamicLengthBuffers : IDisposable
+        public sealed class DynamicLengthBuffers : IDisposable
         {
             private MemoryHandle windowHandle;
 
@@ -181,26 +176,21 @@ namespace SixLabors.ZlibStream
             public byte* PendingPointer { get; }
 
             /// <inheritdoc/>
-            public void Dispose() => this.Dispose(true);
-
-            protected virtual void Dispose(bool disposing)
+            public void Dispose()
             {
                 if (!this.isDisposed)
                 {
-                    if (disposing)
-                    {
-                        this.windowHandle.Dispose();
-                        ArrayPool<byte>.Shared.Return(this.WindowBuffer);
+                    this.windowHandle.Dispose();
+                    ArrayPool<byte>.Shared.Return(this.WindowBuffer);
 
-                        this.prevHandle.Dispose();
-                        ArrayPool<ushort>.Shared.Return(this.prevBuffer);
+                    this.prevHandle.Dispose();
+                    ArrayPool<ushort>.Shared.Return(this.prevBuffer);
 
-                        this.headHandle.Dispose();
-                        ArrayPool<ushort>.Shared.Return(this.headBuffer);
+                    this.headHandle.Dispose();
+                    ArrayPool<ushort>.Shared.Return(this.headBuffer);
 
-                        this.pendingHandle.Dispose();
-                        ArrayPool<byte>.Shared.Return(this.PendingBuffer);
-                    }
+                    this.pendingHandle.Dispose();
+                    ArrayPool<byte>.Shared.Return(this.PendingBuffer);
 
                     this.isDisposed = true;
                 }
