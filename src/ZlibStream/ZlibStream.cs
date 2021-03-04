@@ -31,12 +31,12 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Gets or sets the next input bytes.
         /// </summary>
-        public byte[] NextIn { get; set; }
+        public byte* NextIn { get; set; }
 
         /// <summary>
         /// Gets or sets the next output bytes.
         /// </summary>
-        public byte[] NextOut { get; set; }
+        public byte* NextOut { get; set; }
 
         /// <summary>
         /// Gets or sets the next input byte index.
@@ -194,7 +194,7 @@ namespace SixLabors.ZlibStream
         // allocating a large strm->next_in buffer and copying from it.
         // (See also flush_pending()).
         [MethodImpl(InliningOptions.ShortMethod)]
-        public int ReadBuffer(byte[] buffer, int start, int size)
+        public int ReadBuffer(byte* buffer, int size)
         {
             int len = this.AvailableIn;
 
@@ -212,10 +212,10 @@ namespace SixLabors.ZlibStream
 
             if (this.DeflateState.NoHeader == 0)
             {
-                this.Adler = Adler32.Calculate(this.Adler, this.NextIn.AsSpan(this.NextInIndex, len));
+                this.Adler = Adler32.Calculate(this.Adler, new Span<byte>(this.NextIn + this.NextInIndex, len));
             }
 
-            Buffer.BlockCopy(this.NextIn, this.NextInIndex, buffer, start, len);
+            Unsafe.CopyBlockUnaligned(buffer, this.NextIn + this.NextInIndex, (uint)len);
             this.NextInIndex += len;
             this.TotalIn += len;
             return len;

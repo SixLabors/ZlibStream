@@ -3,10 +3,11 @@
 
 using System;
 using System.Buffers;
+using System.Runtime.CompilerServices;
 
 namespace SixLabors.ZlibStream
 {
-    internal sealed class InflateBlocks : IDisposable
+    internal sealed unsafe class InflateBlocks : IDisposable
     {
         // Table for deflate from PKZIP's appnote.txt.
         internal static readonly int[] Border = new int[]
@@ -63,6 +64,9 @@ namespace SixLabors.ZlibStream
         private uint check; // check on output
         private bool isDisposed;
 
+        private MemoryHandle windowHandle;
+        private byte* windowPointer;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="InflateBlocks"/> class.
         /// </summary>
@@ -74,6 +78,9 @@ namespace SixLabors.ZlibStream
             // TODO: Pool.
             this.hufts = ArrayPool<int>.Shared.Rent(MANY * 3);
             this.Window = ArrayPool<byte>.Shared.Rent(windowSize);
+            this.windowHandle = new Memory<byte>(this.Window).Pin();
+            this.windowPointer = (byte*)this.windowHandle.Pointer;
+
             this.End = windowSize;
             this.doCheck = doCheck;
             this.mode = TYPE;
@@ -343,7 +350,7 @@ namespace SixLabors.ZlibStream
                             t = m;
                         }
 
-                        Buffer.BlockCopy(zStream.NextIn, p, this.Window, q, t);
+                        Unsafe.CopyBlockUnaligned(this.windowPointer + q, zStream.NextIn + p, (uint)t);
                         p += t;
                         n -= t;
                         q += t;
@@ -749,7 +756,7 @@ namespace SixLabors.ZlibStream
             }
 
             // copy as far as end of window
-            Buffer.BlockCopy(this.Window, q, zStream.NextOut, p, n);
+            Unsafe.CopyBlockUnaligned(zStream.NextOut + p, this.windowPointer + q, (uint)n);
             p += n;
             q += n;
 
@@ -786,7 +793,7 @@ namespace SixLabors.ZlibStream
                 }
 
                 // copy
-                Buffer.BlockCopy(this.Window, q, zStream.NextOut, p, n);
+                Unsafe.CopyBlockUnaligned(zStream.NextOut + p, this.windowPointer + q, (uint)n);
                 p += n;
                 q += n;
             }
@@ -805,6 +812,8 @@ namespace SixLabors.ZlibStream
             if (!this.isDisposed)
             {
                 ArrayPool<int>.Shared.Return(this.hufts);
+
+                this.windowHandle.Dispose();
                 ArrayPool<byte>.Shared.Return(this.Window);
                 this.isDisposed = true;
             }

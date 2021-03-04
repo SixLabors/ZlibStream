@@ -8,7 +8,7 @@ namespace SixLabors.ZlibStream
     /// <summary>
     /// Class for decompressing data through zlib.
     /// </summary>
-    internal sealed class Inflate : IDisposable
+    internal sealed unsafe class Inflate : IDisposable
     {
         // preset dictionary flag in zlib header
         private const int PRESETDICT = 0x20;

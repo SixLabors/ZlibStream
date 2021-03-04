@@ -784,7 +784,7 @@ namespace SixLabors.ZlibStream
                 return;
             }
 
-            Buffer.BlockCopy(this.DynamicBuffers.PendingBuffer, this.PendingOut, strm.NextOut, strm.NextOutIndex, len);
+            Unsafe.CopyBlockUnaligned(strm.NextOut + strm.NextOutIndex, this.DynamicBuffers.PendingPointer + this.PendingOut, (uint)len);
 
             strm.NextOutIndex += len;
             this.PendingOut += len;
@@ -923,7 +923,7 @@ namespace SixLabors.ZlibStream
 
                 if (this.strStart >= this.wSize + this.wSize - MINLOOKAHEAD)
                 {
-                    Buffer.BlockCopy(this.DynamicBuffers.WindowBuffer, this.wSize, this.DynamicBuffers.WindowBuffer, 0, this.wSize);
+                    Unsafe.CopyBlockUnaligned(window, window + this.wSize, (uint)this.wSize);
                     this.matchStart -= this.wSize;
                     this.strStart -= this.wSize; // we now have strstart >= MAX_DIST
                     this.blockStart -= this.wSize;
@@ -947,7 +947,7 @@ namespace SixLabors.ZlibStream
                 //   strstart + s->lookahead <= input_size => more >= MIN_LOOKAHEAD.
                 // Otherwise, window_size == 2*WSIZE so more >= 2.
                 // If there was sliding, more >= WSIZE. So in all cases, more >= 2.
-                n = this.strm.ReadBuffer(this.DynamicBuffers.WindowBuffer, this.strStart + this.lookahead, more);
+                n = this.strm.ReadBuffer(window + this.strStart + this.lookahead, more);
                 this.lookahead += n;
 
                 // Initialize the hash value now that we have some input:

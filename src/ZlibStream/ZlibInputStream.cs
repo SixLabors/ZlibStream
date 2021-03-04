@@ -5,6 +5,7 @@ using System;
 using System.Buffers;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace SixLabors.ZlibStream
 {
@@ -54,14 +55,13 @@ namespace SixLabors.ZlibStream
             this.chunkBuffer = ArrayPool<byte>.Shared.Rent(this.bufferSize);
             this.zStream = new ZLibStream(options)
             {
-                NextIn = this.chunkBuffer,
+                // TODO: Can these move?
                 NextInIndex = 0,
                 AvailableIn = 0
             };
 
             this.compress = this.zStream.Compress;
             this.BaseStream = input;
-
         }
 
         /// <summary>
@@ -110,56 +110,79 @@ namespace SixLabors.ZlibStream
             ? -1
             : this.byteBuffer[0] & 0xFF;
 
+#if SUPPORTS_SPAN_STREAM
+
+        /// <inheritdoc/>
+        public override int Read(Span<byte> buffer) => this.ReadCore(buffer);
+
+#endif
+
         /// <inheritdoc/>
         [MethodImpl(InliningOptions.ShortMethod)]
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if (count == 0)
+            if (buffer is null)
+            {
+                ThrowHelper.ThrowArgumentNullException(nameof(buffer));
+            }
+
+            return this.ReadCore(buffer.AsSpan(offset, count));
+        }
+
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private unsafe int ReadCore(Span<byte> buffer)
+        {
+            if (buffer.IsEmpty)
             {
                 return 0;
             }
 
-            CompressionState state;
-            this.zStream.NextOut = buffer;
-            this.zStream.NextOutIndex = offset;
-            this.zStream.AvailableOut = count;
-            do
+            fixed (byte* nextIn = &MemoryMarshal.GetReference(this.chunkBuffer.AsSpan()))
+            fixed (byte* nextOut = &MemoryMarshal.GetReference(buffer))
             {
-                if ((this.zStream.AvailableIn == 0) && (!this.noMoreinput))
+                CompressionState state;
+                this.zStream.NextIn = nextIn;
+                this.zStream.NextOut = nextOut;
+                this.zStream.NextOutIndex = 0;
+                this.zStream.AvailableOut = buffer.Length;
+                do
                 {
-                    // If buffer is empty and more input is available, refill it
-                    this.zStream.NextInIndex = 0;
-                    this.zStream.AvailableIn = this.BaseStream.Read(this.chunkBuffer, 0, this.bufferSize);
-
-                    if (this.zStream.AvailableIn == -1)
+                    if ((this.zStream.AvailableIn == 0) && (!this.noMoreinput))
                     {
-                        this.zStream.AvailableIn = 0;
-                        this.noMoreinput = true;
+                        // If buffer is empty and more input is available, refill it
+                        this.zStream.NextInIndex = 0;
+                        this.zStream.AvailableIn = this.BaseStream.Read(this.chunkBuffer, 0, this.bufferSize);
+
+                        if (this.zStream.AvailableIn == -1)
+                        {
+                            this.zStream.AvailableIn = 0;
+                            this.noMoreinput = true;
+                        }
+                    }
+
+                    state = this.compress
+                        ? this.zStream.Deflate(this.Options.FlushMode)
+                        : this.zStream.Inflate(this.Options.FlushMode);
+
+                    if (this.noMoreinput && (state == CompressionState.ZBUFERROR))
+                    {
+                        return -1;
+                    }
+
+                    if (state != CompressionState.ZOK && state != CompressionState.ZSTREAMEND)
+                    {
+                        ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Message);
+                    }
+
+                    if (this.noMoreinput && (this.zStream.AvailableOut == buffer.Length))
+                    {
+                        return -1;
                     }
                 }
+                while (this.zStream.AvailableOut > 0 && state == CompressionState.ZOK);
 
-                state = this.compress
-                    ? this.zStream.Deflate(this.Options.FlushMode)
-                    : this.zStream.Inflate(this.Options.FlushMode);
-
-                if (this.noMoreinput && (state == CompressionState.ZBUFERROR))
-                {
-                    return -1;
-                }
-
-                if (state != CompressionState.ZOK && state != CompressionState.ZSTREAMEND)
-                {
-                    ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Message);
-                }
-
-                if (this.noMoreinput && (this.zStream.AvailableOut == count))
-                {
-                    return -1;
-                }
+                return buffer.Length - this.zStream.AvailableOut;
             }
-            while (this.zStream.AvailableOut > 0 && state == CompressionState.ZOK);
-
-            return count - this.zStream.AvailableOut;
         }
 
         /// <inheritdoc/>
@@ -204,38 +227,41 @@ namespace SixLabors.ZlibStream
         /// <summary>
         /// Finishes the stream.
         /// </summary>
-        private void Finish()
+        private unsafe void Finish()
         {
             if (!this.isFinished)
             {
-                CompressionState state;
-                do
+                fixed (byte* nextOut = &MemoryMarshal.GetReference(this.chunkBuffer.AsSpan()))
                 {
-                    this.zStream.NextOut = this.chunkBuffer;
-                    this.zStream.NextOutIndex = 0;
-                    this.zStream.AvailableOut = this.bufferSize;
-                    state = this.compress
-                        ? this.zStream.Deflate(FlushMode.Finish)
-                        : this.zStream.Inflate(FlushMode.Finish);
-
-                    if (state != CompressionState.ZSTREAMEND && state != CompressionState.ZOK)
+                    CompressionState state;
+                    do
                     {
-                        ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Message);
-                    }
+                        this.zStream.NextOut = nextOut;
+                        this.zStream.NextOutIndex = 0;
+                        this.zStream.AvailableOut = this.bufferSize;
+                        state = this.compress
+                            ? this.zStream.Deflate(FlushMode.Finish)
+                            : this.zStream.Inflate(FlushMode.Finish);
 
-                    if (this.bufferSize - this.zStream.AvailableOut > 0)
-                    {
-                        this.BaseStream.Write(this.chunkBuffer, 0, this.bufferSize - this.zStream.AvailableOut);
-                    }
+                        if (state != CompressionState.ZSTREAMEND && state != CompressionState.ZOK)
+                        {
+                            ThrowHelper.ThrowCompressionException(this.compress, this.zStream.Message);
+                        }
 
-                    if (state == CompressionState.ZSTREAMEND)
-                    {
-                        break;
+                        if (this.bufferSize - this.zStream.AvailableOut > 0)
+                        {
+                            this.BaseStream.Write(this.chunkBuffer, 0, this.bufferSize - this.zStream.AvailableOut);
+                        }
+
+                        if (state == CompressionState.ZSTREAMEND)
+                        {
+                            break;
+                        }
                     }
+                    while (this.zStream.AvailableIn > 0 || this.zStream.AvailableOut == 0);
+
+                    this.isFinished = true;
                 }
-                while (this.zStream.AvailableIn > 0 || this.zStream.AvailableOut == 0);
-
-                this.isFinished = true;
             }
         }
     }

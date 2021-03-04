@@ -5,7 +5,7 @@ using System;
 
 namespace SixLabors.ZlibStream
 {
-    internal sealed class InfCodes
+    internal sealed unsafe class InfCodes
     {
         // waiting for "i:"=input,
         //             "o:"=output,
