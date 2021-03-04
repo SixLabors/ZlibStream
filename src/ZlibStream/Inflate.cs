@@ -30,7 +30,7 @@ namespace SixLabors.ZlibStream
         private const int BAD = 13; // got an error--stay here
 
         private static readonly byte[] Mark = new byte[] { 0, 0, 0xFF, 0xFF };
-        private readonly ZStream zStream;
+        private readonly ZLibStream zStream;
         private bool isDisposed;
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="zStream">The zlib stream.</param>
         /// <param name="windowBits">The window size in bits.</param>
-        public Inflate(ZStream zStream, int windowBits)
+        public Inflate(ZLibStream zStream, int windowBits)
         {
             this.zStream = zStream;
 
@@ -87,7 +87,7 @@ namespace SixLabors.ZlibStream
         /// </summary>
         /// <param name="zStream">The Zlib stream.</param>
         /// <param name="inflate">The inflate state.</param>
-        public static void InflateReset(ZStream zStream, Inflate inflate)
+        public static void InflateReset(ZLibStream zStream, Inflate inflate)
         {
             if (zStream is null || inflate is null)
             {
@@ -100,7 +100,7 @@ namespace SixLabors.ZlibStream
             inflate.Blocks.Reset(zStream, null);
         }
 
-        internal static CompressionState Decompress(ZStream zStream, FlushMode strategy)
+        internal static CompressionState Decompress(ZLibStream zStream, FlushMode strategy)
         {
             CompressionState state;
             int b;
@@ -356,7 +356,7 @@ namespace SixLabors.ZlibStream
             }
         }
 
-        internal static CompressionState InflateSetDictionary(ZStream z, byte[] dictionary, int dictLength)
+        internal static CompressionState InflateSetDictionary(ZLibStream z, byte[] dictionary, int dictLength)
         {
             var index = 0;
             var length = dictLength;
@@ -383,7 +383,7 @@ namespace SixLabors.ZlibStream
             return CompressionState.ZOK;
         }
 
-        internal static CompressionState InflateSync(ZStream zStream)
+        internal static CompressionState InflateSync(ZLibStream zStream)
         {
             int n; // number of bytes to look at
             int p; // pointer to bytes
@@ -453,7 +453,7 @@ namespace SixLabors.ZlibStream
         // but removes the length bytes of the resulting empty stored block. When
         // decompressing, PPP checks that at the end of input packet, inflate is
         // waiting for these length bytes.
-        internal static CompressionState InflateSyncPoint(ZStream z)
+        internal static CompressionState InflateSyncPoint(ZLibStream z)
             => (z == null || z.InflateState == null || z.InflateState.Blocks == null)
             ? CompressionState.ZSTREAMERROR
             : z.InflateState.Blocks.Sync_point();

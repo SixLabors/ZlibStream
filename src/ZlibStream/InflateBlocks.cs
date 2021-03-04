@@ -69,7 +69,7 @@ namespace SixLabors.ZlibStream
         /// <param name="zStream">Zlib Stream.</param>
         /// <param name="doCheck">Whether to calculate the checksum.</param>
         /// <param name="windowSize">Window size.</param>
-        internal InflateBlocks(ZStream zStream, bool doCheck, int windowSize)
+        internal InflateBlocks(ZLibStream zStream, bool doCheck, int windowSize)
         {
             // TODO: Pool.
             this.hufts = ArrayPool<int>.Shared.Rent(MANY * 3);
@@ -92,7 +92,7 @@ namespace SixLabors.ZlibStream
 
         internal int Write { get; set; } // window write pointer
 
-        internal void Reset(ZStream zStream, long[] c)
+        internal void Reset(ZLibStream zStream, long[] c)
         {
             if (c != null)
             {
@@ -120,7 +120,7 @@ namespace SixLabors.ZlibStream
             }
         }
 
-        internal CompressionState Process(ZStream zStream, CompressionState state)
+        internal CompressionState Process(ZLibStream zStream, CompressionState state)
         {
             int t; // temporary storage
             int b; // bit buffer
@@ -716,7 +716,7 @@ namespace SixLabors.ZlibStream
         internal CompressionState Sync_point() => this.mode == LENS ? CompressionState.ZSTREAMEND : CompressionState.ZOK;
 
         // copy as much as possible from the sliding window to the output area
-        internal CompressionState Inflate_flush(ZStream zStream, CompressionState state)
+        internal CompressionState Inflate_flush(ZLibStream zStream, CompressionState state)
         {
             int n;
             int p;

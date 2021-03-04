@@ -103,7 +103,7 @@ namespace SixLabors.ZlibStream
         // (the maximum string length) and number of input bytes available
         // at least ten.  The ten bytes are six bytes for the longest length/
         // distance pair plus four bytes for overloading the bit buffer.
-        internal static CompressionState Inflate_fast(int bl, int bd, int[] tl, int tl_index, int[] td, int td_index, InflateBlocks blocks, ZStream zStream)
+        internal static CompressionState Inflate_fast(int bl, int bd, int[] tl, int tl_index, int[] td, int td_index, InflateBlocks blocks, ZLibStream zStream)
         {
             int t; // temporary pointer
             int[] tp; // temporary pointer
@@ -385,7 +385,7 @@ namespace SixLabors.ZlibStream
             return CompressionState.ZOK;
         }
 
-        internal CompressionState Process(InflateBlocks s, ZStream zStream, CompressionState state)
+        internal CompressionState Process(InflateBlocks s, ZLibStream zStream, CompressionState state)
         {
             int j; // temporary storage
 

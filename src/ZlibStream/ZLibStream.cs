@@ -9,13 +9,13 @@ namespace SixLabors.ZlibStream
     /// <summary>
     /// The zlib stream class.
     /// </summary>
-    internal sealed class ZStream : IDisposable
+    internal sealed unsafe class ZLibStream : IDisposable
     {
         private const int MAXWBITS = 15; // 32K LZ77 window
         private const int DEFWBITS = MAXWBITS;
         private bool isDisposed;
 
-        public ZStream(ZlibOptions options)
+        public ZLibStream(ZlibOptions options)
         {
             if (options.CompressionLevel is null)
             {

@@ -20,7 +20,7 @@ namespace SixLabors.ZlibStream
         private readonly bool compress;
         private bool noMoreinput;
         private bool isFinished;
-        private ZStream zStream;
+        private ZLibStream zStream;
         private bool isDisposed;
 
         /// <summary>
@@ -52,7 +52,7 @@ namespace SixLabors.ZlibStream
             this.Options = options;
             this.bufferSize = 8192;
             this.chunkBuffer = ArrayPool<byte>.Shared.Rent(this.bufferSize);
-            this.zStream = new ZStream(options)
+            this.zStream = new ZLibStream(options)
             {
                 NextIn = this.chunkBuffer,
                 NextInIndex = 0,

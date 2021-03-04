@@ -112,7 +112,7 @@ namespace SixLabors.ZlibStream
         };
 
         // State
-        private ZStream strm; // pointer back to this zlib stream
+        private ZLibStream strm; // pointer back to this zlib stream
         private int status; // as the name implies
 
         internal byte dataType; // UNKNOWN, BINARY or ASCII
@@ -220,13 +220,13 @@ namespace SixLabors.ZlibStream
         /// <param name="zStream">The zlib stream.</param>
         /// <param name="options">The zlib options.</param>
         /// <param name="windowBits">The window size in bits.</param>
-        public Deflate(ZStream zStream, ZlibOptions options, int windowBits)
+        public Deflate(ZLibStream zStream, ZlibOptions options, int windowBits)
             : this(zStream, options, ZDEFLATED, windowBits, DEFMEMLEVEL)
         {
         }
 
         public Deflate(
-            ZStream zStream,
+            ZLibStream zStream,
             ZlibOptions options,
             int method,
             int windowBits,
@@ -351,7 +351,7 @@ namespace SixLabors.ZlibStream
         internal Trees.DynamicTreeDesc DynDTree { get; private set; } = new Trees.DynamicTreeDesc((2 * DCODES) + 1);
 
         public CompressionState DeflateParams(
-            ZStream zStream,
+            ZLibStream zStream,
             CompressionLevel level,
             CompressionStrategy strategy)
         {
@@ -389,7 +389,7 @@ namespace SixLabors.ZlibStream
             return state;
         }
 
-        public CompressionState DeflateSetDictionary(ZStream strm, byte[] dictionary, int dictLength)
+        public CompressionState DeflateSetDictionary(ZLibStream strm, byte[] dictionary, int dictLength)
         {
             int length = dictLength;
             int index = 0;
@@ -433,7 +433,7 @@ namespace SixLabors.ZlibStream
             return CompressionState.ZOK;
         }
 
-        public CompressionState Compress(ZStream zStream, FlushMode flush)
+        public CompressionState Compress(ZLibStream zStream, FlushMode flush)
         {
             FlushMode old_flush;
 
@@ -769,7 +769,7 @@ namespace SixLabors.ZlibStream
         // to avoid allocating a large strm->next_out buffer and copying into it.
         // (See also read_buf()).
         [MethodImpl(InliningOptions.ShortMethod)]
-        public void Flush_pending(ZStream strm)
+        public void Flush_pending(ZLibStream strm)
         {
             this.Bi_flush();
             int len = this.Pending;
@@ -820,7 +820,7 @@ namespace SixLabors.ZlibStream
             return cur;
         }
 
-        private void DeflateReset(ZStream zStream)
+        private void DeflateReset(ZLibStream zStream)
         {
             zStream.TotalIn = zStream.TotalOut = 0;
             zStream.Message = null;

@@ -19,7 +19,7 @@ namespace SixLabors.ZlibStream
         private readonly byte[] byteBuffer = new byte[1];
         private readonly bool compress;
         private bool isFinished;
-        private ZStream zStream;
+        private ZLibStream zStream;
         private bool isDisposed;
 
         /// <summary>
@@ -51,7 +51,7 @@ namespace SixLabors.ZlibStream
             this.Options = options;
             this.bufferSize = 512;
             this.chunkBuffer = ArrayPool<byte>.Shared.Rent(this.bufferSize);
-            this.zStream = new ZStream(options);
+            this.zStream = new ZLibStream(options);
             this.compress = this.zStream.Compress;
             this.BaseStream = output;
         }
@@ -102,6 +102,18 @@ namespace SixLabors.ZlibStream
             this.byteBuffer[0] = value;
             this.Write(this.byteBuffer, 0, 1);
         }
+
+#if SUPPORTS_SPAN_STREAM
+
+        /// <inheritdoc/>
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            // TODO: Write Core using pointers for ZlibStream.NextIn, NextOut.
+            // This will require rewriting Adler32 to allow passing a pointer.
+            base.Write(buffer);
+        }
+
+#endif
 
         /// <inheritdoc/>
         [MethodImpl(InliningOptions.ShortMethod)]
