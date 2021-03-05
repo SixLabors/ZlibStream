@@ -41,7 +41,7 @@ namespace SixLabors.ZlibStream
                 int pendingBufferSize = this.DynamicBuffers.PendingSize;
                 do
                 {
-                    if (this.Pending + 12 >= pendingBufferSize)
+                    if (this.Pending + ((BITBUFSIZE + 7) >> 3) >= pendingBufferSize)
                     {
                         this.Flush_pending(this.strm);
                         if (this.strm.AvailableIn == 0 && flush != FlushMode.Finish)
