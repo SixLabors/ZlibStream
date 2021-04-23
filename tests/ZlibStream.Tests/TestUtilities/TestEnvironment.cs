@@ -25,6 +25,24 @@ namespace ZlibStream.Tests.TestUtilities
         internal static string SolutionDirectoryFullPath => SolutionDirectoryFullPathLazy.Value;
 
         /// <summary>
+        /// Gets a value indicating whether test execution runs on CI.
+        /// </summary>
+#if ENV_CI
+        internal static bool RunsOnCI => true;
+#else
+        internal static bool RunsOnCI => false;
+#endif
+
+        /// <summary>
+        /// Gets a value indicating whether test execution is running with code coverage testing enabled.
+        /// </summary>
+#if ENV_CODECOV
+        internal static bool RunsWithCodeCoverage => true;
+#else
+        internal static bool RunsWithCodeCoverage => false;
+#endif
+
+        /// <summary>
         /// Gets the full path to the Corpus directory.
         /// </summary>
         public static string CorpusDirectoryFullPath => GetFullPath(CorpusRelativePath);
@@ -44,14 +62,14 @@ namespace ZlibStream.Tests.TestUtilities
                 }
                 catch (Exception ex)
                 {
-                    throw new Exception(
+                    throw new DirectoryNotFoundException(
                         $"Unable to find ZlibStream solution directory from {TestAssemblyFile} because of {ex.GetType().Name}!",
                         ex);
                 }
 
                 if (directory is null)
                 {
-                    throw new Exception($"Unable to find ZlibStream solution directory from {TestAssemblyFile}!");
+                    throw new DirectoryNotFoundException($"Unable to find ZlibStream solution directory from {TestAssemblyFile}!");
                 }
             }
 

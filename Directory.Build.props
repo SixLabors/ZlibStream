@@ -32,7 +32,7 @@
     | net472            |       Y       |     N    |
     +===================+===============+==========+
     -->
-  
+
   <Choose>
     <When Condition="'$(TargetFramework)' == 'net472' OR '$(TargetFramework)' == 'net48'">
       <PropertyGroup>
