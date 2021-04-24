@@ -11,6 +11,7 @@
     <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
     <Description>A cross platform, managed, implementation of Zlib.</Description>
     <NeutralLanguage>en</NeutralLanguage>
+    <MinVerMinimumMajorMinor>1.0</MinVerMinimumMajorMinor>
   </PropertyGroup>
 
   <Choose>
