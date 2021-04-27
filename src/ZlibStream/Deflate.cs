@@ -645,23 +645,28 @@ namespace SixLabors.ZlibStream
                 this.biBuf = 0;
                 this.biValid = 0;
             }
-            else if (this.biValid >= 32)
+            else
             {
-                this.PutUInt((uint)this.biBuf);
-                this.biBuf >>= 32;
-                this.biValid -= 32;
-            }
-            else if (this.biValid >= 16)
-            {
-                this.PutShort((short)this.biBuf);
-                this.biBuf >>= 16;
-                this.biValid -= 16;
-            }
-            else if (this.biValid >= 8)
-            {
-                this.PutByte((byte)this.biBuf);
-                this.biBuf >>= 8;
-                this.biValid -= 8;
+                if (this.biValid >= 32)
+                {
+                    this.PutUInt((uint)this.biBuf);
+                    this.biBuf >>= 32;
+                    this.biValid -= 32;
+                }
+
+                if (this.biValid >= 16)
+                {
+                    this.PutShort((short)this.biBuf);
+                    this.biBuf >>= 16;
+                    this.biValid -= 16;
+                }
+
+                if (this.biValid >= 8)
+                {
+                    this.PutByte((byte)this.biBuf);
+                    this.biBuf >>= 8;
+                    this.biValid -= 8;
+                }
             }
         }
 
@@ -673,21 +678,26 @@ namespace SixLabors.ZlibStream
             {
                 this.PutULong(this.biBuf);
             }
-            else if (this.biValid > 24)
+            else
             {
-                this.PutUInt((uint)this.biBuf);
-                this.biBuf >>= 32;
-                this.biValid -= 32;
-            }
-            else if (this.biValid > 8)
-            {
-                this.PutShort((short)this.biBuf);
-                this.biBuf >>= 16;
-                this.biValid -= 16;
-            }
-            else if (this.biValid > 0)
-            {
-                this.PutByte((byte)this.biBuf);
+                if (this.biValid > 24)
+                {
+                    this.PutUInt((uint)this.biBuf);
+                    this.biBuf >>= 32;
+                    this.biValid -= 32;
+                }
+
+                if (this.biValid > 8)
+                {
+                    this.PutShort((short)this.biBuf);
+                    this.biBuf >>= 16;
+                    this.biValid -= 16;
+                }
+
+                if (this.biValid > 0)
+                {
+                    this.PutByte((byte)this.biBuf);
+                }
             }
 
             this.biBuf = 0;
