@@ -75,7 +75,7 @@ namespace SixLabors.ZlibStream
         private const int MINLOOKAHEAD = MAXMATCH + MINMATCH + 1;
         private const int LCODES = LITERALS + 1 + LENGTHCODES;
         private const int HEAPSIZE = (2 * LCODES) + 1; // maximum heap size
-        private const int BufSize = 16; // Size of bit buffer in bi_buf
+        private const int BITBUFSIZE = 64; // Size of bit buffer in bi_buf
 
         private static readonly Config[] ConfigTable = new Config[10]
         {
@@ -174,7 +174,7 @@ namespace SixLabors.ZlibStream
 
         // Output buffer. bits are inserted starting at the bottom (least
         // significant bits).
-        internal ushort biBuf;
+        internal ulong biBuf;
 
         // Number of valid bits in bi_buf.  All bits above the last valid bit
         // are always zero.
@@ -639,17 +639,34 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         public void Bi_flush()
         {
-            if (this.biValid == 16)
+            if (this.biValid == 64)
             {
-                this.PutShort(this.biBuf);
+                this.PutULong(this.biBuf);
                 this.biBuf = 0;
                 this.biValid = 0;
             }
-            else if (this.biValid >= 8)
+            else
             {
-                this.PutByte((byte)this.biBuf);
-                this.biBuf = (ushort)(this.biBuf >> 8);
-                this.biValid -= 8;
+                if (this.biValid >= 32)
+                {
+                    this.PutUInt((uint)this.biBuf);
+                    this.biBuf >>= 32;
+                    this.biValid -= 32;
+                }
+
+                if (this.biValid >= 16)
+                {
+                    this.PutShort((short)this.biBuf);
+                    this.biBuf >>= 16;
+                    this.biValid -= 16;
+                }
+
+                if (this.biValid >= 8)
+                {
+                    this.PutByte((byte)this.biBuf);
+                    this.biBuf >>= 8;
+                    this.biValid -= 8;
+                }
             }
         }
 
@@ -657,13 +674,30 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         public void Bi_windup()
         {
-            if (this.biValid > 8)
+            if (this.biValid > 56)
             {
-                this.PutShort(this.biBuf);
+                this.PutULong(this.biBuf);
             }
-            else if (this.biValid > 0)
+            else
             {
-                this.PutByte((byte)this.biBuf);
+                if (this.biValid > 24)
+                {
+                    this.PutUInt((uint)this.biBuf);
+                    this.biBuf >>= 32;
+                    this.biValid -= 32;
+                }
+
+                if (this.biValid > 8)
+                {
+                    this.PutShort((short)this.biBuf);
+                    this.biBuf >>= 16;
+                    this.biValid -= 16;
+                }
+
+                if (this.biValid > 0)
+                {
+                    this.PutByte((byte)this.biBuf);
+                }
             }
 
             this.biBuf = 0;
@@ -737,6 +771,20 @@ namespace SixLabors.ZlibStream
         }
 
         [MethodImpl(InliningOptions.ShortMethod)]
+        private void PutUInt(uint w)
+        {
+            *(uint*)&this.DynamicBuffers.PendingPointer[this.Pending] = w;
+            this.Pending += 4;
+        }
+
+        [MethodImpl(InliningOptions.ShortMethod)]
+        private void PutULong(ulong w)
+        {
+            *(ulong*)&this.DynamicBuffers.PendingPointer[this.Pending] = w;
+            this.Pending += 8;
+        }
+
+        [MethodImpl(InliningOptions.ShortMethod)]
         private void PutShortMSB(int b)
         {
             this.PutByte((byte)(b >> 8));
@@ -750,17 +798,25 @@ namespace SixLabors.ZlibStream
         [MethodImpl(InliningOptions.ShortMethod)]
         public void Send_bits(int value, int length)
         {
-            if (this.biValid > BufSize - length)
+            ulong val = (ulong)value;
+            int totalBits = this.biValid + length;
+            if (totalBits < BITBUFSIZE)
             {
-                this.biBuf |= (ushort)(value << this.biValid);
-                this.PutShort(this.biBuf);
-                this.biBuf = (ushort)(value >> (BufSize - this.biValid));
-                this.biValid += length - BufSize;
+                this.biBuf |= val << this.biValid;
+                this.biValid = totalBits;
+            }
+            else if (this.biValid == BITBUFSIZE)
+            {
+                this.PutULong(this.biBuf);
+                this.biBuf = val;
+                this.biValid = length;
             }
             else
             {
-                this.biBuf |= (ushort)(value << this.biValid);
-                this.biValid += length;
+                this.biBuf |= val << this.biValid;
+                this.PutULong(this.biBuf);
+                this.biBuf = val >> (BITBUFSIZE - this.biValid);
+                this.biValid = totalBits - BITBUFSIZE;
             }
         }
 
