@@ -1,6 +1,6 @@
 <h1 align="center">
 
-<img src="https://github.com/SixLabors/Branding/raw/master/icons/org/sixlabors.svg?sanitize=true" alt="SixLabors.ImageSharp" width="256"/>
+<img src="https://github.com/SixLabors/Branding/raw/main/icons/org/sixlabors.svg?sanitize=true" alt="SixLabors.ImageSharp" width="256"/>
 <br/>
 SixLabors.ZlibStream
 </h1>
