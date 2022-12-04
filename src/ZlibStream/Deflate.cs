@@ -1,7 +1,7 @@
 // Copyright (c) Six Labors.
 // Licensed under the Apache License, Version 2.0.
 
-// Uncomment to use DeflateQuick
+// Uncomment to use DeflateQuick - Probs should remove as compression is really poor.
 // TODO: Make an option.
 // #define USE_QUICK
 using System;
@@ -281,7 +281,7 @@ namespace SixLabors.ZlibStream
             }
 
 #if USE_QUICK
-            if (level == ZlibCompressionLevel.ZBESTSPEED)
+            if (level == CompressionLevel.BestSpeed)
             {
                 windowBits = 13;
             }
